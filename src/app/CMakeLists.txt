@@ -30,6 +30,8 @@ qt_add_qml_module(logitune
         qml/pages/ButtonsPage.qml
         qml/pages/EasySwitchPage.qml
         qml/pages/SettingsPage.qml
+    RESOURCES
+        qml/assets/mx-master-3s.png
 )
 
 target_include_directories(logitune PRIVATE

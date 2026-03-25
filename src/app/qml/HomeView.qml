@@ -82,44 +82,17 @@ Item {
             spacing: 16
             visible: DeviceModel.deviceConnected
 
-            // Mouse placeholder rectangle
-            Rectangle {
+            // Mouse device image
+            Image {
                 id: deviceCard
                 width: 200
-                height: 260
-                radius: 20
+                height: 296
                 anchors.horizontalCenter: parent.horizontalCenter
+                source: "qrc:/Logitune/qml/assets/mx-master-3s.png"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                mipmap: true
 
-                gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#2C2C2E" }
-                    GradientStop { position: 1.0; color: "#1A1A1A" }
-                }
-
-                // Simple mouse silhouette lines
-                Column {
-                    anchors.centerIn: parent
-                    spacing: 6
-                    opacity: 0.4
-
-                    Rectangle { width: 60; height: 3; radius: 2; color: "white"; anchors.horizontalCenter: parent.horizontalCenter }
-                    Rectangle { width: 40; height: 3; radius: 2; color: "white"; anchors.horizontalCenter: parent.horizontalCenter }
-                    Rectangle { width: 50; height: 3; radius: 2; color: "white"; anchors.horizontalCenter: parent.horizontalCenter }
-                }
-
-                Text {
-                    anchors {
-                        bottom: parent.bottom
-                        bottomMargin: 16
-                        horizontalCenter: parent.horizontalCenter
-                    }
-                    text: DeviceModel.deviceName
-                    color: "white"
-                    font.pixelSize: 12
-                    font.bold: true
-                    opacity: 0.7
-                }
-
-                // Hover/click effects
                 HoverHandler { id: cardHover }
 
                 scale: cardHover.hovered ? 1.03 : 1.0
@@ -130,15 +103,12 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.deviceClicked()
                 }
-
-                layer.enabled: cardHover.hovered
-                layer.effect: null
             }
 
             // Device name label below the card
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: DeviceModel.deviceName
+                text: "MX Master 3S"
                 font.pixelSize: 15
                 font.bold: true
                 color: "#1A1A1A"

@@ -1,142 +1,81 @@
 import QtQuick
 
-// Mouse device render — placeholder dark gradient shape with
-// 7 invisible clickable button zones overlaid.
+// Mouse device render — MX Master 3S PNG with invisible clickable button zones overlaid.
 Item {
     id: root
 
     implicitWidth:  220
-    implicitHeight: 300
+    implicitHeight: 326
 
     signal buttonClicked(int buttonId)
 
-    // ── Mouse body ─────────────────────────────────────────────────────────
-    Rectangle {
-        id: mouseBody
+    // ── Mouse image ──────────────────────────────────────────────────────────
+    Image {
+        id: mouseImage
         anchors.centerIn: parent
-        width:  parent.implicitWidth
+        width: parent.implicitWidth
         height: parent.implicitHeight
-        radius: 28
-
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: "#2C2C2E" }
-            GradientStop { position: 1.0; color: "#1A1A1A" }
-        }
-
-        // Left/Right button divider line
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 24
-            width: 1
-            height: 110
-            color: "#3A3A3C"
-            opacity: 0.7
-        }
-
-        // Scroll wheel
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 50
-            width: 18
-            height: 56
-            radius: 9
-            color: "#3A3A3C"
-
-            // Wheel grip lines
-            Repeater {
-                model: 4
-                delegate: Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: 8 + index * 11
-                    width: 12; height: 2
-                    radius: 1
-                    color: "#555555"
-                }
-            }
-        }
-
-        // Left side thumb zone bump
-        Rectangle {
-            x: -6
-            y: parent.height * 0.40
-            width: 16
-            height: 60
-            radius: 8
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#323234" }
-                GradientStop { position: 1.0; color: "#222224" }
-            }
-        }
-
-        // Top button (behind scroll)
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.horizontalCenterOffset: 24
-            y: 30
-            width: 20; height: 10
-            radius: 5
-            color: "#3A3A3C"
-        }
+        source: "qrc:/Logitune/qml/assets/mx-master-3s.png"
+        fillMode: Image.PreserveAspectFit
+        smooth: true
+        mipmap: true
     }
 
-    // ── Button zone overlays (invisible hit areas) ─────────────────────────
-    // Positions are approximate relative to the 220×300 mouse body.
+    // ── Button zone overlays (invisible hit areas) ───────────────────────────
+    // Positions tuned for the 220×326 MX Master 3S render at 3/4 angle.
 
     // Button 0 — Left click (top-left half)
     MouseArea {
-        x: 10; y: 20
-        width: 95; height: 120
+        x: 20; y: 10
+        width: 90; height: 130
         cursorShape: Qt.PointingHandCursor
         onClicked: root.buttonClicked(0)
-        // Debug: uncomment to visualise zones
-        // Rectangle { anchors.fill: parent; color: "red"; opacity: 0.2 }
     }
 
     // Button 1 — Right click (top-right half)
     MouseArea {
-        x: 115; y: 20
-        width: 95; height: 120
+        x: 115; y: 10
+        width: 90; height: 130
         cursorShape: Qt.PointingHandCursor
         onClicked: root.buttonClicked(1)
     }
 
-    // Button 2 — Middle / scroll wheel click (center strip)
+    // Button 2 — Middle / scroll wheel click
     MouseArea {
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.horizontalCenterOffset: 0
-        y: 50; width: 30; height: 68
+        x: 85; y: 40
+        width: 40; height: 70
         cursorShape: Qt.PointingHandCursor
         onClicked: root.buttonClicked(2)
     }
 
     // Button 3 — Back (thumb rear, left side lower)
     MouseArea {
-        x: 0; y: 185
-        width: 40; height: 40
+        x: 0; y: 195
+        width: 45; height: 40
         cursorShape: Qt.PointingHandCursor
         onClicked: root.buttonClicked(3)
     }
 
     // Button 4 — Forward (thumb front, left side upper)
     MouseArea {
-        x: 0; y: 140
-        width: 40; height: 40
+        x: 0; y: 150
+        width: 45; height: 40
         cursorShape: Qt.PointingHandCursor
         onClicked: root.buttonClicked(4)
     }
 
-    // Button 5 — Thumb / gesture (left side middle)
+    // Button 5 — Thumb / gesture button (left side middle)
     MouseArea {
-        x: 0; y: 160
-        width: 40; height: 24
+        x: 0; y: 170
+        width: 40; height: 30
         cursorShape: Qt.PointingHandCursor
         onClicked: root.buttonClicked(5)
     }
 
-    // Button 6 — Top (right side behind scroll)
+    // Button 6 — Top button (behind scroll wheel, right side)
     MouseArea {
-        x: 162; y: 24
-        width: 36; height: 22
+        x: 150; y: 30
+        width: 40; height: 25
         cursorShape: Qt.PointingHandCursor
         onClicked: root.buttonClicked(6)
     }
