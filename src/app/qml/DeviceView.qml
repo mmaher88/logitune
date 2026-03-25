@@ -17,7 +17,9 @@ Item {
             Layout.fillHeight: true
 
             onPageSelected: function(page) {
-                contentStack.replace(placeholderComponent,
+                var comp = page === "pointscroll" ? pointScrollPageComponent
+                                                  : placeholderComponent
+                contentStack.replace(comp,
                                      {pageName: page},
                                      StackView.Immediate)
             }
@@ -126,6 +128,12 @@ Item {
                 }
             }
         }
+    }
+
+    // Point & Scroll page component
+    Component {
+        id: pointScrollPageComponent
+        PointScrollPage {}
     }
 
     // Placeholder page component

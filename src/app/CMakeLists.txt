@@ -12,6 +12,11 @@ qt_add_qml_module(logitune
         qml/DeviceView.qml
         qml/components/SideNav.qml
         qml/components/BatteryChip.qml
+        qml/components/LogituneSlider.qml
+        qml/components/LogituneToggle.qml
+        qml/components/InfoCallout.qml
+        qml/components/DetailPanel.qml
+        qml/pages/PointScrollPage.qml
 )
 
 target_include_directories(logitune PRIVATE
