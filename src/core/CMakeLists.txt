@@ -4,6 +4,7 @@ target_sources(logitune-core PRIVATE
     hidpp/HidppTypes.cpp
     hidpp/HidrawDevice.cpp
     hidpp/Transport.cpp
+    hidpp/FeatureDispatcher.cpp
 )
 
 target_include_directories(logitune-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
