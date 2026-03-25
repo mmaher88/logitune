@@ -5,6 +5,14 @@ target_sources(logitune-core PRIVATE
     hidpp/HidrawDevice.cpp
     hidpp/Transport.cpp
     hidpp/FeatureDispatcher.cpp
+    hidpp/features/SmartShift.cpp
+    hidpp/features/HiResWheel.cpp
+    hidpp/features/ThumbWheel.cpp
+    hidpp/features/ReprogControls.cpp
+    hidpp/features/GestureV2.cpp
+    hidpp/features/Battery.cpp
+    hidpp/features/AdjustableDPI.cpp
+    hidpp/features/DeviceName.cpp
 )
 
 target_include_directories(logitune-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
