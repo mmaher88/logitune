@@ -21,6 +21,10 @@ Item {
                     contentStack.replace(buttonsPageComponent, {}, StackView.Immediate)
                 } else if (page === "pointscroll") {
                     contentStack.replace(pointScrollPageComponent, {}, StackView.Immediate)
+                } else if (page === "easyswitch") {
+                    contentStack.replace(easySwitchComponent, {}, StackView.Immediate)
+                } else if (page === "settings") {
+                    contentStack.replace(settingsComponent, {}, StackView.Immediate)
                 } else {
                     contentStack.replace(placeholderComponent,
                                          {pageName: page},
@@ -142,6 +146,16 @@ Item {
     Component {
         id: pointScrollPageComponent
         PointScrollPage {}
+    }
+
+    Component {
+        id: easySwitchComponent
+        EasySwitchPage {}
+    }
+
+    Component {
+        id: settingsComponent
+        SettingsPage {}
     }
 
     // Placeholder page component

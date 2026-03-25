@@ -24,6 +24,8 @@ qt_add_qml_module(logitune
         qml/components/DeviceRender.qml
         qml/pages/PointScrollPage.qml
         qml/pages/ButtonsPage.qml
+        qml/pages/EasySwitchPage.qml
+        qml/pages/SettingsPage.qml
 )
 
 target_include_directories(logitune PRIVATE
