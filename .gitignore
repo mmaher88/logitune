@@ -1,0 +1,9 @@
+build/
+.cache/
+*.o
+*.a
+CMakeFiles/
+cmake_install.cmake
+Makefile
+CMakeCache.txt
+.superpowers/

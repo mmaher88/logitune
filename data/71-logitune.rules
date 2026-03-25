@@ -1,0 +1,4 @@
+# Logitune - Grant logged-in user access to Logitech hidraw devices
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", TAG+="uaccess"
+# Grant logged-in user access to uinput for keystroke injection
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess"
