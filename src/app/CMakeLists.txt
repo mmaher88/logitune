@@ -1,8 +1,10 @@
 qt_add_executable(logitune
     main.cpp
+    WindowTracker.cpp
     models/DeviceModel.cpp
     models/ButtonModel.cpp
     models/ActionModel.cpp
+    models/ProfileModel.cpp
 )
 
 qt_add_qml_module(logitune
@@ -22,6 +24,7 @@ qt_add_qml_module(logitune
         qml/components/ButtonCallout.qml
         qml/components/ActionsPanel.qml
         qml/components/DeviceRender.qml
+        qml/components/AppProfileBar.qml
         qml/pages/PointScrollPage.qml
         qml/pages/ButtonsPage.qml
         qml/pages/EasySwitchPage.qml

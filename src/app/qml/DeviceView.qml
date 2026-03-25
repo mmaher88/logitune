@@ -76,29 +76,14 @@ Item {
                 Item { Layout.fillWidth: true }
             }
 
-            // Profile bar placeholder
-            Rectangle {
+            // Per-app profile bar
+            AppProfileBar {
                 id: profileBar
                 anchors {
                     top: header.bottom
                     left: parent.left
-                    right: parent.right
                     topMargin: 12
                     leftMargin: 20
-                    rightMargin: 20
-                }
-                height: 40
-                color: "#FFFFFF"
-                radius: 8
-                border.color: "#E8E8E8"
-                border.width: 1
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "Profiles"
-                    font.pixelSize: 13
-                    font.letterSpacing: 0.5
-                    color: "#666666"
                 }
             }
 
