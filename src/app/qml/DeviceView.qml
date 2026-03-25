@@ -55,7 +55,7 @@ Item {
                 Text {
                     text: "\u2190"
                     font.pixelSize: 22
-                    color: backHover.containsMouse ? "#7B61FF" : "#444444"
+                    color: backHover.hovered ? "#7B61FF" : "#444444"
                     Behavior on color { ColorAnimation { duration: 120 } }
 
                     HoverHandler { id: backHover }

@@ -24,7 +24,7 @@ Rectangle {
     Rectangle {
         anchors.fill: parent
         radius: parent.radius
-        color: hoverHandler.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+        color: hoverHandler.hovered ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
         Behavior on color { ColorAnimation { duration: 120 } }
     }
 

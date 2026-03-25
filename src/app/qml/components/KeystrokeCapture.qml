@@ -8,7 +8,7 @@ Item {
 
     property string keystroke: ""
 
-    signal keystrokeChanged(string ks)
+    signal keystrokeCaptured(string ks)
 
     implicitWidth:  240
     implicitHeight: 40
@@ -56,7 +56,7 @@ Item {
             }
             text: "\u00D7"
             font.pixelSize: 16
-            color: clearHover.containsMouse ? "#1A1A1A" : "#AAAAAA"
+            color: clearHover.hovered ? "#1A1A1A" : "#AAAAAA"
             visible: root.keystroke.length > 0 && !field.capturing
 
             HoverHandler { id: clearHover }
@@ -65,7 +65,7 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     root.keystroke = ""
-                    root.keystrokeChanged("")
+                    root.keystrokeCaptured("")
                 }
             }
         }
@@ -145,7 +145,7 @@ Item {
 
             var combo = parts.join("+")
             root.keystroke = combo
-            root.keystrokeChanged(combo)
+            root.keystrokeCaptured(combo)
             field.capturing = false
             event.accepted = true
         }

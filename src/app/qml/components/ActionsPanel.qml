@@ -73,7 +73,7 @@ Rectangle {
             Rectangle {
                 width: 28; height: 28
                 radius: 14
-                color: closeHover.containsMouse ? "#E8E8E8" : "transparent"
+                color: closeHover.hovered ? "#E8E8E8" : "transparent"
                 Behavior on color { ColorAnimation { duration: 100 } }
 
                 Text {
@@ -218,7 +218,7 @@ Rectangle {
                     radius: 8
                     color: isSelected
                            ? "#7B61FF"
-                           : (rowHover.containsMouse ? "#EEEEFF" : "transparent")
+                           : (rowHover.hovered ? "#EEEEFF" : "transparent")
 
                     Behavior on color { ColorAnimation { duration: 100 } }
 

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Logitune
 
 // Slide-in detail panel from the right edge.
 // panelType: "scrollwheel" | "thumbwheel" | "pointerspeed"
@@ -59,7 +60,7 @@ Rectangle {
             Rectangle {
                 width: 28; height: 28
                 radius: 14
-                color: closeHover.containsMouse ? "#E0E0E0" : "transparent"
+                color: closeHover.hovered ? "#E0E0E0" : "transparent"
                 Behavior on color { ColorAnimation { duration: 100 } }
 
                 Text {

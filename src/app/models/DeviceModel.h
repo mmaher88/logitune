@@ -7,8 +7,6 @@ namespace logitune {
 
 class DeviceModel : public QObject {
     Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
 
     Q_PROPERTY(bool deviceConnected READ deviceConnected NOTIFY deviceConnectedChanged)
     Q_PROPERTY(QString deviceName READ deviceName NOTIFY deviceNameChanged)

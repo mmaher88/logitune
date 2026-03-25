@@ -124,7 +124,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: card.radius
-            color: hoverHandler.containsMouse && !root.selected
+            color: hoverHandler.hovered && !root.selected
                    ? Qt.rgba(0, 0, 0, 0.04) : "transparent"
             Behavior on color { ColorAnimation { duration: 100 } }
         }

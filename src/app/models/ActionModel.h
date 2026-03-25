@@ -13,8 +13,6 @@ struct ActionEntry {
 
 class ActionModel : public QAbstractListModel {
     Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
 
     Q_PROPERTY(int selectedIndex READ selectedIndex WRITE setSelectedIndex NOTIFY selectedIndexChanged)
 

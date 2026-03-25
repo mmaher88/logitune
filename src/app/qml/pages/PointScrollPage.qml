@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Logitune
 
 // ── Point & Scroll page ──────────────────────────────────────────────────────
 // Layout:

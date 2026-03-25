@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QDirIterator>
 #include <QQmlApplicationEngine>
 #include <QSystemTrayIcon>
 #include <QMenu>
@@ -17,14 +18,21 @@
 
 int main(int argc, char *argv[])
 {
+    qInstallMessageHandler([](QtMsgType type, const QMessageLogContext &ctx, const QString &msg) {
+        fprintf(stderr, "[Qt %d] %s:%d: %s\n", type, ctx.file ? ctx.file : "?", ctx.line, qPrintable(msg));
+    });
+    fprintf(stderr, "[logitune] starting...\n");
     QApplication app(argc, argv);
+    fprintf(stderr, "[logitune] QApplication created\n");
     app.setOrganizationName("Logitune");
     app.setApplicationName("Logitune");
 
-    // Create backend
+    fprintf(stderr, "[logitune] creating DeviceManager...\n");
     logitune::DeviceManager deviceManager;
+    fprintf(stderr, "[logitune] creating DeviceModel...\n");
     logitune::DeviceModel deviceModel;
     deviceModel.setDeviceManager(&deviceManager);
+    fprintf(stderr, "[logitune] DeviceModel ready\n");
 
     logitune::ButtonModel buttonModel;
     logitune::ActionModel actionModel;
@@ -39,7 +47,9 @@ int main(int argc, char *argv[])
     profileEngine.setDeviceConfigDir(configBase + "/default");
 
     // ActionExecutor — create uinput virtual keyboard device
+    fprintf(stderr, "[logitune] creating ActionExecutor...\n");
     logitune::ActionExecutor actionExecutor;
+    fprintf(stderr, "[logitune] init uinput...\n");
     if (!actionExecutor.initUinput()) {
         qWarning() << "[main] ActionExecutor: uinput init failed (no /dev/uinput access?). Keystrokes will not be injected.";
     }
@@ -139,6 +149,7 @@ int main(int argc, char *argv[])
 
     // ── QML engine ───────────────────────────────────────────────────────────
 
+    fprintf(stderr, "[logitune] creating QML engine...\n");
     QQmlApplicationEngine engine;
 
     // Register singletons — provide existing instances
@@ -147,10 +158,28 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ActionModel",  &actionModel);
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ProfileModel", &profileModel);
 
-    engine.loadFromModule("Logitune", "Main");
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
+        [](const QUrl &url) { fprintf(stderr, "QML CREATION FAILED: %s\n", qPrintable(url.toString())); });
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
+        [](QObject *obj, const QUrl &url) { fprintf(stderr, "QML CREATED: %s obj=%p\n", qPrintable(url.toString()), obj); });
 
-    if (engine.rootObjects().isEmpty())
+    // Debug: list QRC resources
+    {
+        QDirIterator it(":", QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            QString p = it.next();
+            if (p.contains("Logitune") || p.contains("Main") || p.contains("qml"))
+                fprintf(stderr, "  QRC: %s\n", qPrintable(p));
+        }
+    }
+    fprintf(stderr, "[logitune] loading QML...\n");
+    engine.load(QUrl(QStringLiteral("qrc:/Logitune/qml/Main.qml")));
+    fprintf(stderr, "[logitune] QML loaded, root objects: %d\n", (int)engine.rootObjects().size());
+
+    if (engine.rootObjects().isEmpty()) {
+        qCritical() << "No root objects loaded — QML module failed to initialize";
         return -1;
+    }
 
     // Start device monitoring and window tracking after QML is loaded
     deviceManager.start();

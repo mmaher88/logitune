@@ -41,7 +41,7 @@ Item {
             font.letterSpacing: 0.5
             color: "#CCCCCC"
 
-            ToolTip.visible: addDeviceHover.containsMouse
+            ToolTip.visible: addDeviceHover.hovered
             ToolTip.text: "Coming soon"
             ToolTip.delay: 400
 
@@ -58,7 +58,7 @@ Item {
             id: settingsGear
             text: "\u2699"
             font.pixelSize: 20
-            color: settingsHover.containsMouse ? "#555555" : "#999999"
+            color: settingsHover.hovered ? "#555555" : "#999999"
 
             HoverHandler { id: settingsHover }
 
@@ -121,7 +121,7 @@ Item {
                 // Hover/click effects
                 HoverHandler { id: cardHover }
 
-                scale: cardHover.containsMouse ? 1.03 : 1.0
+                scale: cardHover.hovered ? 1.03 : 1.0
                 Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
 
                 MouseArea {
@@ -132,7 +132,7 @@ Item {
                     }
                 }
 
-                layer.enabled: cardHover.containsMouse
+                layer.enabled: cardHover.hovered
                 layer.effect: null
             }
 

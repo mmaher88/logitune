@@ -24,12 +24,12 @@ ApplicationWindow {
     Component { id: homeViewComponent; HomeView {} }
     Component { id: deviceViewComponent; DeviceView {} }
 
-    // Permission error overlay (shown when hidraw access denied)
+    // Permission error overlay
     Rectangle {
         id: permissionError
         anchors.fill: parent
         color: "#F5F5F5"
-        visible: false  // Set to true by C++ when EACCES detected
+        visible: false
         z: 100
 
         Column {
@@ -55,6 +55,5 @@ ApplicationWindow {
         }
     }
 
-    // Global toast for app-wide notifications
     Toast { id: appToast }
 }

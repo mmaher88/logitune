@@ -7,8 +7,6 @@ namespace logitune {
 
 class ProfileModel : public QAbstractListModel {
     Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
     Q_PROPERTY(int activeIndex READ activeIndex NOTIFY activeIndexChanged)
 
 public:

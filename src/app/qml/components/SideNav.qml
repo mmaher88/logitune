@@ -73,7 +73,7 @@ Rectangle {
                     radius: 8
                     color: sideNav.currentPage === modelData.name
                            ? "#7B61FF"
-                           : (itemHover.containsMouse && modelData.enabled ? "#F5F5F5" : "transparent")
+                           : (itemHover.hovered && modelData.enabled ? "#F5F5F5" : "transparent")
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 
