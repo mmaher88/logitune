@@ -162,4 +162,23 @@ Item {
             }
         }
     }
+
+    // Disconnect handling
+    Connections {
+        target: DeviceModel
+        function onDeviceConnectedChanged() {
+            if (!DeviceModel.deviceConnected) {
+                toast.show("MX Master 3S disconnected", 3000)
+                disconnectTimer.start()
+            }
+        }
+    }
+
+    Timer {
+        id: disconnectTimer
+        interval: 3000
+        onTriggered: StackView.view.pop()
+    }
+
+    Toast { id: toast }
 }
