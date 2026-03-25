@@ -4,7 +4,11 @@
 #include <QMenu>
 #include <QAction>
 #include <QQuickWindow>
+#include <QStandardPaths>
+#include <QDebug>
 #include "DeviceManager.h"
+#include "ProfileEngine.h"
+#include "ActionExecutor.h"
 #include "WindowTracker.h"
 #include "models/DeviceModel.h"
 #include "models/ButtonModel.h"
@@ -28,8 +32,112 @@ int main(int argc, char *argv[])
     logitune::ProfileModel profileModel;
     logitune::KWinWindowTracker windowTracker;
 
+    // ProfileEngine — config dir is per-device but we set a default here;
+    // once the device serial is known it can be updated via setDeviceConfigDir.
+    logitune::ProfileEngine profileEngine;
+    const QString configBase = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    profileEngine.setDeviceConfigDir(configBase + "/default");
+
+    // ActionExecutor — create uinput virtual keyboard device
+    logitune::ActionExecutor actionExecutor;
+    if (!actionExecutor.initUinput()) {
+        qWarning() << "[main] ActionExecutor: uinput init failed (no /dev/uinput access?). Keystrokes will not be injected.";
+    }
+
+    // ── Signal wiring ────────────────────────────────────────────────────────
+
+    // 1. Window tracking → ProfileModel (per-app profiles in QML model)
     QObject::connect(&windowTracker, &logitune::WindowTracker::activeWindowChanged,
                      &profileModel,  &logitune::ProfileModel::setActiveByWmClass);
+
+    // 2. Window tracking → ProfileEngine (per-app profile switching with debounce)
+    QObject::connect(&windowTracker, &logitune::WindowTracker::activeWindowChanged,
+        [&profileEngine](const QString &wmClass, const QString & /*title*/) {
+            profileEngine.switchForApp(wmClass);
+        });
+
+    // 3. ProfileEngine → DeviceModel (keep UI in sync with active profile)
+    QObject::connect(&profileEngine, &logitune::ProfileEngine::activeProfileChanged,
+        [&deviceModel](const logitune::Profile &profile) {
+            deviceModel.setCurrentDPI(profile.dpi);
+            deviceModel.setSmartShiftState(profile.smartShiftEnabled, profile.smartShiftThreshold);
+            deviceModel.setActiveProfileName(profile.name);
+        });
+
+    // 4. ProfileEngine delta → device push (HID++ calls via DeviceManager)
+    QObject::connect(&profileEngine, &logitune::ProfileEngine::profileDelta,
+        [&deviceManager](const logitune::ProfileDelta &delta, const logitune::Profile &profile) {
+            if (delta.dpiChanged)
+                qDebug() << "[main] profileDelta: would set DPI to" << profile.dpi;
+            if (delta.smartShiftChanged)
+                qDebug() << "[main] profileDelta: would set SmartShift"
+                         << profile.smartShiftEnabled << profile.smartShiftThreshold;
+            if (delta.scrollChanged)
+                qDebug() << "[main] profileDelta: would set scroll mode"
+                         << profile.scrollDirection << "hiRes=" << profile.hiResScroll;
+            // Suppress unused-variable warning when qDebug is compiled out
+            Q_UNUSED(deviceManager);
+        });
+
+    // 5. Diverted button press → profile action lookup → execute
+    QObject::connect(&deviceManager, &logitune::DeviceManager::divertedButtonPressed,
+        [&profileEngine, &actionExecutor](uint16_t controlId, bool pressed) {
+            if (!pressed) return; // act only on press, not release
+
+            const auto &profile = profileEngine.activeProfile();
+
+            // Map controlId to button index 0-6.
+            // MX Master 3S control IDs (from ReprogControls enumeration):
+            //   0x0050 = left button  → 0
+            //   0x0051 = right button → 1
+            //   0x0052 = middle/wheel → 2
+            //   0x0053 = back        → 3
+            //   0x0054 = forward     → 4
+            //   0x00d0 = thumb wheel → 5
+            //   0x00c3 = gesture     → 6
+            static const std::unordered_map<uint16_t, int> kControlMap = {
+                {0x0050, 0}, {0x0051, 1}, {0x0052, 2},
+                {0x0053, 3}, {0x0054, 4}, {0x00d0, 5}, {0x00c3, 6}
+            };
+
+            auto it = kControlMap.find(controlId);
+            if (it == kControlMap.end()) {
+                qDebug() << "[main] divertedButtonPressed: unknown controlId" << Qt::hex << controlId;
+                return;
+            }
+
+            int idx = it->second;
+            if (idx < 0 || idx >= static_cast<int>(profile.buttons.size())) return;
+
+            actionExecutor.executeAction(profile.buttons[idx]);
+        });
+
+    // 6. Gesture event → GestureDetector → profile gesture action → execute
+    QObject::connect(&deviceManager, &logitune::DeviceManager::gestureEvent,
+        [&actionExecutor, &profileEngine](int dx, int dy, bool released) {
+            actionExecutor.gestureDetector().addDelta(dx, dy);
+            if (released) {
+                auto dir = actionExecutor.gestureDetector().resolve();
+                actionExecutor.gestureDetector().reset();
+
+                QString dirName;
+                switch (dir) {
+                    case logitune::GestureDirection::Up:    dirName = "up";    break;
+                    case logitune::GestureDirection::Down:  dirName = "down";  break;
+                    case logitune::GestureDirection::Left:  dirName = "left";  break;
+                    case logitune::GestureDirection::Right: dirName = "right"; break;
+                    case logitune::GestureDirection::Click: dirName = "click"; break;
+                    default: return;
+                }
+
+                const auto &profile = profileEngine.activeProfile();
+                auto it = profile.gestures.find(dirName);
+                if (it != profile.gestures.end())
+                    actionExecutor.executeAction(it->second);
+            }
+        });
+
+    // ── QML engine ───────────────────────────────────────────────────────────
 
     QQmlApplicationEngine engine;
 
@@ -44,11 +152,12 @@ int main(int argc, char *argv[])
     if (engine.rootObjects().isEmpty())
         return -1;
 
-    // Start device monitoring after QML is loaded
+    // Start device monitoring and window tracking after QML is loaded
     deviceManager.start();
     windowTracker.start();
 
-    // System tray
+    // ── System tray ──────────────────────────────────────────────────────────
+
     QSystemTrayIcon trayIcon;
     trayIcon.setIcon(QIcon::fromTheme("input-mouse"));
     trayIcon.setToolTip("Logitune - MX Master 3S");
@@ -94,7 +203,7 @@ int main(int argc, char *argv[])
             }
         });
 
-    // Update battery text when it changes
+    // 7. Battery updates → tray text
     QObject::connect(&deviceManager, &logitune::DeviceManager::batteryLevelChanged,
         [batteryAction, &deviceManager]() {
             QString text = QString("Battery: %1%").arg(deviceManager.batteryLevel());
