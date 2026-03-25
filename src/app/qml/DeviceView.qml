@@ -67,7 +67,7 @@ Item {
                 }
 
                 Text {
-                    text: "MX Master 3S"
+                    text: DeviceModel.deviceName || "MX Master 3S"
                     font.pixelSize: 20
                     font.bold: true
                     color: "#1A1A1A"

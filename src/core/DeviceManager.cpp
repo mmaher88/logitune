@@ -293,7 +293,7 @@ void DeviceManager::probeDevice(const QString &devNode)
             ping.paramLength = 16;
 
             qDebug() << "[DeviceManager] pinging slot" << slot << "on" << devNode;
-            auto resp = transport->sendRequest(ping, 500);
+            auto resp = transport->sendRequest(ping, 2000);
             if (resp.has_value() && !resp->isError()) {
                 deviceIndex = static_cast<uint8_t>(slot);
                 found = true;
