@@ -52,7 +52,7 @@ GestureDirection GestureDetector::resolve() const
     const int absDx = m_totalDx < 0 ? -m_totalDx : m_totalDx;
     const int absDy = m_totalDy < 0 ? -m_totalDy : m_totalDy;
 
-    if (absDx < kThreshold && absDy < kThreshold)
+    if (absDx <= kThreshold && absDy <= kThreshold)
         return GestureDirection::Click;
 
     // Dominant axis wins
@@ -259,21 +259,31 @@ std::vector<int> ActionExecutor::parseKeystroke(const QString &combo)
         if (tok == QLatin1String("Left"))        { keys.push_back(KEY_LEFT);        continue; }
         if (tok == QLatin1String("Right"))       { keys.push_back(KEY_RIGHT);       continue; }
 
-        // F1–F12
+        // F1–F12 (F11/F12 are not sequential with F1-F10)
         if (tok.startsWith(QLatin1Char('F')) && tok.length() >= 2) {
             bool ok = false;
             int n = tok.mid(1).toInt(&ok);
             if (ok && n >= 1 && n <= 12) {
-                keys.push_back(KEY_F1 + (n - 1));
+                static constexpr int fKeys[12] = {
+                    KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6,
+                    KEY_F7, KEY_F8, KEY_F9, KEY_F10, KEY_F11, KEY_F12,
+                };
+                keys.push_back(fKeys[n - 1]);
                 continue;
             }
         }
 
-        // Single letter A–Z (case-insensitive)
+        // Single letter A–Z (case-insensitive) — KEY codes follow QWERTY scan order, not alphabetical
         if (tok.length() == 1) {
             const QChar ch = tok.at(0).toUpper();
             if (ch >= QLatin1Char('A') && ch <= QLatin1Char('Z')) {
-                keys.push_back(KEY_A + (ch.toLatin1() - 'A'));
+                static constexpr int letterKeys[26] = {
+                    KEY_A, KEY_B, KEY_C, KEY_D, KEY_E, KEY_F, KEY_G, KEY_H,
+                    KEY_I, KEY_J, KEY_K, KEY_L, KEY_M, KEY_N, KEY_O, KEY_P,
+                    KEY_Q, KEY_R, KEY_S, KEY_T, KEY_U, KEY_V, KEY_W, KEY_X,
+                    KEY_Y, KEY_Z,
+                };
+                keys.push_back(letterKeys[ch.toLatin1() - 'A']);
                 continue;
             }
             // Digits 0–9
