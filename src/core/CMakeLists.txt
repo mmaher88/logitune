@@ -1,7 +1,9 @@
 add_library(logitune-core STATIC)
 
 target_sources(logitune-core PRIVATE
-    Placeholder.cpp
+    hidpp/HidppTypes.cpp
+    hidpp/HidrawDevice.cpp
+    hidpp/Transport.cpp
 )
 
 target_include_directories(logitune-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
