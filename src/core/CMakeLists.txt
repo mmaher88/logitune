@@ -15,6 +15,7 @@ target_sources(logitune-core PRIVATE
     hidpp/features/AdjustableDPI.cpp
     hidpp/features/DeviceName.cpp
     ProfileEngine.cpp
+    ActionExecutor.cpp
 )
 
 target_include_directories(logitune-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
