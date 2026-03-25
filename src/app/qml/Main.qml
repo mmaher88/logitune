@@ -10,6 +10,11 @@ ApplicationWindow {
     color: "#F5F5F5"
     minimumWidth: 800; minimumHeight: 540
 
+    onClosing: function(close) {
+        close.accepted = false
+        hide()
+    }
+
     StackView {
         id: mainStack
         anchors.fill: parent

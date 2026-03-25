@@ -36,6 +36,6 @@ target_include_directories(logitune PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/models
 )
 
-target_link_libraries(logitune PRIVATE logitune-core Qt6::Quick Qt6::Svg Qt6::DBus)
+target_link_libraries(logitune PRIVATE logitune-core Qt6::Quick Qt6::Svg Qt6::DBus Qt6::Widgets)
 
 install(TARGETS logitune DESTINATION bin)

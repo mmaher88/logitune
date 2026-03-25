@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Quick Svg DBus)
+find_package(Qt6 REQUIRED COMPONENTS Core Quick Svg DBus Widgets)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(UDEV REQUIRED libudev)
 
