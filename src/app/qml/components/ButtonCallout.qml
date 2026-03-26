@@ -62,7 +62,7 @@ Item {
             ctx.beginPath()
             ctx.moveTo(cardEdgeX, cardEdgeY)
             ctx.lineTo(hx, hy)
-            ctx.strokeStyle = root.selected ? "#814EFA" : "rgba(0, 0, 0, 0.15)"
+            ctx.strokeStyle = root.selected ? "#814EFA" : "#CCCCCC"
             ctx.lineWidth = 1.5
             ctx.setLineDash([])
             ctx.stroke()

@@ -33,8 +33,8 @@ Item {
         // Forward — dot at (35%, 43%), LEFT side label
         { buttonId: 4, hotspotXPct: 0.35, hotspotYPct: 0.43, side: "left",
           actionDefault: "Forward", buttonLabel: "Forward button" },
-        // Back — dot at (45%, 60%), LEFT side label
-        { buttonId: 3, hotspotXPct: 0.45, hotspotYPct: 0.60, side: "left",
+        // Back — dot stays at (45%, 60%) but label is offset down 20%
+        { buttonId: 3, hotspotXPct: 0.45, hotspotYPct: 0.60, side: "left", labelOffsetYPct: 0.20,
           actionDefault: "Back", buttonLabel: "Back button" },
         // Gesture — dot at (8%, 58%), LEFT side label
         { buttonId: 5, hotspotXPct: 0.08, hotspotYPct: 0.58, side: "left",
@@ -107,11 +107,14 @@ Item {
                     readonly property real hotX: deviceRender.x + cdata.hotspotXPct * deviceRender.implicitWidth
                     readonly property real hotY: deviceRender.y + cdata.hotspotYPct * deviceRender.implicitHeight
 
+                    // Label offset (some labels need to shift to avoid overlap)
+                    readonly property real labelOffY: (cdata.labelOffsetYPct || 0) * deviceRender.implicitHeight
+
                     // Position: left-side labels to the left, right-side to the right
                     x: cdata.side === "left"
                        ? hotX - width - 24
                        : hotX + 24
-                    y: hotY - height / 2
+                    y: hotY - height / 2 + labelOffY
 
                     // Connector line endpoint (the hotspot dot)
                     lineToX: hotX
