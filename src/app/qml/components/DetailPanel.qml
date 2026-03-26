@@ -113,20 +113,6 @@ Rectangle {
             property bool ready: false
             Component.onCompleted: Qt.callLater(function() { ready = true })
 
-            // Scrolling speed — maps to SmartShift threshold (higher = faster freespin trigger)
-            LogituneSlider {
-                width: parent.width
-                label: "Scrolling speed"
-                from: 1
-                to: 100
-                value: DeviceModel.smartShiftThreshold
-                onPressedChanged: {
-                    if (!pressed && ready) {
-                        DeviceModel.setSmartShift(DeviceModel.smartShiftEnabled, value)
-                    }
-                }
-            }
-
             // Scroll direction radio group
             Column {
                 width: parent.width
