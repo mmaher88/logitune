@@ -46,6 +46,7 @@ Item {
         Slider {
             id: slider
             width: parent.width
+            height: 32
             from: 0
             to: 100
             value: 50
