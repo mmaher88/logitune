@@ -410,17 +410,20 @@ void DeviceManager::enumerateAndSetup()
                                           std::array<uint8_t, 1>{0x00}); // sensor 0
         if (rangeResp.has_value()) {
             auto info = hidpp::features::AdjustableDPI::parseSensorDpiList(*rangeResp);
-            qDebug() << "[DeviceManager] DPI range:" << info.minDPI << "-" << info.maxDPI
-                     << "step:" << info.stepDPI;
+            m_minDPI = info.minDPI;
+            m_maxDPI = info.maxDPI;
+            m_dpiStep = info.stepDPI > 0 ? info.stepDPI : 50;
+            qDebug() << "[DeviceManager] DPI range:" << m_minDPI << "-" << m_maxDPI
+                     << "step:" << m_dpiStep;
         }
         // Get current DPI
         auto dpiResp = m_features->call(m_transport.get(), m_deviceIndex,
                                         hidpp::FeatureId::AdjustableDPI,
                                         hidpp::features::AdjustableDPI::kFnGetSensorDpi,
-                                        std::array<uint8_t, 1>{0x00}); // sensor 0
+                                        std::array<uint8_t, 1>{0x00});
         if (dpiResp.has_value()) {
-            int currentDPI = hidpp::features::AdjustableDPI::parseCurrentDPI(*dpiResp);
-            qDebug() << "[DeviceManager] current DPI:" << currentDPI;
+            m_currentDPI = hidpp::features::AdjustableDPI::parseCurrentDPI(*dpiResp);
+            qDebug() << "[DeviceManager] current DPI:" << m_currentDPI;
         }
     }
 
@@ -431,8 +434,10 @@ void DeviceManager::enumerateAndSetup()
                                      hidpp::features::SmartShift::kFnGetConfig);
         if (resp.has_value()) {
             auto cfg = hidpp::features::SmartShift::parseConfig(*resp);
-            qDebug() << "[DeviceManager] SmartShift:" << (cfg.enabled ? "ON" : "OFF")
-                     << "threshold:" << cfg.threshold;
+            m_smartShiftEnabled = cfg.enabled;
+            m_smartShiftThreshold = cfg.threshold;
+            qDebug() << "[DeviceManager] SmartShift:" << (m_smartShiftEnabled ? "ON" : "OFF")
+                     << "threshold:" << m_smartShiftThreshold;
         }
     }
 
@@ -606,9 +611,72 @@ QString DeviceManager::deviceName() const { return m_deviceName; }
 int DeviceManager::batteryLevel() const { return m_batteryLevel; }
 bool DeviceManager::batteryCharging() const { return m_batteryCharging; }
 QString DeviceManager::connectionType() const { return m_connectionType; }
+int DeviceManager::currentDPI() const { return m_currentDPI; }
+int DeviceManager::minDPI() const { return m_minDPI; }
+int DeviceManager::maxDPI() const { return m_maxDPI; }
+int DeviceManager::dpiStep() const { return m_dpiStep; }
+bool DeviceManager::smartShiftEnabled() const { return m_smartShiftEnabled; }
+int DeviceManager::smartShiftThreshold() const { return m_smartShiftThreshold; }
 
 hidpp::FeatureDispatcher *DeviceManager::features() const { return m_features.get(); }
 hidpp::Transport *DeviceManager::transport() const { return m_transport.get(); }
 uint8_t DeviceManager::deviceIndex() const { return m_deviceIndex; }
+
+// ---------------------------------------------------------------------------
+// setDPI() — change mouse DPI via HID++
+// ---------------------------------------------------------------------------
+
+void DeviceManager::setDPI(int value)
+{
+    if (!m_connected || !m_features || !m_transport)
+        return;
+    if (!m_features->hasFeature(hidpp::FeatureId::AdjustableDPI))
+        return;
+
+    // Clamp to range
+    value = qBound(m_minDPI, value, m_maxDPI);
+    // Snap to step
+    value = (value / m_dpiStep) * m_dpiStep;
+
+    auto params = hidpp::features::AdjustableDPI::buildSetDPI(value);
+    auto resp = m_features->call(m_transport.get(), m_deviceIndex,
+                                 hidpp::FeatureId::AdjustableDPI,
+                                 hidpp::features::AdjustableDPI::kFnSetSensorDpi,
+                                 params);
+    if (resp.has_value()) {
+        m_currentDPI = value;
+        qDebug() << "[DeviceManager] DPI set to" << value;
+        emit currentDPIChanged();
+    } else {
+        qWarning() << "[DeviceManager] failed to set DPI to" << value;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// setSmartShift() — change SmartShift via HID++
+// ---------------------------------------------------------------------------
+
+void DeviceManager::setSmartShift(bool enabled, int threshold)
+{
+    if (!m_connected || !m_features || !m_transport)
+        return;
+    if (!m_features->hasFeature(hidpp::FeatureId::SmartShift))
+        return;
+
+    threshold = qBound(1, threshold, 255);
+    auto params = hidpp::features::SmartShift::buildSetConfig(enabled, threshold);
+    auto resp = m_features->call(m_transport.get(), m_deviceIndex,
+                                 hidpp::FeatureId::SmartShift,
+                                 hidpp::features::SmartShift::kFnSetConfig,
+                                 std::span<const uint8_t>(params));
+    if (resp.has_value()) {
+        m_smartShiftEnabled = enabled;
+        m_smartShiftThreshold = threshold;
+        qDebug() << "[DeviceManager] SmartShift set:" << enabled << "threshold:" << threshold;
+        emit smartShiftChanged();
+    } else {
+        qWarning() << "[DeviceManager] failed to set SmartShift";
+    }
+}
 
 } // namespace logitune

@@ -20,6 +20,12 @@ class DeviceManager : public QObject {
     Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged)
     Q_PROPERTY(bool batteryCharging READ batteryCharging NOTIFY batteryChargingChanged)
     Q_PROPERTY(QString connectionType READ connectionType NOTIFY connectionTypeChanged)
+    Q_PROPERTY(int currentDPI READ currentDPI NOTIFY currentDPIChanged)
+    Q_PROPERTY(int minDPI READ minDPI CONSTANT)
+    Q_PROPERTY(int maxDPI READ maxDPI CONSTANT)
+    Q_PROPERTY(int dpiStep READ dpiStep CONSTANT)
+    Q_PROPERTY(bool smartShiftEnabled READ smartShiftEnabled NOTIFY smartShiftChanged)
+    Q_PROPERTY(int smartShiftThreshold READ smartShiftThreshold NOTIFY smartShiftChanged)
 
 public:
     explicit DeviceManager(QObject *parent = nullptr);
@@ -39,6 +45,16 @@ public:
     int batteryLevel() const;
     bool batteryCharging() const;
     QString connectionType() const;
+    int currentDPI() const;
+    int minDPI() const;
+    int maxDPI() const;
+    int dpiStep() const;
+    bool smartShiftEnabled() const;
+    int smartShiftThreshold() const;
+
+    // Set device settings (calls HID++ directly)
+    Q_INVOKABLE void setDPI(int value);
+    Q_INVOKABLE void setSmartShift(bool enabled, int threshold);
 
     // Access to internals for other components
     hidpp::FeatureDispatcher *features() const;
@@ -51,6 +67,8 @@ signals:
     void batteryLevelChanged();
     void batteryChargingChanged();
     void connectionTypeChanged();
+    void currentDPIChanged();
+    void smartShiftChanged();
     void deviceDisconnected();
     void transportSwitched(const QString &newType);
     void divertedButtonPressed(uint16_t controlId, bool pressed);
@@ -92,7 +110,13 @@ private:
     QString m_deviceName;
     int m_batteryLevel = 0;
     bool m_batteryCharging = false;
-    QString m_connectionType; // "Bolt" or "Bluetooth"
+    QString m_connectionType;
+    int m_currentDPI = 0;
+    int m_minDPI = 200;
+    int m_maxDPI = 8000;
+    int m_dpiStep = 50;
+    bool m_smartShiftEnabled = false;
+    int m_smartShiftThreshold = 0;
 };
 
 } // namespace logitune

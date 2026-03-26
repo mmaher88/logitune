@@ -14,6 +14,9 @@ class DeviceModel : public QObject {
     Q_PROPERTY(bool batteryCharging READ batteryCharging NOTIFY batteryChargingChanged)
     Q_PROPERTY(QString connectionType READ connectionType NOTIFY connectionTypeChanged)
     Q_PROPERTY(int currentDPI READ currentDPI NOTIFY currentDPIChanged)
+    Q_PROPERTY(int minDPI READ minDPI CONSTANT)
+    Q_PROPERTY(int maxDPI READ maxDPI CONSTANT)
+    Q_PROPERTY(int dpiStep READ dpiStep CONSTANT)
     Q_PROPERTY(bool smartShiftEnabled READ smartShiftEnabled NOTIFY smartShiftEnabledChanged)
     Q_PROPERTY(int smartShiftThreshold READ smartShiftThreshold NOTIFY smartShiftThresholdChanged)
     Q_PROPERTY(QString activeProfileName READ activeProfileName NOTIFY activeProfileNameChanged)
@@ -29,6 +32,9 @@ public:
     bool batteryCharging() const;
     QString connectionType() const;
     int currentDPI() const;
+    int minDPI() const;
+    int maxDPI() const;
+    int dpiStep() const;
     bool smartShiftEnabled() const;
     int smartShiftThreshold() const;
     QString activeProfileName() const;

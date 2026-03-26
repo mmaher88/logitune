@@ -22,6 +22,13 @@ void DeviceModel::setDeviceManager(DeviceManager *dm)
             this, &DeviceModel::batteryChargingChanged);
     connect(dm, &DeviceManager::connectionTypeChanged,
             this, &DeviceModel::connectionTypeChanged);
+    connect(dm, &DeviceManager::currentDPIChanged,
+            this, &DeviceModel::currentDPIChanged);
+    connect(dm, &DeviceManager::smartShiftChanged,
+            this, [this]() {
+                emit smartShiftEnabledChanged();
+                emit smartShiftThresholdChanged();
+            });
 }
 
 bool DeviceModel::deviceConnected() const
@@ -51,17 +58,32 @@ QString DeviceModel::connectionType() const
 
 int DeviceModel::currentDPI() const
 {
-    return m_currentDPI;
+    return m_dm ? m_dm->currentDPI() : m_currentDPI;
+}
+
+int DeviceModel::minDPI() const
+{
+    return m_dm ? m_dm->minDPI() : 200;
+}
+
+int DeviceModel::maxDPI() const
+{
+    return m_dm ? m_dm->maxDPI() : 8000;
+}
+
+int DeviceModel::dpiStep() const
+{
+    return m_dm ? m_dm->dpiStep() : 50;
 }
 
 bool DeviceModel::smartShiftEnabled() const
 {
-    return m_smartShiftEnabled;
+    return m_dm ? m_dm->smartShiftEnabled() : m_smartShiftEnabled;
 }
 
 int DeviceModel::smartShiftThreshold() const
 {
-    return m_smartShiftThreshold;
+    return m_dm ? m_dm->smartShiftThreshold() : m_smartShiftThreshold;
 }
 
 QString DeviceModel::activeProfileName() const
@@ -71,50 +93,41 @@ QString DeviceModel::activeProfileName() const
 
 void DeviceModel::setDPI(int value)
 {
-    qDebug() << "[DeviceModel] setDPI requested:" << value;
-    // Actual HID++ DPI push flows through DeviceManager/FeatureDispatcher
+    if (m_dm) m_dm->setDPI(value);
 }
 
 void DeviceModel::setSmartShift(bool enabled, int threshold)
 {
-    qDebug() << "[DeviceModel] setSmartShift requested: enabled=" << enabled << "threshold=" << threshold;
-    // Actual HID++ SmartShift push flows through DeviceManager/FeatureDispatcher
+    if (m_dm) m_dm->setSmartShift(enabled, threshold);
 }
 
 void DeviceModel::resetAllProfiles()
 {
     qDebug() << "[DeviceModel] resetAllProfiles requested";
-    // Delegate to ProfileEngine to wipe and reload default profiles
 }
 
 void DeviceModel::setCurrentDPI(int dpi)
 {
-    if (m_currentDPI == dpi)
-        return;
+    if (m_currentDPI == dpi) return;
     m_currentDPI = dpi;
     emit currentDPIChanged();
 }
 
 void DeviceModel::setSmartShiftState(bool enabled, int threshold)
 {
-    bool changed = false;
     if (m_smartShiftEnabled != enabled) {
         m_smartShiftEnabled = enabled;
         emit smartShiftEnabledChanged();
-        changed = true;
     }
     if (m_smartShiftThreshold != threshold) {
         m_smartShiftThreshold = threshold;
         emit smartShiftThresholdChanged();
-        changed = true;
     }
-    Q_UNUSED(changed);
 }
 
 void DeviceModel::setActiveProfileName(const QString &name)
 {
-    if (m_activeProfileName == name)
-        return;
+    if (m_activeProfileName == name) return;
     m_activeProfileName = name;
     emit activeProfileNameChanged();
 }

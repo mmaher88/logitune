@@ -291,50 +291,93 @@ Rectangle {
         }
     }
 
-    // ── Pointer Speed content ───────────────────────────────────────────────
+    // ── Pointer Speed / DPI content ─────────────────────────────────────────
     Component {
         id: pointerSpeedContent
 
         Column {
             width: parent.width
-            spacing: 16
+            spacing: 24
+            padding: 32
 
-            // Detect KDE — heuristic: check XDG_CURRENT_DESKTOP env
-            property bool isKDE: (Qt.platform.os === "linux") &&
-                                  (Qt.application.name.length > 0) // placeholder; real check via C++ env
+            // DPI slider — reads from DeviceModel, writes on release
+            Column {
+                width: parent.width - 64
+                spacing: 8
 
-            LogituneSlider {
-                id: speedSlider
-                width: parent.width
-                label: "Pointer speed"
-                value: 50
-                // Dim slider when not on KDE — tooltip provided separately
-                opacity: parent.isKDE ? 1.0 : 0.4
-            }
-
-            // "Requires KDE Plasma" notice when greyed out
-            Rectangle {
-                width: parent.width
-                height: kdeNote.implicitHeight + 16
-                radius: 4
-                color: "#FFF3CD"
-                border.color: "#FFD97D"
-                border.width: 1
-                visible: !parent.isKDE
-
-                Text {
-                    id: kdeNote
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        verticalCenter: parent.verticalCenter
-                        leftMargin: 12
-                        rightMargin: 12
+                RowLayout {
+                    width: parent.width
+                    Text {
+                        text: "DPI"
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: "#222425"
                     }
-                    text: "Pointer speed control requires KDE Plasma."
-                    font.pixelSize: 11
-                    color: "#856404"
-                    wrapMode: Text.WordWrap
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        text: dpiSlider.value.toFixed(0)
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: "#814EFA"
+                    }
+                }
+
+                Slider {
+                    id: dpiSlider
+                    width: parent.width
+                    from: DeviceModel.minDPI
+                    to: DeviceModel.maxDPI
+                    stepSize: DeviceModel.dpiStep
+                    value: DeviceModel.currentDPI
+
+                    onPressedChanged: {
+                        if (!pressed) {
+                            // User released the slider — commit the DPI change
+                            DeviceModel.setDPI(value)
+                        }
+                    }
+
+                    background: Rectangle {
+                        x: dpiSlider.leftPadding
+                        y: dpiSlider.topPadding + dpiSlider.availableHeight / 2 - height / 2
+                        width: dpiSlider.availableWidth
+                        height: 4
+                        radius: 2
+                        color: "#E1E2E3"
+
+                        Rectangle {
+                            width: dpiSlider.visualPosition * parent.width
+                            height: parent.height
+                            radius: 2
+                            color: "#814EFA"
+                        }
+                    }
+
+                    handle: Rectangle {
+                        x: dpiSlider.leftPadding + dpiSlider.visualPosition * (dpiSlider.availableWidth - width)
+                        y: dpiSlider.topPadding + dpiSlider.availableHeight / 2 - height / 2
+                        width: 16; height: 16
+                        radius: 8
+                        color: "#FFFFFF"
+                        border.color: "#814EFA"
+                        border.width: 5
+                    }
+                }
+
+                // Min/Max labels
+                RowLayout {
+                    width: parent.width
+                    Text {
+                        text: DeviceModel.minDPI.toString()
+                        font.pixelSize: 11
+                        color: "#999999"
+                    }
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        text: DeviceModel.maxDPI.toString()
+                        font.pixelSize: 11
+                        color: "#999999"
+                    }
                 }
             }
         }
