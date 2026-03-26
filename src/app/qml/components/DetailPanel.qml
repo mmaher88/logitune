@@ -237,16 +237,34 @@ Rectangle {
 
                     LogituneToggle {
                         id: smartShiftToggle
-                        checked: true
+                        checked: DeviceModel.smartShiftEnabled
+                        onCheckedChanged: {
+                            DeviceModel.setSmartShift(checked, smartShiftSlider.value)
+                        }
                     }
                 }
 
                 // SmartShift sensitivity slider — only shown when SmartShift is on
                 LogituneSlider {
+                    id: smartShiftSlider
                     width: parent.width
                     label: "SmartShift sensitivity"
-                    value: 30
+                    from: 1
+                    to: 100
+                    value: DeviceModel.smartShiftThreshold
                     visible: smartShiftToggle.checked
+                    onValueChanged: {
+                        if (!pressed) return
+                    }
+                    // Commit on release via the underlying Slider
+                    Connections {
+                        target: smartShiftSlider
+                        function onPressedChanged() {
+                            if (!smartShiftSlider.pressed) {
+                                DeviceModel.setSmartShift(smartShiftToggle.checked, smartShiftSlider.value)
+                            }
+                        }
+                    }
 
                     Behavior on opacity { NumberAnimation { duration: 150 } }
                     opacity: smartShiftToggle.checked ? 1.0 : 0.0

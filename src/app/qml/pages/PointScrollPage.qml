@@ -55,10 +55,7 @@ Item {
             calloutType: "scrollwheel"
             title: "Scroll wheel"
             settings: [
-                "Speed: 50%",
-                "Direction: Natural",
-                "Smooth scrolling: Off",
-                "SmartShift: On"
+                "SmartShift: " + (DeviceModel.smartShiftEnabled ? "On" : "Off")
             ]
 
             onCalloutClicked: function(type) {
@@ -102,7 +99,7 @@ Item {
             calloutType: "pointerspeed"
             title: "Pointer speed"
             settings: [
-                "Speed: 50%"
+                "DPI: " + DeviceModel.currentDPI
             ]
 
             onCalloutClicked: function(type) {
