@@ -537,6 +537,16 @@ void DeviceManager::enumerateAndSetup()
         qDebug() << "[DeviceManager] all buttons undiverted (clean native state)";
     }
 
+    // Undivert thumb wheel (restore native horizontal scroll)
+    if (m_features->hasFeature(hidpp::FeatureId::ThumbWheel)) {
+        std::array<uint8_t, 2> twParams = {0x00, 0x00}; // divert=false, invert=false
+        m_features->call(m_transport.get(), m_deviceIndex,
+                         hidpp::FeatureId::ThumbWheel, 0x02,
+                         std::span<const uint8_t>(twParams));
+        m_thumbWheelMode = "scroll";
+        qDebug() << "[DeviceManager] thumb wheel set to native scroll";
+    }
+
     // Update state and emit signals
     bool nameChanged    = (m_deviceName != name);
     bool levelChanged   = (m_batteryLevel != battLevel);
@@ -636,6 +646,18 @@ void DeviceManager::handleNotification(const hidpp::Report &report)
             // CID == 0 means all buttons released
             bool pressed = (controlId != 0);
             emit divertedButtonPressed(controlId, pressed);
+            return;
+        }
+    }
+
+    // ThumbWheel (diverted) notification
+    if (m_features && m_features->hasFeature(hidpp::FeatureId::ThumbWheel)) {
+        auto idx = m_features->featureIndex(hidpp::FeatureId::ThumbWheel);
+        if (idx.has_value() && report.featureIndex == *idx) {
+            // params[0-1] = rotation (int16_t, signed, big-endian)
+            int16_t rotation = static_cast<int16_t>(
+                (static_cast<uint16_t>(report.params[0]) << 8) | report.params[1]);
+            emit thumbWheelRotation(rotation);
             return;
         }
     }
@@ -844,6 +866,39 @@ void DeviceManager::divertButton(uint16_t controlId, bool divert)
                        std::span<const uint8_t>(params));
         qDebug() << "[DeviceManager] button" << Qt::hex << controlId
                  << (divert ? "diverted" : "undiverted");
+    });
+}
+
+QString DeviceManager::thumbWheelMode() const { return m_thumbWheelMode; }
+
+void DeviceManager::setThumbWheelMode(const QString &mode)
+{
+    if (!m_connected || !m_features || !m_transport)
+        return;
+    if (!m_features->hasFeature(hidpp::FeatureId::ThumbWheel))
+        return;
+
+    bool divert = (mode != "scroll"); // "scroll" = native, anything else = diverted
+    m_thumbWheelMode = mode;
+    emit thumbWheelModeChanged();
+
+    auto *transport = m_transport.get();
+    auto *features = m_features.get();
+    uint8_t devIdx = m_deviceIndex;
+    QMutex *mutex = &m_hidrawMutex;
+
+    QtConcurrent::run([transport, features, devIdx, divert, mutex]() {
+        QMutexLocker lock(mutex);
+        // ThumbWheel setReporting: params[0]=divert, params[1]=invert
+        std::array<uint8_t, 2> params = {
+            static_cast<uint8_t>(divert ? 0x01 : 0x00),
+            0x00 // no invert
+        };
+        features->call(transport, devIdx,
+                       hidpp::FeatureId::ThumbWheel,
+                       0x02, // setReporting
+                       std::span<const uint8_t>(params));
+        qDebug() << "[DeviceManager] thumb wheel" << (divert ? "diverted" : "native");
     });
 }
 

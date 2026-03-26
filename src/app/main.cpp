@@ -144,7 +144,27 @@ int main(int argc, char *argv[])
             }
         });
 
-    // 6. Gesture event → GestureDetector → profile gesture action → execute
+    // 6. Thumb wheel rotation → inject action based on mode
+    QObject::connect(&deviceManager, &logitune::DeviceManager::thumbWheelRotation,
+        [&deviceManager, &actionExecutor](int delta) {
+            const QString &mode = deviceManager.thumbWheelMode();
+            if (mode == "volume") {
+                // Each notch → one volume step
+                if (delta > 0)
+                    actionExecutor.injectKeystroke("VolumeUp");
+                else if (delta < 0)
+                    actionExecutor.injectKeystroke("VolumeDown");
+            } else if (mode == "zoom") {
+                // Ctrl + scroll wheel
+                if (delta > 0)
+                    actionExecutor.injectKeystroke("Ctrl+Up");
+                else if (delta < 0)
+                    actionExecutor.injectKeystroke("Ctrl+Down");
+            }
+            // "scroll" mode = native, no events reach here
+        });
+
+    // 7. Gesture event → GestureDetector → profile gesture action → execute
     QObject::connect(&deviceManager, &logitune::DeviceManager::gestureEvent,
         [&actionExecutor, &profileEngine](int dx, int dy, bool released) {
             actionExecutor.gestureDetector().addDelta(dx, dy);

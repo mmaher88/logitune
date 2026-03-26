@@ -61,9 +61,11 @@ public:
     Q_INVOKABLE void setSmartShift(bool enabled, int threshold);
     Q_INVOKABLE void setScrollConfig(bool hiRes, bool invert);
     Q_INVOKABLE void divertButton(uint16_t controlId, bool divert);
+    Q_INVOKABLE void setThumbWheelMode(const QString &mode); // "scroll", "zoom", "volume"
     bool scrollHiRes() const;
     bool scrollInvert() const;
     bool scrollRatchet() const;
+    QString thumbWheelMode() const;
 
     // Access to internals for other components
     hidpp::FeatureDispatcher *features() const;
@@ -79,6 +81,8 @@ signals:
     void currentDPIChanged();
     void smartShiftChanged();
     void scrollConfigChanged();
+    void thumbWheelModeChanged();
+    void thumbWheelRotation(int delta); // emitted when diverted, raw rotation
     void deviceDisconnected();
     void transportSwitched(const QString &newType);
     void divertedButtonPressed(uint16_t controlId, bool pressed);
@@ -132,7 +136,8 @@ private:
     bool m_scrollHiRes = false;
     bool m_scrollInvert = false;
     bool m_scrollRatchet = true;
-    uint8_t m_scrollModeByte = 0; // raw mode byte for read-modify-write
+    uint8_t m_scrollModeByte = 0;
+    QString m_thumbWheelMode = "scroll"; // "scroll", "zoom", "volume"
 };
 
 } // namespace logitune
