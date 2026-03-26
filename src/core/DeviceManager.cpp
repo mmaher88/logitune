@@ -494,17 +494,18 @@ void DeviceManager::enumerateAndSetup()
         }
     }
 
-    // Read SmartShift
+    // Read SmartShift — V1 (0x2110): fn0=GetStatus, response=[mode, autoDisengage, default]
     if (m_features->hasFeature(hidpp::FeatureId::SmartShift)) {
         auto resp = m_features->call(m_transport.get(), m_deviceIndex,
                                      hidpp::FeatureId::SmartShift,
-                                     hidpp::features::SmartShift::kFnGetConfig);
+                                     hidpp::features::SmartShift::kFnGetStatus);
         if (resp.has_value()) {
             auto cfg = hidpp::features::SmartShift::parseConfig(*resp);
-            m_smartShiftEnabled = cfg.enabled;
-            m_smartShiftThreshold = cfg.threshold;
-            qDebug() << "[DeviceManager] SmartShift:" << (m_smartShiftEnabled ? "ON" : "OFF")
-                     << "threshold:" << m_smartShiftThreshold;
+            m_smartShiftEnabled = cfg.isRatchet(); // mode=2 means SmartShift active
+            m_smartShiftThreshold = cfg.autoDisengage;
+            qDebug() << "[DeviceManager] SmartShift: mode=" << cfg.mode
+                     << (m_smartShiftEnabled ? "(ratchet)" : "(freespin)")
+                     << "autoDisengage=" << m_smartShiftThreshold;
         }
     }
 
@@ -823,14 +824,18 @@ void DeviceManager::setSmartShift(bool enabled, int threshold)
     uint8_t devIdx = m_deviceIndex;
     QMutex *mutex = &m_hidrawMutex;
 
-    QtConcurrent::run([transport, features, devIdx, enabled, threshold, mutex]() {
+    // mode: 2=ratchet (SmartShift active), 1=freespin
+    uint8_t mode = enabled ? 2 : 1;
+    uint8_t ad = static_cast<uint8_t>(threshold);
+
+    QtConcurrent::run([transport, features, devIdx, mode, ad, mutex]() {
         QMutexLocker lock(mutex);
-        auto params = hidpp::features::SmartShift::buildSetConfig(enabled, threshold);
+        auto params = hidpp::features::SmartShift::buildSetConfig(mode, ad);
         features->call(transport, devIdx,
                        hidpp::FeatureId::SmartShift,
-                       hidpp::features::SmartShift::kFnSetConfig,
+                       hidpp::features::SmartShift::kFnSetStatus,
                        std::span<const uint8_t>(params));
-        qDebug() << "[DeviceManager] SmartShift set:" << enabled << "threshold:" << threshold;
+        qDebug() << "[DeviceManager] SmartShift set: mode=" << mode << "autoDisengage=" << ad;
     });
 }
 

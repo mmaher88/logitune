@@ -10,50 +10,67 @@ using namespace logitune::hidpp::features;
 // SmartShift
 // ---------------------------------------------------------------------------
 
-TEST(SmartShift, ParseConfigEnabled)
+// SmartShift V1 (0x2110) — from logid/Solaar source
+// GetStatus response: [mode(1=freespin,2=ratchet), autoDisengage, defaultAutoDisengage]
+
+TEST(SmartShift, ParseRatchetMode)
 {
     Report r;
-    r.params[0]   = 0x01;  // enabled
-    r.params[1]   = 30;    // threshold
-    r.paramLength = 4;
+    r.params[0] = 2;    // mode=ratchet
+    r.params[1] = 100;  // autoDisengage threshold
+    r.params[2] = 100;  // default
     auto cfg = SmartShift::parseConfig(r);
-    EXPECT_TRUE(cfg.enabled);
-    EXPECT_EQ(cfg.threshold, 30);
+    EXPECT_TRUE(cfg.isRatchet());
+    EXPECT_FALSE(cfg.isFreespin());
+    EXPECT_EQ(cfg.mode, 2);
+    EXPECT_EQ(cfg.autoDisengage, 100);
+    EXPECT_EQ(cfg.defaultAutoDisengage, 100);
 }
 
-TEST(SmartShift, ParseConfigDisabled)
+TEST(SmartShift, ParseFreespinMode)
 {
     Report r;
-    r.params[0]   = 0x00;  // disabled
-    r.params[1]   = 100;
-    r.paramLength = 4;
+    r.params[0] = 1;    // mode=freespin
+    r.params[1] = 50;
+    r.params[2] = 100;
     auto cfg = SmartShift::parseConfig(r);
-    EXPECT_FALSE(cfg.enabled);
-    EXPECT_EQ(cfg.threshold, 100);
+    EXPECT_FALSE(cfg.isRatchet());
+    EXPECT_TRUE(cfg.isFreespin());
+    EXPECT_EQ(cfg.mode, 1);
+    EXPECT_EQ(cfg.autoDisengage, 50);
 }
 
-TEST(SmartShift, BuildSetConfig)
+TEST(SmartShift, BuildSetRatchet)
 {
-    auto params = SmartShift::buildSetConfig(true, 50);
-    ASSERT_EQ(params.size(), 3u);
-    EXPECT_EQ(params[0], 0x02);
-    EXPECT_EQ(params[1], 0x01);
-    EXPECT_EQ(params[2], 50);
+    // mode=2 (ratchet), autoDisengage=50
+    auto params = SmartShift::buildSetConfig(2, 50);
+    ASSERT_EQ(params.size(), 2u);
+    EXPECT_EQ(params[0], 2);   // ratchet
+    EXPECT_EQ(params[1], 50);  // threshold
 }
 
-TEST(SmartShift, BuildSetConfigDisabled)
+TEST(SmartShift, BuildSetFreespin)
 {
-    auto params = SmartShift::buildSetConfig(false, 10);
-    ASSERT_EQ(params.size(), 3u);
-    EXPECT_EQ(params[0], 0x02);
-    EXPECT_EQ(params[1], 0x00);
-    EXPECT_EQ(params[2], 10);
+    // mode=1 (freespin), autoDisengage=0 (don't change)
+    auto params = SmartShift::buildSetConfig(1, 0);
+    ASSERT_EQ(params.size(), 2u);
+    EXPECT_EQ(params[0], 1);
+    EXPECT_EQ(params[1], 0);
+}
+
+TEST(SmartShift, BuildSetThresholdOnly)
+{
+    // mode=0 (don't change), autoDisengage=80
+    auto params = SmartShift::buildSetConfig(0, 80);
+    ASSERT_EQ(params.size(), 2u);
+    EXPECT_EQ(params[0], 0);
+    EXPECT_EQ(params[1], 80);
 }
 
 TEST(SmartShift, ConstantValues)
 {
-    EXPECT_EQ(SmartShift::kFnGetConfig, 0x00);
-    EXPECT_EQ(SmartShift::kFnSetConfig, 0x01);
+    EXPECT_EQ(SmartShift::kFnGetStatus, 0x00);
+    EXPECT_EQ(SmartShift::kFnSetStatus, 0x01);
 }
 
 // ---------------------------------------------------------------------------
