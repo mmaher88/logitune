@@ -449,21 +449,10 @@ void DeviceManager::enumerateAndSetup()
     if (name.isEmpty())
         name = QStringLiteral("Logitech Device");
 
-    // Read serial via DeviceName feature function 2 (getDeviceType response contains serial)
-    QString serial;
-    if (m_features->hasFeature(hidpp::FeatureId::DeviceName)) {
-        auto resp = m_features->call(m_transport.get(), m_deviceIndex,
-                                     hidpp::FeatureId::DeviceName,
-                                     hidpp::features::DeviceName::kFnGetDeviceType);
-        if (resp.has_value())
-            serial = hidpp::features::DeviceName::parseSerial(*resp).trimmed();
-    }
-    // Fall back to a stable identifier derived from product ID + name hash
-    if (serial.isEmpty()) {
-        serial = QString::number(m_device->info().productId, 16)
-                 + QStringLiteral("-") + QString::number(qHash(name), 16);
-    }
-    qDebug() << "[DeviceManager] device serial:" << serial;
+    // Stable device identifier from product ID + name hash
+    QString serial = QString::number(m_device->info().productId, 16)
+                     + QStringLiteral("-") + QString::number(qHash(name), 16);
+    qDebug() << "[DeviceManager] device id:" << serial;
 
     // Read battery
     int battLevel = 0;
