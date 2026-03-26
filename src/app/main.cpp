@@ -96,56 +96,37 @@ int main(int argc, char *argv[])
 
     // 5. Diverted button press → profile action lookup → execute
     QObject::connect(&deviceManager, &logitune::DeviceManager::divertedButtonPressed,
-        [&profileEngine, &actionExecutor](uint16_t controlId, bool pressed) {
-            qDebug() << "[main] button event: CID=" << Qt::hex << controlId << "pressed=" << pressed;
+        [&buttonModel, &actionModel, &actionExecutor](uint16_t controlId, bool pressed) {
             if (!pressed) return;
 
-            const auto &profile = profileEngine.activeProfile();
-
-            // Map controlId to button index (from real device enumeration):
-            //   0x0050 = left button  → 0
-            //   0x0051 = right button → 1
-            //   0x0052 = middle/wheel → 2
-            //   0x0053 = back         → 3
-            //   0x0056 = forward      → 4
-            //   0x00C3 = gesture      → 5
-            //   0x00C4 = top button   → 6
+            // Map controlId to button index (from real device enumeration)
             static const std::unordered_map<uint16_t, int> kControlMap = {
                 {0x0050, 0}, {0x0051, 1}, {0x0052, 2},
                 {0x0053, 3}, {0x0056, 4}, {0x00C3, 5}, {0x00C4, 6}
             };
 
             auto it = kControlMap.find(controlId);
-            if (it == kControlMap.end()) {
-                qDebug() << "[main] divertedButtonPressed: unknown controlId" << Qt::hex << controlId;
-                return;
-            }
-
+            if (it == kControlMap.end()) return;
             int idx = it->second;
-            if (idx < 0 || idx >= static_cast<int>(profile.buttons.size())) return;
 
-            const auto &action = profile.buttons[idx];
-            qDebug() << "[main] executing action: type=" << static_cast<int>(action.type)
-                     << "payload=" << action.payload << "for button idx" << idx;
+            // Read the action from ButtonModel (updated by the UI)
+            QString actionType = buttonModel.actionTypeForButton(idx);
+            QString actionName = buttonModel.actionNameForButton(idx);
 
-            if (action.type == logitune::ButtonAction::Default) {
-                // TEST: Back button (idx 3) → inject Ctrl+C
-                if (idx == 3) {
-                    qDebug() << "[main] TEST: injecting Ctrl+C for Back button";
-                    actionExecutor.injectKeystroke("Ctrl+C");
-                    return;
-                }
-                // TEST: Forward button (idx 4) → inject Ctrl+V
-                if (idx == 4) {
-                    qDebug() << "[main] TEST: injecting Ctrl+V for Forward button";
-                    actionExecutor.injectKeystroke("Ctrl+V");
-                    return;
-                }
-                qDebug() << "[main] button" << idx << "has default action, skipping";
-                return;
+            if (actionType == "default") return;
+
+            // Get the actual payload (keystroke combo) from ActionModel
+            QString payload = actionModel.payloadForName(actionName);
+
+            qDebug() << "[main] button" << idx << "→" << actionType << ":" << actionName << "payload:" << payload;
+
+            if (actionType == "keystroke" && !payload.isEmpty()) {
+                actionExecutor.injectKeystroke(payload);
+            } else if (actionType == "gesture-trigger") {
+                // gesture mode — handled separately
+            } else if (actionType == "app-launch" && !payload.isEmpty()) {
+                actionExecutor.launchApp(payload);
             }
-
-            actionExecutor.executeAction(action);
         });
 
     // 6. Gesture event → GestureDetector → profile gesture action → execute

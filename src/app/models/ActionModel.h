@@ -9,6 +9,7 @@ struct ActionEntry {
     QString name;
     QString description;
     QString actionType;
+    QString payload;  // e.g. "Ctrl+C" for keystroke, "" for default
 };
 
 class ActionModel : public QAbstractListModel {
@@ -21,6 +22,7 @@ public:
         NameRole = Qt::UserRole + 1,
         DescriptionRole,
         ActionTypeRole,
+        PayloadRole,
     };
 
     explicit ActionModel(QObject *parent = nullptr);
@@ -33,6 +35,7 @@ public:
     void setSelectedIndex(int index);
 
     Q_INVOKABLE int indexForName(const QString &name) const;
+    Q_INVOKABLE QString payloadForName(const QString &name) const;
 
 signals:
     void selectedIndexChanged();

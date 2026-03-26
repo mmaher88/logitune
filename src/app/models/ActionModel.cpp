@@ -5,32 +5,33 @@ namespace logitune {
 ActionModel::ActionModel(QObject *parent)
     : QAbstractListModel(parent)
 {
+    //                name                   description                                  actionType         payload
     m_actions = {
-        { "Advanced click",       "Simulate advanced click patterns",          "advanced-click"  },
-        { "App expose",           "Show all windows for current app",           "app-expose"      },
-        { "Back",                 "Navigate backward in browser/file manager",  "default"         },
-        { "Brightness down",      "Decrease display brightness",                "brightness-down" },
-        { "Brightness up",        "Increase display brightness",                "brightness-up"   },
-        { "Calculator",           "Open the system calculator",                 "calculator"      },
-        { "Change pointer speed", "Adjust pointer sensitivity on the fly",      "pointer-speed"   },
-        { "Close window",         "Close the active window",                    "close-window"    },
-        { "Copy",                 "Copy selected content to clipboard",         "keystroke"       },
-        { "Cut",                  "Cut selected content to clipboard",          "keystroke"       },
-        { "Do nothing",           "Button is disabled",                         "none"            },
-        { "Forward",              "Navigate forward in browser/file manager",   "default"         },
-        { "Gestures",             "Trigger gesture recognition",                "gesture-trigger" },
-        { "Keyboard shortcut",    "Send a custom key combination",              "keystroke"       },
-        { "Media controls",       "Control media playback",                     "media"           },
-        { "Middle click",         "Emulate middle mouse button click",          "default"         },
-        { "Mute",                 "Toggle audio mute",                          "mute"            },
-        { "Paste",                "Paste clipboard content",                    "keystroke"       },
-        { "Play/Pause",           "Play or pause media",                        "media"           },
-        { "Redo",                 "Redo last undone action",                    "keystroke"       },
-        { "Screenshot",           "Capture a screenshot",                       "screenshot"      },
-        { "Show desktop",         "Minimize all windows to show desktop",       "show-desktop"    },
-        { "Undo",                 "Undo the last action",                       "keystroke"       },
-        { "Volume down",          "Decrease system volume",                     "volume-down"     },
-        { "Volume up",            "Increase system volume",                     "volume-up"       },
+        { "Advanced click",       "Simulate advanced click patterns",          "advanced-click",  ""            },
+        { "App expose",           "Show all windows for current app",           "app-expose",      ""            },
+        { "Back",                 "Navigate backward in browser/file manager",  "keystroke",       "Alt+Left"    },
+        { "Brightness down",      "Decrease display brightness",                "keystroke",       "BrightnessDown" },
+        { "Brightness up",        "Increase display brightness",                "keystroke",       "BrightnessUp" },
+        { "Calculator",           "Open the system calculator",                 "app-launch",      "kcalc"       },
+        { "Change pointer speed", "Adjust pointer sensitivity on the fly",      "pointer-speed",   ""            },
+        { "Close window",         "Close the active window",                    "keystroke",       "Alt+F4"      },
+        { "Copy",                 "Copy selected content to clipboard",         "keystroke",       "Ctrl+C"      },
+        { "Cut",                  "Cut selected content to clipboard",          "keystroke",       "Ctrl+X"      },
+        { "Do nothing",           "Button is disabled",                         "none",            ""            },
+        { "Forward",              "Navigate forward in browser/file manager",   "keystroke",       "Alt+Right"   },
+        { "Gestures",             "Trigger gesture recognition",                "gesture-trigger", ""            },
+        { "Keyboard shortcut",    "Send a custom key combination",              "keystroke",       ""            },
+        { "Media controls",       "Control media playback",                     "keystroke",       "Play"        },
+        { "Middle click",         "Emulate middle mouse button click",          "default",         ""            },
+        { "Mute",                 "Toggle audio mute",                          "keystroke",       "Mute"        },
+        { "Paste",                "Paste clipboard content",                    "keystroke",       "Ctrl+V"      },
+        { "Play/Pause",           "Play or pause media",                        "keystroke",       "Play"        },
+        { "Redo",                 "Redo last undone action",                    "keystroke",       "Ctrl+Shift+Z"},
+        { "Screenshot",           "Capture a screenshot",                       "keystroke",       "Print"       },
+        { "Show desktop",         "Minimize all windows to show desktop",       "keystroke",       "Super+D"     },
+        { "Undo",                 "Undo the last action",                       "keystroke",       "Ctrl+Z"      },
+        { "Volume down",          "Decrease system volume",                     "keystroke",       "VolumeDown"  },
+        { "Volume up",            "Increase system volume",                     "keystroke",       "VolumeUp"    },
     };
 }
 
@@ -51,6 +52,7 @@ QVariant ActionModel::data(const QModelIndex &index, int role) const
     case NameRole:        return entry.name;
     case DescriptionRole: return entry.description;
     case ActionTypeRole:  return entry.actionType;
+    case PayloadRole:     return entry.payload;
     default:              return {};
     }
 }
@@ -61,6 +63,7 @@ QHash<int, QByteArray> ActionModel::roleNames() const
         { NameRole,        "name"        },
         { DescriptionRole, "description" },
         { ActionTypeRole,  "actionType"  },
+        { PayloadRole,     "payload"     },
     };
 }
 
@@ -84,6 +87,15 @@ int ActionModel::indexForName(const QString &name) const
             return i;
     }
     return -1;
+}
+
+QString ActionModel::payloadForName(const QString &name) const
+{
+    for (const auto &a : m_actions) {
+        if (a.name == name)
+            return a.payload;
+    }
+    return {};
 }
 
 } // namespace logitune

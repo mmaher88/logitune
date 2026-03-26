@@ -10,7 +10,7 @@ ButtonModel::ButtonModel(QObject *parent)
         { 0, "Left click",   "Left click",        "default"         },
         { 1, "Right click",  "Right click",       "default"         },
         { 2, "Middle click", "Middle click",      "default"         },
-        { 3, "Back",         "Copy (Ctrl+C)",     "keystroke"       },
+        { 3, "Back",         "Back",              "default"         },
         { 4, "Forward",      "Forward",           "default"         },
         { 5, "Thumb",        "Gesture button",    "default"         },
         { 6, "Top",          "Shift wheel mode",  "default"         },
