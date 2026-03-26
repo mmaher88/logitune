@@ -300,7 +300,7 @@ void DeviceManager::probeDevice(const QString &devNode)
                 continue;
 
             // Read response — accept short (7b) or long (20b), any format
-            auto resp = device->readReport(500);
+            auto resp = device->readReport(2000);
             if (resp.empty())
                 continue;
 
@@ -311,10 +311,12 @@ void DeviceManager::probeDevice(const QString &devNode)
                 // HID++ 1.0 error: byte2=0x8F, byte4=0x00 means no error
                 // HID++ 2.0 error: byte2=0xFF means error
                 bool isError = false;
-                if (resp.size() >= 7 && resp[2] == 0x8F && resp[6] != 0x00) {
-                    isError = true; // HID++ 1.0 error
+                if (resp.size() >= 7 && resp[2] == 0x8F) {
+                    // HID++ 1.0 error: byte5 is error code
+                    // 0x00 = no error, anything else = error (0x09 = device not present)
+                    isError = (resp[5] != 0x00);
                 }
-                if (resp.size() >= 7 && resp[2] == 0xFF) {
+                if (resp.size() >= 7 && resp[0] == 0x11 && resp[2] == 0xFF) {
                     isError = true; // HID++ 2.0 error
                 }
 
