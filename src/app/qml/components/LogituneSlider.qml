@@ -10,6 +10,7 @@ Item {
     property alias from:     slider.from
     property alias to:       slider.to
     property alias stepSize: slider.stepSize
+    property alias pressed:  slider.pressed
     property string label:   ""
 
     implicitHeight: col.implicitHeight
