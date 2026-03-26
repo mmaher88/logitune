@@ -109,13 +109,6 @@ Rectangle {
             width: parent.width
             spacing: 20
 
-            // Speed slider
-            LogituneSlider {
-                width: parent.width
-                label: "Speed"
-                value: 50
-            }
-
             // Scroll direction radio group
             Column {
                 width: parent.width
@@ -290,13 +283,6 @@ Rectangle {
         Column {
             width: parent.width
             spacing: 20
-
-            // Speed slider
-            LogituneSlider {
-                width: parent.width
-                label: "Speed"
-                value: 50
-            }
 
             // Direction invert toggle
             Row {
