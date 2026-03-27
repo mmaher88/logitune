@@ -512,11 +512,11 @@ Rectangle {
 
                 Repeater {
                     model: [
-                        { dir: "\u2191", label: "Up" },
-                        { dir: "\u2193", label: "Down" },
-                        { dir: "\u2190", label: "Left" },
-                        { dir: "\u2192", label: "Right" },
-                        { dir: "\u25C9", label: "Click" },
+                        { dir: "\u2191", label: "Up",    action: "" },
+                        { dir: "\u2193", label: "Down",  action: "Show desktop" },
+                        { dir: "\u2190", label: "Left",  action: "Desktop left" },
+                        { dir: "\u2192", label: "Right", action: "Desktop right" },
+                        { dir: "\u25C9", label: "Click", action: "Task switcher" },
                     ]
 
                     delegate: Rectangle {
@@ -543,9 +543,9 @@ Rectangle {
                                 Layout.fillWidth: true
                             }
                             Text {
-                                text: "None"
+                                text: modelData.action || "None"
                                 font.pixelSize: 11
-                                color: "#AAAAAA"
+                                color: modelData.action ? "#814EFA" : "#AAAAAA"
                             }
                         }
                     }
