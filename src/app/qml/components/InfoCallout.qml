@@ -14,8 +14,8 @@ Rectangle {
     signal calloutClicked(string type)
 
     // ── Geometry / Appearance ───────────────────────────────────────────────
-    implicitWidth:  contentCol.implicitWidth  + 24
-    implicitHeight: contentCol.implicitHeight + 20
+    implicitWidth:  contentCol.implicitWidth  + 20
+    implicitHeight: contentCol.implicitHeight + 14
 
     // Gradient from top (#A04EFA) to bottom (#814EFA)
     gradient: Gradient {
@@ -40,7 +40,7 @@ Rectangle {
             left:   parent.left
             right:  parent.right
             top:    parent.top
-            margins: 12
+            margins: 10
         }
         spacing: 4
 

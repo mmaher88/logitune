@@ -64,16 +64,11 @@ Item {
             }
         }
 
-        // ── Scroll wheel callout — top-right ───────────────────────────────────
+        // ── Scroll wheel callout — right of scroll wheel circle (73%, 16%)
         InfoCallout {
             id: scrollCallout
-            anchors {
-                left: mouseRender.right
-                leftMargin: 28
-                top:  mouseRender.top
-                topMargin: 10
-            }
-            width: 200
+            x: mouseRender.x + mouseRender.implicitWidth * 0.73 + 16
+            y: mouseRender.y + mouseRender.implicitHeight * 0.16 - height / 2
 
             calloutType: "scrollwheel"
             title: "Scroll wheel"
@@ -88,15 +83,11 @@ Item {
             }
         }
 
-        // ── Thumb wheel callout — left side ────────────────────────────────────
+        // ── Thumb wheel callout — left of thumb wheel circle (55%, 51%)
         InfoCallout {
             id: thumbCallout
-            anchors {
-                right:          mouseRender.left
-                rightMargin:    28
-                verticalCenter: mouseRender.verticalCenter
-            }
-            width: 150
+            x: mouseRender.x + mouseRender.implicitWidth * 0.55 - width - 16
+            y: mouseRender.y + mouseRender.implicitHeight * 0.51 - height / 2
 
             calloutType: "thumbwheel"
             title: "Thumb wheel"
@@ -110,16 +101,11 @@ Item {
             }
         }
 
-        // ── Pointer speed callout — bottom-right ───────────────────────────────
+        // ── Pointer speed callout — right of pointer speed circle (83%, 54%)
         InfoCallout {
             id: pointerCallout
-            anchors {
-                left:   mouseRender.right
-                leftMargin: 28
-                bottom: mouseRender.bottom
-                bottomMargin: 10
-            }
-            width: 180
+            x: mouseRender.x + mouseRender.implicitWidth * 0.83 + 16
+            y: mouseRender.y + mouseRender.implicitHeight * 0.54 - height / 2
 
             calloutType: "pointerspeed"
             title: "Pointer speed"
