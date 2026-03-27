@@ -1,6 +1,7 @@
 import QtQuick
+import Logitune
 
-// Logitune toggle switch — purple ON (#814EFA), gray OFF (#E1E2E3)
+// Logitune toggle switch — accent ON, gray OFF
 // Track: 28×16px, radius 8. Knob: 12×12px, 2px offset from edge.
 Item {
     id: root
@@ -30,7 +31,7 @@ Item {
             width:  28
             height: 16
             radius: 8
-            color:  root.checked ? "#814EFA" : "#E1E2E3"
+            color:  root.checked ? Theme.accent : Theme.inputBg
 
             Behavior on color { ColorAnimation { duration: 150 } }
 

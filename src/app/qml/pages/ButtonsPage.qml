@@ -41,10 +41,10 @@ Item {
           actionDefault: "Gestures", buttonLabel: "Gesture button" },
     ]
 
-    // ── Background (follows system/light theme) ───────────────────────────────
+    // ── Background (follows system theme) ────────────────────────────────────
     Rectangle {
         anchors.fill: parent
-        color: "#FFFFFF"
+        color: Theme.background
     }
 
     // ── Dismiss panel by clicking the background ─────────────────────────────

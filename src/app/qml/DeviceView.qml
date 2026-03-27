@@ -60,7 +60,7 @@ Item {
                         anchors.centerIn: parent
                         text: "\u2190"
                         font.pixelSize: 22
-                        color: backHover.hovered ? "#814EFA" : "#444444"
+                        color: backHover.hovered ? Theme.accent : "#444444"
                         Behavior on color { ColorAnimation { duration: 120 } }
                     }
 
@@ -76,7 +76,7 @@ Item {
                     text: DeviceModel.deviceName || "MX Master 3S"
                     font.pixelSize: Math.max(14, root.width * 0.01 + root.height * 0.028)
                     font.bold: true
-                    color: "#222425"
+                    color: Theme.text
                 }
 
                 Item { Layout.fillWidth: true }
@@ -166,7 +166,7 @@ Item {
                       : "Select a page"
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: 15
-                color: "#999999"
+                color: Theme.textSecondary
                 lineHeight: 1.5
             }
         }

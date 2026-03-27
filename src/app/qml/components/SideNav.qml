@@ -5,7 +5,7 @@ import Logitune
 
 Rectangle {
     id: sideNav
-    color: "#FFFFFF"
+    color: Theme.background
 
     signal pageSelected(string pageName)
     property string currentPage: "buttons"
@@ -37,7 +37,7 @@ Rectangle {
                 text: DeviceModel.deviceName || "MX Master 3S"
                 font.pixelSize: 13
                 font.bold: true
-                color: "#222425"
+                color: Theme.text
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
@@ -49,7 +49,7 @@ Rectangle {
             Layout.topMargin: 12
             Layout.bottomMargin: 4
             height: 1
-            color: "#F0F0F0"
+            color: Theme.border
         }
 
         // Nav items
@@ -71,8 +71,8 @@ Rectangle {
                     }
                     radius: 4
                     color: sideNav.currentPage === modelData.name
-                           ? "#814EFA"
-                           : (itemHover.hovered && modelData.enabled ? "#F5F5F5" : "transparent")
+                           ? Theme.activeTabBg
+                           : (itemHover.hovered && modelData.enabled ? Theme.surface : "transparent")
                     border.color: "transparent"
                     border.width: 0
 
@@ -96,7 +96,7 @@ Rectangle {
                                 anchors.centerIn: parent
                                 text: modelData.icon
                                 font.pixelSize: 18
-                                color: sideNav.currentPage === modelData.name ? "#FFFFFF" : "#555555"
+                                color: sideNav.currentPage === modelData.name ? Theme.activeTabText : "#555555"
                                 Behavior on color { ColorAnimation { duration: 200 } }
                             }
                         }
@@ -106,7 +106,7 @@ Rectangle {
                             font.pixelSize: 13
                             font.letterSpacing: 0.6
                             font.bold: true
-                            color: sideNav.currentPage === modelData.name ? "#FFFFFF" : "#444444"
+                            color: sideNav.currentPage === modelData.name ? Theme.activeTabText : "#444444"
                             // Strikethrough when disabled
                             font.strikeout: !modelData.enabled
                             Layout.fillWidth: true

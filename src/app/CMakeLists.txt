@@ -11,6 +11,7 @@ qt_add_qml_module(logitune
     URI Logitune
     VERSION 1.0
     QML_FILES
+        qml/Theme.qml
         qml/Main.qml
         qml/HomeView.qml
         qml/DeviceView.qml

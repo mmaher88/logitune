@@ -19,7 +19,7 @@ Item {
     // ── Background ────────────────────────────────────────────────────────────
     Rectangle {
         anchors.fill: parent
-        color: "#FFFFFF"
+        color: Theme.background
         radius: 0
     }
 
@@ -58,7 +58,7 @@ Item {
                 y: mouseRender.y + modelData.yPct * mouseRender.implicitHeight - 9
                 width: 18; height: 18; radius: 9
                 color: "transparent"
-                border.color: "#814EFA"
+                border.color: Theme.accent
                 border.width: 2
                 opacity: 0.7
             }

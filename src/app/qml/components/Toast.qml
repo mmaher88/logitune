@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import Logitune
 
 Rectangle {
     id: toast
@@ -9,7 +10,7 @@ Rectangle {
     width: Math.min(parent.width - 48, messageText.implicitWidth + 48)
     height: 44
     radius: 22
-    color: "#333333"
+    color: Theme.dark ? "#444444" : "#333333"
     opacity: 0
     visible: opacity > 0
 

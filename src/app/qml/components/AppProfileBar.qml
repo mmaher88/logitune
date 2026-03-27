@@ -35,7 +35,7 @@ Row {
                 width: 32
                 height: 2
                 radius: 1
-                color: "#814EFA"
+                color: Theme.accent
                 visible: model.isActive
             }
 

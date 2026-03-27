@@ -39,14 +39,14 @@ Rectangle {
         var w = (parent ? parent.width : 960) * 0.33
         return Math.max(360, Math.min(w, 478))
     }
-    color:  "#F5F5F5"
+    color:  Theme.surface
     radius: 0
 
     // Left border
     Rectangle {
         anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
         width: 1
-        color: "#F0F0F0"
+        color: Theme.border
     }
 
     // ── Slide animation ────────────────────────────────────────────────────
@@ -77,13 +77,13 @@ Rectangle {
                     text: "Actions"
                     font.pixelSize: 18
                     font.bold: true
-                    color: "#222425"
+                    color: Theme.text
                 }
 
                 Text {
                     text: root.buttonName.length > 0 ? root.buttonName : "Button"
                     font.pixelSize: 12
-                    color: "#888888"
+                    color: Theme.textSecondary
                 }
             }
 
@@ -93,7 +93,7 @@ Rectangle {
             Rectangle {
                 width: 28; height: 28
                 radius: 14
-                color: closeHover.hovered ? "#E8E8E8" : "transparent"
+                color: closeHover.hovered ? Theme.inputBg : "transparent"
                 Behavior on color { ColorAnimation { duration: 100 } }
 
                 Text {
@@ -117,7 +117,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.topMargin: 12
             height: 1
-            color: "#F0F0F0"
+            color: Theme.border
         }
 
         // ── Wheel mode list (shown when isWheel) ─────────────────────────────
@@ -148,15 +148,15 @@ Rectangle {
                     height: isCurrent ? 48 : 32
                     Behavior on height { NumberAnimation { duration: 200 } }
                     radius: 4
-                    color: isCurrent ? "#814EFA" : (wheelHover.hovered ? "#F0EDFF" : "transparent")
+                    color: isCurrent ? Theme.accent : (wheelHover.hovered ? Theme.hoverBg : "transparent")
                     border.color: isCurrent ? "transparent" : (wheelHover.hovered ? "#D4C5FF" : "transparent")
                     border.width: 1
 
                     Rectangle {
                         anchors { left: parent.left; leftMargin: 15; verticalCenter: parent.verticalCenter }
                         width: 18; height: 18; radius: 9
-                        color: isCurrent ? "#FFFFFF" : (wheelHover.hovered ? "#EAE6F5" : "#E1E2E3")
-                        border.color: isCurrent ? "#814EFA" : "transparent"
+                        color: isCurrent ? Theme.activeTabText : (wheelHover.hovered ? "#EAE6F5" : Theme.inputBg)
+                        border.color: isCurrent ? Theme.accent : "transparent"
                         border.width: isCurrent ? 6 : 0
                     }
 
@@ -169,7 +169,7 @@ Rectangle {
                         text: modelData.name
                         font.pixelSize: 14
                         font.bold: isCurrent
-                        color: isCurrent ? "#FFFFFF" : (wheelHover.hovered ? "#814EFA" : "#222425")
+                        color: isCurrent ? Theme.activeTabText : (wheelHover.hovered ? Theme.accent : Theme.text)
                         elide: Text.ElideRight
                     }
 
@@ -201,8 +201,8 @@ Rectangle {
                     bottomMargin: 16
                 }
                 radius: 4
-                color: "#FFFFFF"
-                border.color: searchInput.activeFocus ? "#814EFA" : "#E1E2E3"
+                color: Theme.cardBg
+                border.color: searchInput.activeFocus ? Theme.accent : Theme.inputBg
                 border.width: 1
 
                 Behavior on border.color { ColorAnimation { duration: 200 } }
@@ -229,7 +229,7 @@ Rectangle {
                     }
                     verticalAlignment: TextInput.AlignVCenter
                     font.pixelSize: 14
-                    color: "#222425"
+                    color: Theme.text
                     clip: true
                 }
             }
@@ -298,7 +298,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.topMargin: 8
             height: 1
-            color: "#F0F0F0"
+            color: Theme.border
             visible: !root.isWheel
         }
 
@@ -369,11 +369,11 @@ Rectangle {
 
                     radius: 4
                     color: isSelected
-                           ? "#814EFA"
-                           : (rowHover.hovered ? "#F0EDFF" : "transparent")
+                           ? Theme.accent
+                           : (rowHover.hovered ? Theme.hoverBg : "transparent")
                     border.color: isSelected
                                   ? "transparent"
-                                  : (rowHover.hovered ? "#D4C5FF" : "transparent")
+                                  : (rowHover.hovered ? Theme.accentHover : "transparent")
                     border.width: 1
 
                     Behavior on color { ColorAnimation { duration: 200 } }
@@ -392,9 +392,9 @@ Rectangle {
 
                         // Unselected: flat grey fill, no border
                         // Selected:   white fill, 6px purple border
-                        color:        isSelected ? "#FFFFFF"
-                                                 : (rowHover.hovered ? "#EAE6F5" : "#E1E2E3")
-                        border.color: isSelected ? "#814EFA" : "transparent"
+                        color:        isSelected ? Theme.activeTabText
+                                                 : (rowHover.hovered ? "#EAE6F5" : Theme.inputBg)
+                        border.color: isSelected ? Theme.accent : "transparent"
                         border.width: isSelected ? 6 : 0
 
                         Behavior on color        { ColorAnimation { duration: 200 } }
@@ -413,8 +413,8 @@ Rectangle {
                         text:           name
                         font.pixelSize: 14
                         font.bold:      isSelected
-                        color:          isSelected  ? "#FFFFFF"
-                                        : (rowHover.hovered ? "#814EFA" : "#222425")
+                        color:          isSelected  ? Theme.activeTabText
+                                        : (rowHover.hovered ? Theme.accent : Theme.text)
                         elide:          Text.ElideRight
                         maximumLineCount: 1
 
@@ -440,7 +440,7 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             height: 1
-            color: "#F0F0F0"
+            color: Theme.border
             visible: root.currentActionType.length > 0
         }
 
@@ -530,8 +530,8 @@ Rectangle {
                         width: parent.width
                         height: 36
                         radius: 4
-                        color: gestureRowHover.hovered ? "#F0EDFF" : "#FFFFFF"
-                        border.color: gestureRowHover.hovered ? "#D4C5FF" : "#F0F0F0"
+                        color: gestureRowHover.hovered ? Theme.hoverBg : Theme.cardBg
+                        border.color: gestureRowHover.hovered ? Theme.accentHover : Theme.border
                         border.width: 1
 
                         readonly property string actionName: root._gestureRefresh >= 0 ? DeviceModel.gestureActionName(modelData.key) : ""
@@ -543,18 +543,18 @@ Rectangle {
                             Text {
                                 text: modelData.dir
                                 font.pixelSize: 14
-                                color: "#814EFA"
+                                color: Theme.accent
                             }
                             Text {
                                 text: modelData.label
                                 font.pixelSize: 12
-                                color: "#444444"
+                                color: Theme.text
                                 Layout.fillWidth: true
                             }
                             Text {
                                 text: actionName || "None"
                                 font.pixelSize: 11
-                                color: actionName ? "#814EFA" : "#AAAAAA"
+                                color: actionName ? Theme.accent : "#AAAAAA"
                             }
                         }
 
@@ -611,13 +611,13 @@ Rectangle {
                             width: parent.width
                             height: 28
                             radius: 4
-                            color: gpHover.hovered ? "#F0EDFF" : "transparent"
+                            color: gpHover.hovered ? Theme.hoverBg : "transparent"
 
                             Text {
                                 anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
                                 text: modelData.name
                                 font.pixelSize: 11
-                                color: gpHover.hovered ? "#814EFA" : "#444444"
+                                color: gpHover.hovered ? Theme.accent : Theme.text
                             }
 
                             HoverHandler { id: gpHover }

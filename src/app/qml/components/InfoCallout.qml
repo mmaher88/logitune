@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Logitune
 
 // Purple rounded callout card — summarises a group of settings.
 // Click to open the corresponding DetailPanel.
@@ -17,11 +18,11 @@ Rectangle {
     implicitWidth:  Math.min(Math.max(contentCol.implicitWidth + 32, 160), 220)
     implicitHeight: contentCol.implicitHeight + 24
 
-    // Gradient from top (#A04EFA) to bottom (#814EFA)
+    // Gradient from top to bottom — colors follow theme
     gradient: Gradient {
         orientation: Gradient.Vertical
-        GradientStop { position: 0.0; color: "#A04EFA" }
-        GradientStop { position: 1.0; color: "#814EFA" }
+        GradientStop { position: 0.0; color: Theme.calloutGradientTop }
+        GradientStop { position: 1.0; color: Theme.calloutGradientBottom }
     }
     radius: 4
 

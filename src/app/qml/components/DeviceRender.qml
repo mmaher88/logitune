@@ -1,4 +1,5 @@
 import QtQuick
+import Logitune
 
 // Mouse device render — MX Master 3S PNG with invisible clickable button zones overlaid.
 // White hotspot circles on configurable buttons (no left/right click zones shown).
@@ -84,7 +85,7 @@ Item {
                 width: 18; height: 18
                 radius: 9
                 color: "transparent"
-                border.color: "#814EFA"
+                border.color: Theme.accent
                 border.width: 2
                 opacity: 0.7
 
@@ -95,7 +96,7 @@ Item {
                     anchors.centerIn: parent
                     width: 6; height: 6
                     radius: 3
-                    color: "#814EFA"
+                    color: Theme.accent
                     opacity: 0.6
                 }
             }

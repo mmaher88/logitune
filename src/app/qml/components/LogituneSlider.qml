@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import Logitune
 
 // Logitune-styled horizontal slider
 // Purple fill (#814EFA), gray track, circular white thumb with purple border
@@ -31,14 +32,14 @@ Item {
                 text: root.label
                 font.pixelSize: 16
                 font.bold: true
-                color: "#444444"
+                color: Theme.text
                 width: parent.width - valueLabel.width
             }
             Text {
                 id: valueLabel
                 text: Math.round(slider.value) + "%"
                 font.pixelSize: 16
-                color: "#814EFA"
+                color: Theme.accent
                 font.bold: true
             }
         }
@@ -58,13 +59,13 @@ Item {
                 width:  slider.availableWidth
                 height: 4
                 radius: 2
-                color:  "#E1E2E3"
+                color:  Theme.inputBg
 
                 Rectangle {
                     width:  slider.visualPosition * parent.width
                     height: parent.height
                     radius: 2
-                    color:  "#814EFA"
+                    color:  Theme.accent
                 }
             }
 
@@ -74,8 +75,8 @@ Item {
                 width:  16
                 height: 16
                 radius: 8
-                color:  "#FFFFFF"
-                border.color: "#814EFA"
+                color:  Theme.background
+                border.color: Theme.accent
                 border.width: 5
 
                 // Focus ring

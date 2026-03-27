@@ -32,7 +32,7 @@ Item {
             font.pixelSize: Math.max(24, Math.min(36, root.width * 0.01 + root.height * 0.028))
             font.bold: true
             font.family: "Inter, sans-serif"
-            color: "#222425"
+            color: Theme.text
         }
 
         Item { Layout.fillWidth: true }
@@ -52,7 +52,7 @@ Item {
 
         Text {
             text: "|"
-            color: "#F0F0F0"
+            color: Theme.border
             font.pixelSize: 16
         }
 
@@ -114,7 +114,7 @@ Item {
                 text: DeviceModel.deviceName || "MX Master 3S"
                 font.pixelSize: 15
                 font.bold: true
-                color: "#222425"
+                color: Theme.text
             }
 
             // Battery chip — only show when device is connected
@@ -136,7 +136,7 @@ Item {
                 font.pixelSize: 14
                 font.letterSpacing: 1.5
                 font.bold: true
-                color: "#999999"
+                color: Theme.textSecondary
             }
 
             Text {

@@ -1,4 +1,5 @@
 import QtQuick
+import Logitune
 
 // Dark callout card showing an action assignment for one mouse button (Options+ style).
 // Default: dark gray card with white text.
@@ -62,7 +63,7 @@ Item {
             ctx.beginPath()
             ctx.moveTo(cardEdgeX, cardEdgeY)
             ctx.lineTo(hx, hy)
-            ctx.strokeStyle = root.selected ? "#814EFA" : "#BBBBBB"
+            ctx.strokeStyle = root.selected ? Theme.accent : "#BBBBBB"
             ctx.lineWidth = 2
             ctx.setLineDash([])
             ctx.stroke()
@@ -82,8 +83,8 @@ Item {
         implicitWidth:  Math.min(contentCol.implicitWidth + 24, 180)
         implicitHeight: contentCol.implicitHeight + 18
         radius: 8
-        color:  root.selected ? "#814EFA" : "#FFFFFF"
-        border.color: root.selected ? "#673EC8" : "#E8E8E8"
+        color:  root.selected ? Theme.accent : Theme.cardBg
+        border.color: root.selected ? Theme.accentHover : Theme.cardBorder
         border.width: 1
 
         Behavior on color        { ColorAnimation { duration: 150 } }
@@ -109,7 +110,7 @@ Item {
                 text: root.actionName
                 font.pixelSize: 12
                 font.weight: Font.DemiBold
-                color: root.selected ? "#FFFFFF" : (hoverHandler.hovered ? "#814EFA" : "#222425")
+                color: root.selected ? Theme.activeTabText : (hoverHandler.hovered ? Theme.accent : Theme.text)
                 width: Math.min(implicitWidth, 156)
                 elide: Text.ElideRight
 

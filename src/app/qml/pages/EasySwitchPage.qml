@@ -1,12 +1,13 @@
 import QtQuick
 import QtQuick.Controls
+import Logitune
 
 Item {
     id: root
 
     Rectangle {
         anchors.fill: parent
-        color: "#FFFFFF"
+        color: Theme.background
     }
 
     Column {
@@ -27,13 +28,13 @@ Item {
         Text {
             text: "Easy-Switch"
             font { pixelSize: 22; bold: true }
-            color: "#222425"
+            color: Theme.text
             anchors.horizontalCenter: parent.horizontalCenter
         }
         Text {
             text: "Switch between up to 3 devices"
             font.pixelSize: 13
-            color: "#999999"
+            color: Theme.textSecondary
             anchors.horizontalCenter: parent.horizontalCenter
         }
 
@@ -46,8 +47,8 @@ Item {
                 delegate: Rectangle {
                     width: 160; height: 100
                     radius: 12
-                    color: index === 0 ? Qt.rgba(0.506, 0.306, 0.980, 0.06) : "#FFFFFF"
-                    border.color: index === 0 ? "#814EFA" : "#F0F0F0"
+                    color: index === 0 ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.06) : Theme.cardBg
+                    border.color: index === 0 ? Theme.accent : Theme.border
                     border.width: index === 0 ? 3 : 1
 
                     Column {
@@ -57,13 +58,13 @@ Item {
                         Text {
                             text: (index + 1).toString()
                             font { pixelSize: 22; bold: true }
-                            color: index === 0 ? "#814EFA" : "#999999"
+                            color: index === 0 ? Theme.accent : Theme.textSecondary
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
                         Text {
                             text: index === 0 ? "Active" : "Available"
                             font.pixelSize: 11
-                            color: index === 0 ? "#814EFA" : "#999999"
+                            color: index === 0 ? Theme.accent : Theme.textSecondary
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
                         Text {
@@ -80,7 +81,7 @@ Item {
         Text {
             text: "Press the Easy-Switch button on your mouse to change channels"
             font.pixelSize: 11
-            color: "#999999"
+            color: Theme.textSecondary
             anchors.horizontalCenter: parent.horizontalCenter
         }
     }

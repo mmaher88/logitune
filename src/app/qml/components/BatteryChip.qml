@@ -8,13 +8,13 @@ Rectangle {
     width: chipRow.implicitWidth + 20
     height: 32
     radius: 16
-    color: "#FFFFFF"
+    color: Theme.cardBg
     visible: chip.level > 0
 
     layer.enabled: true
     layer.effect: null  // Shadow approximated with border for now
 
-    border.color: "#E8E8E8"
+    border.color: Theme.cardBorder
     border.width: 1
 
     // Drop shadow effect
@@ -39,7 +39,7 @@ Rectangle {
     readonly property string connType: DeviceModel.connectionType
 
     // Color: orange when <= 25%, green otherwise
-    readonly property color battColor: level <= 25 ? "#FFA414" : "#79E053"
+    readonly property color battColor: level <= 25 ? Theme.batteryWarning : Theme.batteryGreen
 
     // Battery icon based on stepped levels
     readonly property string battIcon: {
@@ -76,19 +76,19 @@ Rectangle {
 
             Rectangle {
                 width: 18; height: 10; radius: 1
-                color: chip.level >= 1 ? chip.battColor : "#E1E2E3"
+                color: chip.level >= 1 ? chip.battColor : Theme.inputBg
             }
             Rectangle {
                 width: 18; height: 10; radius: 1
-                color: chip.level > 25 ? chip.battColor : "#E1E2E3"
+                color: chip.level > 25 ? chip.battColor : Theme.inputBg
             }
             Rectangle {
                 width: 18; height: 10; radius: 1
-                color: chip.level > 50 ? chip.battColor : "#E1E2E3"
+                color: chip.level > 50 ? chip.battColor : Theme.inputBg
             }
             Rectangle {
                 width: 18; height: 10; radius: 1
-                color: chip.level > 75 ? chip.battColor : "#E1E2E3"
+                color: chip.level > 75 ? chip.battColor : Theme.inputBg
             }
             // Battery tip
             Rectangle {
@@ -110,7 +110,7 @@ Rectangle {
         Text {
             text: "\u26A1"
             font.pixelSize: 11
-            color: "#FFA414"
+            color: Theme.batteryWarning
             visible: chip.charging
         }
     }

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import Logitune
 
 // Keystroke capture field — click to enter capture mode,
 // displays combination as "Ctrl+Shift+A".
@@ -18,8 +19,8 @@ Item {
         id: field
         anchors.fill: parent
         radius: 8
-        color:   capturing ? "#F0EDFF" : "#FFFFFF"
-        border.color: capturing ? "#814EFA" : "#E1E2E3"
+        color:   capturing ? Theme.hoverBg : Theme.cardBg
+        border.color: capturing ? Theme.accent : Theme.inputBg
         border.width: capturing ? 2 : 1
 
         Behavior on border.color { ColorAnimation { duration: 120 } }
@@ -41,7 +42,7 @@ Item {
                 if (root.keystroke.length > 0) return root.keystroke
                 return "Click to assign"
             }
-            color: (field.capturing || root.keystroke.length === 0) ? "#AAAAAA" : "#222425"
+            color: (field.capturing || root.keystroke.length === 0) ? "#AAAAAA" : Theme.text
             font.pixelSize: 13
             elide: Text.ElideRight
         }
@@ -56,7 +57,7 @@ Item {
             }
             text: "\u00D7"
             font.pixelSize: 16
-            color: clearHover.hovered ? "#222425" : "#AAAAAA"
+            color: clearHover.hovered ? Theme.text : "#AAAAAA"
             visible: root.keystroke.length > 0 && !field.capturing
 
             HoverHandler { id: clearHover }
@@ -80,7 +81,7 @@ Item {
             width:  8
             height: 16
             radius: 2
-            color:  "#814EFA"
+            color:  Theme.accent
             visible: field.capturing
 
             SequentialAnimation on opacity {

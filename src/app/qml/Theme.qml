@@ -1,0 +1,31 @@
+pragma Singleton
+import QtQuick
+
+QtObject {
+    // Detect system dark mode — Qt.styleHints.colorScheme available in Qt 6.5+
+    readonly property bool dark: Qt.styleHints.colorScheme === Qt.ColorScheme.Dark
+
+    // Colors
+    readonly property color accent: dark ? "#00EAD0" : "#814EFA"
+    readonly property color accentHover: dark ? "#00C4AD" : "#673EC8"
+    readonly property color background: dark ? "#000000" : "#FFFFFF"
+    readonly property color surface: dark ? "#1A1A1C" : "#F5F5F5"
+    readonly property color text: dark ? "#FBFBFB" : "#222425"
+    readonly property color textSecondary: "#999999"
+    readonly property color border: dark ? "#333333" : "#F0F0F0"
+    readonly property color inputBg: dark ? "#333333" : "#E1E2E3"
+    readonly property color cardBg: dark ? "#222425" : "#FFFFFF"
+    readonly property color cardBorder: dark ? "#333333" : "#E8E8E8"
+    readonly property color hoverBg: dark ? "#2A2A2C" : "#F0EDFF"
+    readonly property color selectedBg: accent
+    readonly property color batteryGreen: "#79E053"
+    readonly property color batteryWarning: "#FFA414"
+
+    // Callout colors for Point & Scroll page
+    readonly property color calloutGradientTop: dark ? "#00EAD0" : "#A04EFA"
+    readonly property color calloutGradientBottom: dark ? "#00C4AD" : "#814EFA"
+
+    // Sidebar active tab
+    readonly property color activeTabBg: accent
+    readonly property color activeTabText: dark ? "#000000" : "#FFFFFF"
+}

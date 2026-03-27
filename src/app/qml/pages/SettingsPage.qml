@@ -11,7 +11,7 @@ Item {
         Text {
             text: "Settings"
             font { pixelSize: 22; bold: true }
-            color: "#222425"
+            color: Theme.text
         }
 
         // Device info section
@@ -22,38 +22,38 @@ Item {
             // Info rows
             Row {
                 width: parent.width
-                Text { text: "Device name"; width: 160; color: "#999999"; font.pixelSize: 13 }
-                Text { text: DeviceModel.deviceName || "MX Master 3S"; color: "#222425"; font.pixelSize: 13 }
+                Text { text: "Device name"; width: 160; color: Theme.textSecondary; font.pixelSize: 13 }
+                Text { text: DeviceModel.deviceName || "MX Master 3S"; color: Theme.text; font.pixelSize: 13 }
             }
             Row {
                 width: parent.width
-                Text { text: "Firmware version"; width: 160; color: "#999999"; font.pixelSize: 13 }
-                Text { text: "12.00.11"; color: "#222425"; font.pixelSize: 13 }
+                Text { text: "Firmware version"; width: 160; color: Theme.textSecondary; font.pixelSize: 13 }
+                Text { text: "12.00.11"; color: Theme.text; font.pixelSize: 13 }
             }
             Row {
                 width: parent.width
-                Text { text: "Serial number"; width: 160; color: "#999999"; font.pixelSize: 13 }
-                Text { text: "XXXX-XXXX"; color: "#222425"; font.pixelSize: 13 }
+                Text { text: "Serial number"; width: 160; color: Theme.textSecondary; font.pixelSize: 13 }
+                Text { text: "XXXX-XXXX"; color: Theme.text; font.pixelSize: 13 }
             }
             Row {
                 width: parent.width
-                Text { text: "Per-app profiles"; width: 160; color: "#999999"; font.pixelSize: 13 }
-                Text { text: "Active"; color: "#79E053"; font.pixelSize: 13 }
+                Text { text: "Per-app profiles"; width: 160; color: Theme.textSecondary; font.pixelSize: 13 }
+                Text { text: "Active"; color: Theme.batteryGreen; font.pixelSize: 13 }
             }
 
             // Separator
-            Rectangle { width: parent.width; height: 1; color: "#F0F0F0" }
+            Rectangle { width: parent.width; height: 1; color: Theme.border }
 
             // Reset button
             Rectangle {
                 width: 180; height: 40
                 radius: 4; color: "transparent"
-                border.color: "#F0F0F0"; border.width: 1
+                border.color: Theme.border; border.width: 1
 
                 Text {
                     anchors.centerIn: parent
                     text: "Reset to defaults"
-                    font.pixelSize: 13; color: "#999999"
+                    font.pixelSize: 13; color: Theme.textSecondary
                 }
 
                 MouseArea {

@@ -18,7 +18,7 @@ Rectangle {
         var w = (parent ? parent.width : 960) * 0.33
         return Math.max(360, Math.min(w, 478))
     }
-    color:  "#F5F5F5"
+    color:  Theme.surface
     radius: 12
 
     // Drop shadow illusion via a slightly larger, lighter rect behind
@@ -55,7 +55,7 @@ Rectangle {
                 }
                 font.pixelSize: 16
                 font.bold: true
-                color: "#222425"
+                color: Theme.text
                 Layout.fillWidth: true
             }
 
@@ -63,7 +63,7 @@ Rectangle {
             Rectangle {
                 width: 28; height: 28
                 radius: 14
-                color: closeHover.hovered ? "#E1E2E3" : "transparent"
+                color: closeHover.hovered ? Theme.inputBg : "transparent"
                 Behavior on color { ColorAnimation { duration: 100 } }
 
                 Text {
@@ -85,7 +85,7 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             height: 1
-            color: "#F0F0F0"
+            color: Theme.border
         }
 
         // ── Per-type content ────────────────────────────────────────────────
@@ -122,7 +122,7 @@ Rectangle {
                     text: "Scroll direction"
                     font.pixelSize: 16
                     font.bold: true
-                    color: "#444444"
+                    color: Theme.text
                     bottomPadding: 14
                 }
 
@@ -145,7 +145,7 @@ Rectangle {
                         leftPadding: naturalRadio.indicator.width + naturalRadio.spacing
                         text: naturalRadio.text
                         font.pixelSize: 12
-                        color: "#222425"
+                        color: Theme.text
                         verticalAlignment: Text.AlignVCenter
                     }
 
@@ -153,7 +153,7 @@ Rectangle {
                         implicitWidth:  18
                         implicitHeight: 18
                         radius: 9
-                        border.color: naturalRadio.checked ? "#814EFA" : "#AAAAAA"
+                        border.color: naturalRadio.checked ? Theme.accent : "#AAAAAA"
                         border.width: 2
                         color: "transparent"
                         anchors.verticalCenter: parent.verticalCenter
@@ -162,7 +162,7 @@ Rectangle {
                             anchors.centerIn: parent
                             width: 8; height: 8
                             radius: 4
-                            color: "#814EFA"
+                            color: Theme.accent
                             visible: naturalRadio.checked
                         }
                     }
@@ -178,7 +178,7 @@ Rectangle {
                         leftPadding: standardRadio.indicator.width + standardRadio.spacing
                         text: standardRadio.text
                         font.pixelSize: 12
-                        color: "#222425"
+                        color: Theme.text
                         verticalAlignment: Text.AlignVCenter
                     }
 
@@ -186,7 +186,7 @@ Rectangle {
                         implicitWidth:  18
                         implicitHeight: 18
                         radius: 9
-                        border.color: standardRadio.checked ? "#814EFA" : "#AAAAAA"
+                        border.color: standardRadio.checked ? Theme.accent : "#AAAAAA"
                         border.width: 2
                         color: "transparent"
                         anchors.verticalCenter: parent.verticalCenter
@@ -195,7 +195,7 @@ Rectangle {
                             anchors.centerIn: parent
                             width: 8; height: 8
                             radius: 4
-                            color: "#814EFA"
+                            color: Theme.accent
                             visible: standardRadio.checked
                         }
                     }
@@ -210,7 +210,7 @@ Rectangle {
                     text: "Smooth scrolling"
                     font.pixelSize: 16
                     font.bold: true
-                    color: "#444444"
+                    color: Theme.text
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - smoothToggle.width
                 }
@@ -239,7 +239,7 @@ Rectangle {
                         text: "SmartShift"
                         font.pixelSize: 16
                         font.bold: true
-                        color: "#444444"
+                        color: Theme.text
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.width - smartShiftToggle.width
                     }
@@ -299,7 +299,7 @@ Rectangle {
                     text: "Invert direction"
                     font.pixelSize: 16
                     font.bold: true
-                    color: "#444444"
+                    color: Theme.text
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - invertToggle.width
                 }
@@ -335,14 +335,14 @@ Rectangle {
                         text: "DPI"
                         font.pixelSize: 16
                         font.bold: true
-                        color: "#222425"
+                        color: Theme.text
                     }
                     Item { Layout.fillWidth: true }
                     Text {
                         text: dpiSlider.value.toFixed(0)
                         font.pixelSize: 16
                         font.bold: true
-                        color: "#814EFA"
+                        color: Theme.accent
                     }
                 }
 
@@ -368,13 +368,13 @@ Rectangle {
                         width: dpiSlider.availableWidth
                         height: 4
                         radius: 2
-                        color: "#E1E2E3"
+                        color: Theme.inputBg
 
                         Rectangle {
                             width: dpiSlider.visualPosition * parent.width
                             height: parent.height
                             radius: 2
-                            color: "#814EFA"
+                            color: Theme.accent
                         }
                     }
 
@@ -383,8 +383,8 @@ Rectangle {
                         y: dpiSlider.topPadding + dpiSlider.availableHeight / 2 - height / 2
                         width: 16; height: 16
                         radius: 8
-                        color: "#FFFFFF"
-                        border.color: "#814EFA"
+                        color: Theme.background
+                        border.color: Theme.accent
                         border.width: 5
                     }
                 }
