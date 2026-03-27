@@ -8,6 +8,8 @@
 #include <QMenu>
 #include <QAction>
 #include <QCursor>
+#include <QJSEngine>
+#include <QJSValue>
 #include <QQmlContext>
 #include <QQuickWindow>
 #include <QStandardPaths>
@@ -464,8 +466,14 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
 
     // Register singletons — provide existing instances
-    // Pass dark mode flag to QML
-    engine.rootContext()->setContextProperty("systemDarkMode", isDark);
+    // Expose isDark to QML — singletons can't read context properties,
+    // so we register a singleton factory that returns a QJSValue
+    qmlRegisterSingletonType("Logitune", 1, 0, "ThemeBridge",
+        [isDark](QQmlEngine *, QJSEngine *jsEngine) -> QJSValue {
+            QJSValue obj = jsEngine->newObject();
+            obj.setProperty("isDark", isDark);
+            return obj;
+        });
 
     qmlRegisterSingletonInstance("Logitune", 1, 0, "DeviceModel",  &deviceModel);
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ButtonModel",  &buttonModel);

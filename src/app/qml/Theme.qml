@@ -2,9 +2,10 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    // Detect system dark mode — Qt.styleHints.colorScheme available in Qt 6.5+
-    // Dark mode detected from C++ QApplication::palette() and passed via context property
-    readonly property bool dark: systemDarkMode
+    id: theme
+
+    // Dark mode flag — set from C++ via ThemeBridge context property
+    readonly property bool dark: ThemeBridge.isDark
 
     // Colors
     readonly property color accent: dark ? "#00EAD0" : "#814EFA"
