@@ -792,13 +792,13 @@ void DeviceManager::setDPI(int value)
     QMutex *mutex = &m_hidrawMutex;
 
     QtConcurrent::run([transport, features, devIdx, value, mutex]() {
-        QMutexLocker lock(mutex);
+        if (!mutex->tryLock(200)) return; // skip if another write is in progress
         auto params = hidpp::features::AdjustableDPI::buildSetDPI(value);
         features->call(transport, devIdx,
                        hidpp::FeatureId::AdjustableDPI,
                        hidpp::features::AdjustableDPI::kFnSetSensorDpi,
                        params);
-        qDebug() << "[DeviceManager] DPI set to" << value;
+        mutex->unlock();
     });
 }
 
@@ -829,12 +829,13 @@ void DeviceManager::setSmartShift(bool enabled, int threshold)
     uint8_t ad = static_cast<uint8_t>(threshold);
 
     QtConcurrent::run([transport, features, devIdx, mode, ad, mutex]() {
-        QMutexLocker lock(mutex);
+        if (!mutex->tryLock(200)) return; // skip if busy
         auto params = hidpp::features::SmartShift::buildSetConfig(mode, ad);
         features->call(transport, devIdx,
                        hidpp::FeatureId::SmartShift,
                        hidpp::features::SmartShift::kFnSetStatus,
                        std::span<const uint8_t>(params));
+        mutex->unlock();
         qDebug() << "[DeviceManager] SmartShift set: mode=" << mode << "autoDisengage=" << ad;
     });
 }
@@ -857,12 +858,13 @@ void DeviceManager::setScrollConfig(bool hiRes, bool invert)
     QMutex *mutex = &m_hidrawMutex;
 
     QtConcurrent::run([transport, features, devIdx, hiRes, invert, currentMode, mutex]() {
-        QMutexLocker lock(mutex);
+        if (!mutex->tryLock(200)) return; // skip if busy
         auto params = hidpp::features::HiResWheel::buildSetWheelMode(currentMode, hiRes, invert);
         features->call(transport, devIdx,
                        hidpp::FeatureId::HiResWheel,
                        hidpp::features::HiResWheel::kFnSetWheelMode,
                        std::span<const uint8_t>(params));
+        mutex->unlock();
         qDebug() << "[DeviceManager] Scroll set: hiRes=" << hiRes << "invert=" << invert;
     });
 }
@@ -880,12 +882,13 @@ void DeviceManager::divertButton(uint16_t controlId, bool divert)
     QMutex *mutex = &m_hidrawMutex;
 
     QtConcurrent::run([transport, features, devIdx, controlId, divert, mutex]() {
-        QMutexLocker lock(mutex);
+        if (!mutex->tryLock(200)) return; // skip if busy
         auto params = hidpp::features::ReprogControls::buildSetDivert(controlId, divert);
         features->call(transport, devIdx,
                        hidpp::FeatureId::ReprogControlsV4,
                        hidpp::features::ReprogControls::kFnSetControlReporting,
                        std::span<const uint8_t>(params));
+        mutex->unlock();
         qDebug() << "[DeviceManager] button" << Qt::hex << controlId
                  << (divert ? "diverted" : "undiverted");
     });
@@ -910,7 +913,7 @@ void DeviceManager::setThumbWheelMode(const QString &mode)
     QMutex *mutex = &m_hidrawMutex;
 
     QtConcurrent::run([transport, features, devIdx, divert, mutex]() {
-        QMutexLocker lock(mutex);
+        if (!mutex->tryLock(200)) return; // skip if busy
         // ThumbWheel setReporting: params[0]=divert, params[1]=invert
         std::array<uint8_t, 2> params = {
             static_cast<uint8_t>(divert ? 0x01 : 0x00),
@@ -920,6 +923,7 @@ void DeviceManager::setThumbWheelMode(const QString &mode)
                        hidpp::FeatureId::ThumbWheel,
                        0x02, // setReporting
                        std::span<const uint8_t>(params));
+        mutex->unlock();
         qDebug() << "[DeviceManager] thumb wheel" << (divert ? "diverted" : "native");
     });
 }

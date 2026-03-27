@@ -12,7 +12,7 @@ Transport::Transport(HidrawDevice *device, QObject *parent)
 
 std::optional<Report> Transport::sendRequest(const Report &request, int timeoutMs)
 {
-    return trySend(request, timeoutMs, /*retriesLeft=*/3);
+    return trySend(request, timeoutMs, /*retriesLeft=*/1);
 }
 
 std::optional<Report> Transport::trySend(const Report &request, int timeoutMs, int retriesLeft)
