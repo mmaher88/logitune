@@ -7,6 +7,7 @@
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QAction>
+#include <QCursor>
 #include <QQuickWindow>
 #include <QStandardPaths>
 #include <QDebug>
@@ -279,11 +280,15 @@ int main(int argc, char *argv[])
         });
 
     // 5. Diverted button press → profile action lookup → execute
+    // Gesture state tracking
+    static QPoint gestureStartPos;
+    static bool gestureActive = false;
+    static constexpr int kGestureThreshold = 50; // pixels
+
     QObject::connect(&deviceManager, &logitune::DeviceManager::divertedButtonPressed,
         [&buttonModel, &actionModel, &actionExecutor, &deviceManager](uint16_t controlId, bool pressed) {
-            if (!pressed) return;
 
-            // Map controlId to button index (from real device enumeration)
+            // Map controlId to button index
             static const std::unordered_map<uint16_t, int> kControlMap = {
                 {0x0050, 0}, {0x0051, 1}, {0x0052, 2},
                 {0x0053, 3}, {0x0056, 4}, {0x00C3, 5}, {0x00C4, 6}
@@ -293,8 +298,35 @@ int main(int argc, char *argv[])
             if (it == kControlMap.end()) return;
             int idx = it->second;
 
-            // Read the action from ButtonModel (updated by the UI)
             QString actionType = buttonModel.actionTypeForButton(idx);
+
+            // Handle gesture button release — resolve swipe direction
+            if (!pressed && actionType == "gesture-trigger" && gestureActive) {
+                gestureActive = false;
+                QPoint end = QCursor::pos();
+                int dx = end.x() - gestureStartPos.x();
+                int dy = end.y() - gestureStartPos.y();
+
+                QString dir;
+                if (std::abs(dx) > kGestureThreshold || std::abs(dy) > kGestureThreshold) {
+                    if (std::abs(dx) > std::abs(dy))
+                        dir = dx > 0 ? "right" : "left";
+                    else
+                        dir = dy > 0 ? "down" : "up";
+                } else {
+                    dir = "click";
+                }
+
+                auto git = gestureKeystrokes.find(dir);
+                if (git != gestureKeystrokes.end() && !git.value().isEmpty()) {
+                    qDebug() << "[main] gesture" << dir << "→" << git.value();
+                    actionExecutor.injectKeystroke(git.value());
+                }
+                return;
+            }
+
+            if (!pressed) return; // ignore release for non-gesture buttons
+
             QString actionName = buttonModel.actionNameForButton(idx);
 
             if (actionType == "default") return;
@@ -312,13 +344,9 @@ int main(int argc, char *argv[])
                 deviceManager.setSmartShift(!current, deviceManager.smartShiftThreshold());
                 qDebug() << "[main] SmartShift toggled to" << !current;
             } else if (actionType == "gesture-trigger") {
-                // No hold+swipe on MX Master 3S (GestureV2 not available).
-                // Simple click triggers the "click" gesture action.
-                auto it = gestureKeystrokes.find("click");
-                if (it != gestureKeystrokes.end() && !it.value().isEmpty()) {
-                    qDebug() << "[main] gesture click →" << it.value();
-                    actionExecutor.injectKeystroke(it.value());
-                }
+                // Record start position — direction resolved on release (above)
+                gestureStartPos = QCursor::pos();
+                gestureActive = true;
             } else if (actionType == "app-launch" && !payload.isEmpty()) {
                 actionExecutor.launchApp(payload);
             }
