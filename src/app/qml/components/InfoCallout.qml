@@ -14,8 +14,8 @@ Rectangle {
     signal calloutClicked(string type)
 
     // ── Geometry / Appearance ───────────────────────────────────────────────
-    implicitWidth:  contentCol.implicitWidth  + 24
-    implicitHeight: contentCol.implicitHeight + 20
+    implicitWidth:  Math.max(contentCol.implicitWidth + 32, 180)
+    implicitHeight: contentCol.implicitHeight + 24
 
     // Gradient from top (#A04EFA) to bottom (#814EFA)
     gradient: Gradient {
@@ -42,12 +42,12 @@ Rectangle {
             top:    parent.top
             margins: 12
         }
-        spacing: 2
+        spacing: 4
 
         // Title
         Text {
             text: root.title
-            font.pixelSize: 12
+            font.pixelSize: 14
             font.bold: true
             color: "#FFFFFF"
             width: parent.width
@@ -59,8 +59,8 @@ Rectangle {
             model: root.settings
             delegate: Text {
                 text: modelData
-                font.pixelSize: 11
-                lineHeight: 1.2
+                font.pixelSize: 13
+                lineHeight: 1.4
                 lineHeightMode: Text.ProportionalHeight
                 color: "#FFFFFF"
                 opacity: 0.85
