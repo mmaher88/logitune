@@ -88,6 +88,8 @@ int main(int argc, char *argv[])
             return {logitune::ButtonAction::Default, {}};
         if (actionType == QStringLiteral("gesture-trigger"))
             return {logitune::ButtonAction::GestureTrigger, {}};
+        if (actionType == QStringLiteral("smartshift-toggle"))
+            return {logitune::ButtonAction::Keystroke, QStringLiteral("smartshift-toggle")};
         if (actionType == QStringLiteral("keystroke")) {
             QString payload = actionModel.payloadForName(actionName);
             if (payload.isEmpty()) payload = actionName; // actionName might already be a keystroke
@@ -244,8 +246,13 @@ int main(int argc, char *argv[])
                     aName = QStringLiteral("Gestures");
                     break;
                 case logitune::ButtonAction::Keystroke:
-                    aType = QStringLiteral("keystroke");
-                    aName = buttonActionToName(ba);
+                    if (ba.payload == QStringLiteral("smartshift-toggle")) {
+                        aType = QStringLiteral("smartshift-toggle");
+                        aName = QStringLiteral("Shift wheel mode");
+                    } else {
+                        aType = QStringLiteral("keystroke");
+                        aName = buttonActionToName(ba);
+                    }
                     break;
                 case logitune::ButtonAction::AppLaunch:
                     aType = QStringLiteral("app-launch");
@@ -257,6 +264,8 @@ int main(int argc, char *argv[])
                     break;
                 }
                 buttonModel.setAction(i, aName, aType);
+                if (needsDivert)
+                    qDebug() << "[main] diverting button" << i << "CID" << Qt::hex << kProfileButtonCids[i] << "type:" << aType;
                 deviceManager.divertButton(kProfileButtonCids[i], needsDivert);
             }
 
