@@ -642,7 +642,25 @@ void DeviceManager::handleNotification(const hidpp::Report &report)
         }
     }
 
-    // SmartShift notification — physical button toggled ratchet/freespin
+    // HiResWheel ratchet notification — physical SmartShift button toggled
+    if (m_features && m_features->hasFeature(hidpp::FeatureId::HiResWheel)) {
+        auto idx = m_features->featureIndex(hidpp::FeatureId::HiResWheel);
+        if (idx.has_value() && report.featureIndex == *idx && report.functionId == 1) {
+            // Ratchet switch event: params[0] = 0 (freespin) or 1 (ratchet)
+            bool ratchet = (report.params[0] & 0x01) != 0;
+            if (m_scrollRatchet != ratchet) {
+                m_scrollRatchet = ratchet;
+                // Ratchet ON = SmartShift active, Ratchet OFF = freespin
+                m_smartShiftEnabled = ratchet;
+                qDebug() << "[DeviceManager] SmartShift button:" << (ratchet ? "ratchet" : "freespin");
+                emit smartShiftChanged();
+                emit scrollConfigChanged();
+            }
+            return;
+        }
+    }
+
+    // SmartShift feature notification (if device sends one)
     if (m_features && m_features->hasFeature(hidpp::FeatureId::SmartShift)) {
         auto idx = m_features->featureIndex(hidpp::FeatureId::SmartShift);
         if (idx.has_value() && report.featureIndex == *idx) {
