@@ -19,6 +19,13 @@ Rectangle {
     signal actionSelected(string actionName, string actionType)
     signal wheelModeSelected(string mode)  // "scroll", "zoom", "volume"
 
+    // Counter to force gesture action name re-evaluation
+    property int _gestureRefresh: 0
+    Connections {
+        target: DeviceModel
+        function onGestureChanged() { root._gestureRefresh++ }
+    }
+
     // Wheel mode options
     readonly property var wheelModes: [
         { name: "Horizontal scroll", mode: "scroll",  desc: "Native horizontal scrolling" },
@@ -527,7 +534,7 @@ Rectangle {
                         border.color: gestureRowHover.hovered ? "#D4C5FF" : "#F0F0F0"
                         border.width: 1
 
-                        readonly property string actionName: DeviceModel.gestureActionName(modelData.key)
+                        readonly property string actionName: root._gestureRefresh >= 0 ? DeviceModel.gestureActionName(modelData.key) : ""
 
                         RowLayout {
                             anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
