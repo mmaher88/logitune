@@ -3,7 +3,11 @@ import QtQuick
 
 QtObject {
     // Detect system dark mode — Qt.styleHints.colorScheme available in Qt 6.5+
-    readonly property bool dark: Qt.styleHints.colorScheme === Qt.ColorScheme.Dark
+    // Detect dark mode: check if the system window background is dark
+    // Works across all Qt 6 versions and desktop environments
+    readonly property color _windowBg: Qt.application && Qt.application.palette
+        ? Qt.application.palette.window : "#FFFFFF"
+    readonly property bool dark: (_windowBg.r * 0.299 + _windowBg.g * 0.587 + _windowBg.b * 0.114) < 0.5
 
     // Colors
     readonly property color accent: dark ? "#00EAD0" : "#814EFA"
