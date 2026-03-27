@@ -14,7 +14,7 @@ Rectangle {
     signal calloutClicked(string type)
 
     // ── Geometry / Appearance ───────────────────────────────────────────────
-    implicitWidth:  Math.max(contentCol.implicitWidth + 32, 180)
+    implicitWidth:  Math.min(Math.max(contentCol.implicitWidth + 32, 160), 220)
     implicitHeight: contentCol.implicitHeight + 24
 
     // Gradient from top (#A04EFA) to bottom (#814EFA)
