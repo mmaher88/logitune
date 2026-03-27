@@ -4,7 +4,7 @@ import QtQuick
 QtObject {
     // Detect system dark mode — Qt.styleHints.colorScheme available in Qt 6.5+
     // Dark mode detected from C++ QApplication::palette() and passed via context property
-    readonly property bool dark: typeof systemDarkMode !== "undefined" ? systemDarkMode : false
+    readonly property bool dark: systemDarkMode
 
     // Colors
     readonly property color accent: dark ? "#00EAD0" : "#814EFA"
