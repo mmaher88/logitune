@@ -1,11 +1,36 @@
 #include "DeviceModel.h"
+#include "interfaces/IDevice.h"
 #include <QDebug>
+#include <QTimer>
+#include <QVariantMap>
 
 namespace logitune {
 
 DeviceModel::DeviceModel(QObject *parent)
     : QObject(parent)
 {
+}
+
+void DeviceModel::setDesktopIntegration(IDesktopIntegration *desktop)
+{
+    m_desktop = desktop;
+}
+
+void DeviceModel::blockGlobalShortcuts(bool block)
+{
+    if (m_desktop)
+        m_desktop->blockGlobalShortcuts(block);
+}
+
+QVariantList DeviceModel::runningApplications() const
+{
+    if (m_desktop) {
+        auto result = m_desktop->runningApplications();
+        qDebug() << "[DeviceModel] runningApplications:" << result.size() << "apps";
+        return result;
+    }
+    qDebug() << "[DeviceModel] runningApplications: no desktop integration";
+    return {};
 }
 
 void DeviceModel::setDeviceManager(DeviceManager *dm)
@@ -22,15 +47,6 @@ void DeviceModel::setDeviceManager(DeviceManager *dm)
             this, &DeviceModel::batteryChargingChanged);
     connect(dm, &DeviceManager::connectionTypeChanged,
             this, &DeviceModel::connectionTypeChanged);
-    connect(dm, &DeviceManager::currentDPIChanged,
-            this, &DeviceModel::currentDPIChanged);
-    connect(dm, &DeviceManager::smartShiftChanged,
-            this, [this]() {
-                emit smartShiftEnabledChanged();
-                emit smartShiftThresholdChanged();
-            });
-    connect(dm, &DeviceManager::scrollConfigChanged,
-            this, &DeviceModel::scrollConfigChanged);
 }
 
 bool DeviceModel::deviceConnected() const
@@ -53,6 +69,14 @@ bool DeviceModel::batteryCharging() const
     return m_dm ? m_dm->batteryCharging() : false;
 }
 
+QString DeviceModel::batteryStatusText() const
+{
+    QString text = QStringLiteral("Battery: %1%").arg(batteryLevel());
+    if (batteryCharging())
+        text += QStringLiteral(" (charging)");
+    return text;
+}
+
 QString DeviceModel::connectionType() const
 {
     return m_dm ? m_dm->connectionType() : QString();
@@ -60,7 +84,8 @@ QString DeviceModel::connectionType() const
 
 int DeviceModel::currentDPI() const
 {
-    return m_dm ? m_dm->currentDPI() : m_currentDPI;
+    if (m_hasDisplayValues) return m_displayDpi;
+    return m_dm ? m_dm->currentDPI() : 1000;
 }
 
 int DeviceModel::minDPI() const
@@ -80,12 +105,14 @@ int DeviceModel::dpiStep() const
 
 bool DeviceModel::smartShiftEnabled() const
 {
-    return m_dm ? m_dm->smartShiftEnabled() : m_smartShiftEnabled;
+    if (m_hasDisplayValues) return m_displaySmartShiftEnabled;
+    return m_dm ? m_dm->smartShiftEnabled() : true;
 }
 
 int DeviceModel::smartShiftThreshold() const
 {
-    return m_dm ? m_dm->smartShiftThreshold() : m_smartShiftThreshold;
+    if (m_hasDisplayValues) return m_displaySmartShiftThreshold;
+    return m_dm ? m_dm->smartShiftThreshold() : 128;
 }
 
 QString DeviceModel::activeProfileName() const
@@ -93,48 +120,196 @@ QString DeviceModel::activeProfileName() const
     return m_activeProfileName;
 }
 
+QString DeviceModel::frontImage() const
+{
+    if (m_dm && m_dm->activeDevice())
+        return m_dm->activeDevice()->frontImagePath();
+    return QStringLiteral("qrc:/Logitune/qml/assets/mx-master-3s.png");
+}
+
+QString DeviceModel::sideImage() const
+{
+    if (m_dm && m_dm->activeDevice())
+        return m_dm->activeDevice()->sideImagePath();
+    return QStringLiteral("qrc:/Logitune/qml/assets/mx-master-3s-side.png");
+}
+
+QString DeviceModel::backImage() const
+{
+    if (m_dm && m_dm->activeDevice())
+        return m_dm->activeDevice()->backImagePath();
+    return QStringLiteral("qrc:/Logitune/qml/assets/mx-master-3s-back.png");
+}
+
+QVariantList DeviceModel::buttonHotspots() const
+{
+    QVariantList result;
+    if (!m_dm || !m_dm->activeDevice())
+        return result;
+
+    const auto hotspots = m_dm->activeDevice()->buttonHotspots();
+    const auto controls = m_dm->activeDevice()->controls();
+
+    // Build a lookup from buttonIndex -> ControlDescriptor
+    QMap<int, ControlDescriptor> controlMap;
+    for (const auto &ctrl : controls)
+        controlMap[ctrl.buttonIndex] = ctrl;
+
+    for (const auto &hs : hotspots) {
+        QVariantMap entry;
+        entry[QStringLiteral("buttonId")]       = hs.buttonIndex;
+        entry[QStringLiteral("hotspotXPct")]     = hs.xPct;
+        entry[QStringLiteral("hotspotYPct")]     = hs.yPct;
+        entry[QStringLiteral("side")]            = hs.side;
+        entry[QStringLiteral("labelOffsetYPct")] = hs.labelOffsetYPct;
+
+        // Merge control descriptor data
+        auto it = controlMap.find(hs.buttonIndex);
+        if (it != controlMap.end()) {
+            entry[QStringLiteral("buttonLabel")]    = it->defaultName;
+            entry[QStringLiteral("actionDefault")]  = it->defaultName;  // human-readable fallback
+            entry[QStringLiteral("configurable")]   = it->configurable;
+        } else {
+            entry[QStringLiteral("buttonLabel")]    = QStringLiteral("Button %1").arg(hs.buttonIndex);
+            entry[QStringLiteral("actionDefault")]  = QStringLiteral("default");
+            entry[QStringLiteral("configurable")]   = false;
+        }
+
+        result.append(entry);
+    }
+    return result;
+}
+
+QVariantList DeviceModel::scrollHotspots() const
+{
+    QVariantList result;
+    if (!m_dm || !m_dm->activeDevice())
+        return result;
+
+    const auto hotspots = m_dm->activeDevice()->scrollHotspots();
+    for (const auto &hs : hotspots) {
+        QVariantMap entry;
+        entry[QStringLiteral("buttonIndex")]     = hs.buttonIndex;
+        entry[QStringLiteral("xPct")]            = hs.xPct;
+        entry[QStringLiteral("yPct")]            = hs.yPct;
+        entry[QStringLiteral("side")]            = hs.side;
+        entry[QStringLiteral("labelOffsetYPct")] = hs.labelOffsetYPct;
+        result.append(entry);
+    }
+    return result;
+}
+
+QVariantList DeviceModel::controlDescriptors() const
+{
+    QVariantList result;
+    if (!m_dm || !m_dm->activeDevice())
+        return result;
+
+    const auto controls = m_dm->activeDevice()->controls();
+    for (const auto &ctrl : controls) {
+        QVariantMap entry;
+        entry[QStringLiteral("buttonId")]      = ctrl.buttonIndex;
+        entry[QStringLiteral("buttonName")]    = ctrl.defaultName;
+        entry[QStringLiteral("actionDefault")] = ctrl.defaultActionType;
+        entry[QStringLiteral("configurable")]  = ctrl.configurable;
+        result.append(entry);
+    }
+    return result;
+}
+
+int DeviceModel::easySwitchSlots() const
+{
+    if (m_dm && m_dm->activeDevice())
+        return m_dm->activeDevice()->easySwitchSlots();
+    return 3;
+}
+
+QString DeviceModel::deviceSerial() const
+{
+    if (m_dm)
+        return m_dm->deviceSerial();
+    return QStringLiteral("Unknown");
+}
+
+int DeviceModel::activeSlot() const
+{
+    if (!m_dm || !m_dm->deviceConnected())
+        return -1;
+    // Use ChangeHost feature (0x1814) for real Easy-Switch channel
+    int host = m_dm->currentHost();
+    if (host >= 0)
+        return host + 1;  // 0-based → 1-based for display
+    return -1;  // unknown
+}
+
+bool DeviceModel::isSlotPaired(int slot) const
+{
+    if (!m_dm) return false;
+    return m_dm->isHostPaired(slot - 1);  // 1-based → 0-based
+}
+
+void DeviceModel::setDisplayValues(int dpi, bool smartShiftEnabled, int smartShiftThreshold,
+                                    bool scrollHiRes, bool scrollInvert, const QString &thumbWheelMode)
+{
+    m_displayDpi = dpi;
+    m_displaySmartShiftEnabled = smartShiftEnabled;
+    m_displaySmartShiftThreshold = smartShiftThreshold;
+    m_displayScrollHiRes = scrollHiRes;
+    m_displayScrollInvert = scrollInvert;
+    m_displayThumbWheelMode = thumbWheelMode;
+    m_hasDisplayValues = true;
+    emit settingsReloaded();
+}
+
 void DeviceModel::setDPI(int value)
 {
-    if (m_dm) m_dm->setDPI(value);
+    emit dpiChangeRequested(value);
 }
 
 void DeviceModel::setSmartShift(bool enabled, int threshold)
 {
-    if (m_dm) m_dm->setSmartShift(enabled, threshold);
+    emit smartShiftChangeRequested(enabled, threshold);
 }
 
 bool DeviceModel::scrollHiRes() const
 {
+    if (m_hasDisplayValues) return m_displayScrollHiRes;
     return m_dm ? m_dm->scrollHiRes() : false;
 }
 
 bool DeviceModel::scrollInvert() const
 {
+    if (m_hasDisplayValues) return m_displayScrollInvert;
     return m_dm ? m_dm->scrollInvert() : false;
 }
 
 void DeviceModel::setScrollConfig(bool hiRes, bool invert)
 {
-    if (m_dm) m_dm->setScrollConfig(hiRes, invert);
+    emit scrollConfigChangeRequested(hiRes, invert);
 }
 
 QString DeviceModel::thumbWheelMode() const
 {
+    if (m_hasDisplayValues) return m_displayThumbWheelMode;
     return m_dm ? m_dm->thumbWheelMode() : "scroll";
 }
 
 void DeviceModel::setThumbWheelMode(const QString &mode)
 {
-    if (m_dm) {
-        m_dm->setThumbWheelMode(mode);
-        emit thumbWheelModeChanged();
-    }
+    emit thumbWheelModeChangeRequested(mode);
 }
 
 void DeviceModel::setGestureAction(const QString &direction, const QString &actionName, const QString &keystroke)
 {
     m_gestures[direction] = qMakePair(actionName, keystroke);
     emit gestureChanged();
+    emit userGestureChanged(direction, actionName, keystroke);
+}
+
+void DeviceModel::loadGesturesFromProfile(const QMap<QString, QPair<QString, QString>> &gestures)
+{
+    m_gestures = gestures;
+    emit gestureChanged();  // QML re-reads display, but no save trigger
 }
 
 QString DeviceModel::gestureActionName(const QString &direction) const
@@ -154,30 +329,23 @@ void DeviceModel::resetAllProfiles()
     qDebug() << "[DeviceModel] resetAllProfiles requested";
 }
 
-void DeviceModel::setCurrentDPI(int dpi)
-{
-    if (m_currentDPI == dpi) return;
-    m_currentDPI = dpi;
-    emit currentDPIChanged();
-}
-
-void DeviceModel::setSmartShiftState(bool enabled, int threshold)
-{
-    if (m_smartShiftEnabled != enabled) {
-        m_smartShiftEnabled = enabled;
-        emit smartShiftEnabledChanged();
-    }
-    if (m_smartShiftThreshold != threshold) {
-        m_smartShiftThreshold = threshold;
-        emit smartShiftThresholdChanged();
-    }
-}
-
 void DeviceModel::setActiveProfileName(const QString &name)
 {
     if (m_activeProfileName == name) return;
     m_activeProfileName = name;
     emit activeProfileNameChanged();
+}
+
+QString DeviceModel::activeWmClass() const
+{
+    return m_activeWmClass;
+}
+
+void DeviceModel::setActiveWmClass(const QString &wmClass)
+{
+    if (m_activeWmClass == wmClass) return;
+    m_activeWmClass = wmClass;
+    emit activeWmClassChanged();
 }
 
 } // namespace logitune

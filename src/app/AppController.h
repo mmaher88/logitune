@@ -76,9 +76,10 @@ private:
     const IDevice *m_currentDevice = nullptr;
 
     // Gesture state
-    int  m_gestureTotalDx = 0;
-    int  m_gestureTotalDy = 0;
-    bool m_gestureActive  = false;
+    int      m_gestureTotalDx = 0;
+    int      m_gestureTotalDy = 0;
+    bool     m_gestureActive  = false;
+    uint16_t m_gestureControlId = 0;
     static constexpr int kGestureThreshold = 50;
 
     // Thumb wheel accumulator

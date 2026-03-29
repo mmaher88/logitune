@@ -57,7 +57,7 @@ Item {
                 LogituneToggle {
                     id: darkToggle
                     checked: Theme.dark
-                    onCheckedChanged: Theme.dark = checked
+                    onToggled: Theme.dark = checked
                 }
             }
 

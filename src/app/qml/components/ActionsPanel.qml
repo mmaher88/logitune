@@ -19,6 +19,21 @@ Rectangle {
     signal actionSelected(string actionName, string actionType)
     signal wheelModeSelected(string mode)  // "scroll", "zoom", "volume"
 
+    // True when the current action is a custom keystroke (not a predefined action)
+    readonly property bool isCustomKeystroke: currentActionType === "keystroke"
+        && currentAction !== "" && currentAction !== "Keyboard shortcut"
+        && !_predefinedNames.has(currentAction)
+    property var _predefinedNames: new Set()
+
+    Component.onCompleted: {
+        var s = new Set()
+        for (var i = 0; i < ActionModel.rowCount(); i++) {
+            var idx = ActionModel.index(i, 0)
+            s.add(ActionModel.data(idx, 0x101)) // NameRole = Qt::UserRole+1 = 257
+        }
+        _predefinedNames = s
+    }
+
     // Counter to force gesture action name re-evaluation
     property int _gestureRefresh: 0
     Connections {
@@ -366,7 +381,9 @@ Rectangle {
                 visible: matchesSearch
                 height: matchesSearch ? rowRect.height : 0
 
+                // Select matching action, or highlight "Keyboard shortcut" for custom keystrokes
                 readonly property bool isSelected: name === root.currentAction
+                    || (name === "Keyboard shortcut" && root.isCustomKeystroke)
 
                 Rectangle {
                     id: rowRect
@@ -469,11 +486,11 @@ Rectangle {
             visible: item !== null
 
             sourceComponent: {
-                switch (root.currentActionType) {
-                case "keystroke":      return keystrokeComponent
-                case "gesture-trigger": return gestureComponent
-                default:               return descriptionComponent
-                }
+                if (root.currentActionType === "gesture-trigger")
+                    return gestureComponent
+                if (root.currentAction === "Keyboard shortcut" || root.isCustomKeystroke)
+                    return keystrokeComponent
+                return descriptionComponent
             }
         }
     }
@@ -505,6 +522,7 @@ Rectangle {
 
                 KeystrokeCapture {
                     width: parent.width
+                    keystroke: root.isCustomKeystroke ? root.currentAction : ""
                     onKeystrokeCaptured: function(ks) {
                         if (ks.length > 0 && root.buttonId >= 0) {
                             root.currentAction = ks
@@ -753,20 +771,13 @@ Rectangle {
                     leftMargin: 20; rightMargin: 20; topMargin: 12
                 }
                 text: {
-                    switch (root.currentActionType) {
-                    case "none":         return "This button will do nothing when pressed."
-                    case "screenshot":   return "Captures the full screen and saves to your pictures folder."
-                    case "show-desktop": return "Minimises all windows to reveal the desktop."
-                    case "app-expose":   return "Shows all open windows for the current application."
-                    case "calculator":   return "Opens the system calculator application."
-                    case "mute":         return "Toggles your system audio mute."
-                    case "media":        return "Controls media playback (play, pause, skip)."
-                    case "volume-up":    return "Increases system volume by one step."
-                    case "volume-down":  return "Decreases system volume by one step."
-                    default:             return root.currentAction.length > 0
-                                                ? root.currentAction + " action assigned."
-                                                : ""
-                    }
+                    if (root.currentActionType === "none")
+                        return "This button will do nothing when pressed."
+                    if (root.currentActionType === "smartshift-toggle")
+                        return "Toggles scroll wheel between ratchet and free-spin."
+                    return root.currentAction.length > 0
+                           ? root.currentAction + " action assigned."
+                           : ""
                 }
                 font.pixelSize: 12
                 color: "#888888"

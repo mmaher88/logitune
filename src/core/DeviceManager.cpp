@@ -980,17 +980,12 @@ void DeviceManager::touchResponseTime()
 
 void DeviceManager::setThumbWheelMode(const QString &mode)
 {
-    if (!m_connected || !m_features || !m_transport) {
-        qDebug() << "[DeviceManager] setThumbWheelMode SKIPPED (not connected):" << mode;
+    if (!m_connected || !m_features || !m_transport)
         return;
-    }
-    if (!m_features->hasFeature(hidpp::FeatureId::ThumbWheel)) {
-        qDebug() << "[DeviceManager] setThumbWheelMode SKIPPED (no feature):" << mode;
+    if (!m_features->hasFeature(hidpp::FeatureId::ThumbWheel))
         return;
-    }
 
     bool divert = (mode != "scroll"); // "scroll" = native, anything else = diverted
-    qDebug() << "[DeviceManager] setThumbWheelMode:" << mode << "divert:" << divert;
     m_thumbWheelMode = mode;
     emit thumbWheelModeChanged();
 

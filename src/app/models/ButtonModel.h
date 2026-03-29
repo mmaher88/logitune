@@ -33,6 +33,13 @@ public:
     Q_INVOKABLE QString actionNameForButton(int buttonId) const;
     Q_INVOKABLE QString actionTypeForButton(int buttonId) const;
 
+    /// Programmatic bulk update -- does NOT emit per-row dataChanged.
+    /// Emits a single modelReset so QML rebinds all at once.
+    void loadFromProfile(const QList<QPair<QString, QString>> &buttons);
+
+signals:
+    void userActionChanged(int buttonId, const QString &actionName, const QString &actionType);
+
 private:
     QList<ButtonEntry> m_buttons;
 };

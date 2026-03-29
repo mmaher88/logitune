@@ -16,6 +16,9 @@ ButtonAction ButtonAction::parse(const QString &str)
     if (str == "gesture-trigger")
         return {GestureTrigger, {}};
 
+    if (str == "smartshift-toggle")
+        return {SmartShiftToggle, {}};
+
     // Prefixed forms: "type:payload"
     const int colon = str.indexOf(':');
     if (colon == -1)
@@ -24,7 +27,10 @@ ButtonAction ButtonAction::parse(const QString &str)
     const QString prefix  = str.left(colon);
     const QString payload = str.mid(colon + 1);
 
-    if (prefix == "keystroke")  return {Keystroke,  payload};
+    if (prefix == "keystroke") {
+        if (payload == "smartshift-toggle") return {SmartShiftToggle, {}};
+        return {Keystroke, payload};
+    }
     if (prefix == "media")      return {Media,       payload};
     if (prefix == "dbus")       return {DBus,        payload};
     if (prefix == "app-launch") return {AppLaunch,   payload};
@@ -37,7 +43,8 @@ QString ButtonAction::serialize() const
 {
     switch (type) {
     case Default:       return "default";
-    case GestureTrigger: return "gesture-trigger";
+    case GestureTrigger:  return "gesture-trigger";
+    case SmartShiftToggle: return "smartshift-toggle";
     case Keystroke:     return "keystroke:" + payload;
     case Media:         return "media:" + payload;
     case DBus:          return "dbus:" + payload;

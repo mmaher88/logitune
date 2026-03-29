@@ -28,12 +28,13 @@ void AppController::init()
         qWarning() << "[AppController] UinputInjector: uinput init failed (no /dev/uinput access?). Keystrokes will not be injected.";
     }
 
-    // Gesture defaults (matches logid.cfg)
-    m_deviceModel.setGestureAction("up",    "",              "");
-    m_deviceModel.setGestureAction("down",  "Show desktop",  "Super+D");
-    m_deviceModel.setGestureAction("left",  "Switch desktop left",  "Ctrl+Super+Left");
-    m_deviceModel.setGestureAction("right", "Switch desktop right", "Ctrl+Super+Right");
-    m_deviceModel.setGestureAction("click", "Task switcher", "Super+W");
+    // Gesture defaults (matches logid.cfg) — use programmatic path, not user path
+    QMap<QString, QPair<QString, QString>> defaultGestures;
+    defaultGestures["down"]  = qMakePair(QStringLiteral("Show desktop"),          QStringLiteral("Super+D"));
+    defaultGestures["left"]  = qMakePair(QStringLiteral("Switch desktop left"),   QStringLiteral("Ctrl+Super+Left"));
+    defaultGestures["right"] = qMakePair(QStringLiteral("Switch desktop right"),  QStringLiteral("Ctrl+Super+Right"));
+    defaultGestures["click"] = qMakePair(QStringLiteral("Task switcher"),         QStringLiteral("Super+W"));
+    m_deviceModel.loadGesturesFromProfile(defaultGestures);
 
     wireSignals();
 }
@@ -165,13 +166,9 @@ void AppController::onWindowFocusChanged(const QString &wmClass, const QString &
 
     m_deviceModel.setActiveWmClass(wmClass);
 
-    // Only switch profiles when the focused app has its own profile.
-    // Non-profiled apps keep whatever was last active (matches Options+ behavior).
     QString profileName = m_profileEngine.profileForApp(wmClass);
-    if (profileName == QStringLiteral("default"))
-        return;  // no app-specific profile — keep current hw profile
     if (profileName == m_profileEngine.hardwareProfile())
-        return;  // already active
+        return;
 
     Profile &p = m_profileEngine.cachedProfile(profileName);
     m_profileEngine.setHardwareProfile(profileName);
@@ -214,7 +211,7 @@ void AppController::onDeviceSetupComplete()
                 if (ctrl.defaultActionType == "gesture-trigger")
                     seed.buttons[i] = {ButtonAction::GestureTrigger, {}};
                 else if (ctrl.defaultActionType == "smartshift-toggle")
-                    seed.buttons[i] = {ButtonAction::Keystroke, QStringLiteral("smartshift-toggle")};
+                    seed.buttons[i] = {ButtonAction::SmartShiftToggle, {}};
             }
             // Seed gestures from device descriptor defaults
             const auto defaultGestures = m_currentDevice->defaultGestures();
@@ -302,14 +299,13 @@ void AppController::restoreButtonModelFromProfile(const Profile &p)
             aType = QStringLiteral("gesture-trigger");
             aName = QStringLiteral("Gestures");
             break;
+        case ButtonAction::SmartShiftToggle:
+            aType = QStringLiteral("smartshift-toggle");
+            aName = QStringLiteral("Shift wheel mode");
+            break;
         case ButtonAction::Keystroke:
-            if (ba.payload == QStringLiteral("smartshift-toggle")) {
-                aType = QStringLiteral("smartshift-toggle");
-                aName = QStringLiteral("Shift wheel mode");
-            } else {
-                aType = QStringLiteral("keystroke");
-                aName = buttonActionToName(ba);
-            }
+            aType = QStringLiteral("keystroke");
+            aName = buttonActionToName(ba);
             break;
         case ButtonAction::AppLaunch:
             aType = QStringLiteral("app-launch");
@@ -479,8 +475,8 @@ void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
     // Read actions from the hardware profile (not ButtonModel, which holds the displayed profile)
     const Profile &hwProfile = m_profileEngine.cachedProfile(m_profileEngine.hardwareProfile());
 
-    // Handle gesture release: CID=0 means all buttons released
-    if (!pressed && m_gestureActive) {
+    // Handle gesture release — only resolve on the gesture button's release
+    if (!pressed && m_gestureActive && controlId == m_gestureControlId) {
         m_gestureActive = false;
         int dx = m_gestureTotalDx;
         int dy = m_gestureTotalDy;
@@ -521,22 +517,18 @@ void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
         ? hwProfile.buttons[static_cast<std::size_t>(idx)]
         : ButtonAction{ButtonAction::Default, {}};
 
-    qDebug() << "[Dispatch] CID" << Qt::hex << controlId << "-> idx" << idx
-             << "type" << ba.type << "payload" << ba.payload;
-
     if (ba.type == ButtonAction::Default) return;
 
-    if (ba.type == ButtonAction::Keystroke && !ba.payload.isEmpty()) {
-        if (ba.payload == QStringLiteral("smartshift-toggle")) {
-            bool current = m_deviceManager.smartShiftEnabled();
-            m_deviceManager.setSmartShift(!current, m_deviceManager.smartShiftThreshold());
-        } else {
-            m_actionExecutor.injectKeystroke(ba.payload);
-        }
+    if (ba.type == ButtonAction::SmartShiftToggle) {
+        bool current = m_deviceManager.smartShiftEnabled();
+        m_deviceManager.setSmartShift(!current, m_deviceManager.smartShiftThreshold());
+    } else if (ba.type == ButtonAction::Keystroke && !ba.payload.isEmpty()) {
+        m_actionExecutor.injectKeystroke(ba.payload);
     } else if (ba.type == ButtonAction::GestureTrigger) {
         m_gestureTotalDx = 0;
         m_gestureTotalDy = 0;
         m_gestureActive = true;
+        m_gestureControlId = controlId;
     } else if (ba.type == ButtonAction::AppLaunch && !ba.payload.isEmpty()) {
         m_actionExecutor.launchApp(ba.payload);
     }
@@ -545,7 +537,6 @@ void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
 void AppController::onThumbWheelRotation(int delta)
 {
     const QString &mode = m_deviceManager.thumbWheelMode();
-    qDebug() << "[ThumbWheel] delta:" << delta << "mode:" << mode << "accum:" << m_thumbAccum;
     m_thumbAccum += delta;
 
     if (std::abs(m_thumbAccum) < kThumbThreshold)
@@ -556,7 +547,7 @@ void AppController::onThumbWheelRotation(int delta)
 
     for (int i = 0; i < std::abs(steps); ++i) {
         if (mode == "volume") {
-            m_actionExecutor.injectKeystroke(steps < 0 ? "VolumeUp" : "VolumeDown");
+            m_actionExecutor.injectKeystroke(steps > 0 ? "VolumeUp" : "VolumeDown");
         } else if (mode == "zoom") {
             m_actionExecutor.injectCtrlScroll(steps < 0 ? 1 : -1);
         }
@@ -593,14 +584,18 @@ ButtonAction AppController::buttonEntryToAction(const QString &actionType, const
     if (actionType == QStringLiteral("gesture-trigger"))
         return {ButtonAction::GestureTrigger, {}};
     if (actionType == QStringLiteral("smartshift-toggle"))
-        return {ButtonAction::Keystroke, QStringLiteral("smartshift-toggle")};
+        return {ButtonAction::SmartShiftToggle, {}};
     if (actionType == QStringLiteral("keystroke")) {
         QString payload = m_actionModel.payloadForName(actionName);
-        if (payload.isEmpty()) payload = actionName; // actionName might already be a keystroke
+        if (payload.isEmpty() && actionName != QStringLiteral("Keyboard shortcut"))
+            payload = actionName; // actionName might already be a keystroke
         return {ButtonAction::Keystroke, payload};
     }
-    if (actionType == QStringLiteral("app-launch"))
-        return {ButtonAction::AppLaunch, m_actionModel.payloadForName(actionName)};
+    if (actionType == QStringLiteral("app-launch")) {
+        QString payload = m_actionModel.payloadForName(actionName);
+        if (payload.isEmpty()) payload = actionName;
+        return {ButtonAction::AppLaunch, payload};
+    }
     return {ButtonAction::Default, {}};
 }
 

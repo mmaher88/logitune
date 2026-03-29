@@ -58,9 +58,24 @@ void ButtonModel::setAction(int buttonId, const QString &actionName, const QStri
             m_buttons[i].actionType = actionType;
             const QModelIndex idx = index(i);
             emit dataChanged(idx, idx, { ActionNameRole, ActionTypeRole });
+            emit userActionChanged(buttonId, actionName, actionType);
             return;
         }
     }
+}
+
+void ButtonModel::loadFromProfile(const QList<QPair<QString, QString>> &buttons)
+{
+    beginResetModel();
+    for (int i = 0; i < buttons.size() && i < m_buttons.size(); ++i) {
+        m_buttons[i].actionName = buttons[i].first;
+        m_buttons[i].actionType = buttons[i].second;
+    }
+    endResetModel();
+
+    // Notify non-model consumers (e.g. ButtonCallout Connections blocks)
+    if (!m_buttons.isEmpty())
+        emit dataChanged(index(0), index(m_buttons.size() - 1));
 }
 
 QString ButtonModel::actionNameForButton(int buttonId) const

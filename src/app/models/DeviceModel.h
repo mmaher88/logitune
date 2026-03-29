@@ -1,8 +1,11 @@
 #pragma once
 #include "DeviceManager.h"
+#include "interfaces/IDesktopIntegration.h"
 #include <QMap>
 #include <QPair>
 #include <QObject>
+#include <QVariantList>
+#include <QVariantMap>
 #include <qqmlintegration.h>
 
 namespace logitune {
@@ -14,26 +17,43 @@ class DeviceModel : public QObject {
     Q_PROPERTY(QString deviceName READ deviceName NOTIFY deviceNameChanged)
     Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged)
     Q_PROPERTY(bool batteryCharging READ batteryCharging NOTIFY batteryChargingChanged)
+    Q_PROPERTY(QString batteryStatusText READ batteryStatusText NOTIFY batteryLevelChanged)
     Q_PROPERTY(QString connectionType READ connectionType NOTIFY connectionTypeChanged)
-    Q_PROPERTY(int currentDPI READ currentDPI NOTIFY currentDPIChanged)
+    Q_PROPERTY(int currentDPI READ currentDPI NOTIFY settingsReloaded)
     Q_PROPERTY(int minDPI READ minDPI CONSTANT)
     Q_PROPERTY(int maxDPI READ maxDPI CONSTANT)
     Q_PROPERTY(int dpiStep READ dpiStep CONSTANT)
-    Q_PROPERTY(bool smartShiftEnabled READ smartShiftEnabled NOTIFY smartShiftEnabledChanged)
-    Q_PROPERTY(int smartShiftThreshold READ smartShiftThreshold NOTIFY smartShiftThresholdChanged)
-    Q_PROPERTY(bool scrollHiRes READ scrollHiRes NOTIFY scrollConfigChanged)
-    Q_PROPERTY(bool scrollInvert READ scrollInvert NOTIFY scrollConfigChanged)
+    Q_PROPERTY(bool smartShiftEnabled READ smartShiftEnabled NOTIFY settingsReloaded)
+    Q_PROPERTY(int smartShiftThreshold READ smartShiftThreshold NOTIFY settingsReloaded)
+    Q_PROPERTY(bool scrollHiRes READ scrollHiRes NOTIFY settingsReloaded)
+    Q_PROPERTY(bool scrollInvert READ scrollInvert NOTIFY settingsReloaded)
     Q_PROPERTY(QString activeProfileName READ activeProfileName NOTIFY activeProfileNameChanged)
+    Q_PROPERTY(QString activeWmClass READ activeWmClass NOTIFY activeWmClassChanged)
+
+    // Device descriptor properties (driven by active device)
+    Q_PROPERTY(QString frontImage READ frontImage NOTIFY deviceConnectedChanged)
+    Q_PROPERTY(QString sideImage READ sideImage NOTIFY deviceConnectedChanged)
+    Q_PROPERTY(QString backImage READ backImage NOTIFY deviceConnectedChanged)
+    Q_PROPERTY(QVariantList buttonHotspots READ buttonHotspots NOTIFY deviceConnectedChanged)
+    Q_PROPERTY(QVariantList scrollHotspots READ scrollHotspots NOTIFY deviceConnectedChanged)
+    Q_PROPERTY(QVariantList controlDescriptors READ controlDescriptors NOTIFY deviceConnectedChanged)
+    Q_PROPERTY(int easySwitchSlots READ easySwitchSlots NOTIFY deviceConnectedChanged)
+    Q_PROPERTY(QString deviceSerial READ deviceSerial NOTIFY deviceConnectedChanged)
+    Q_PROPERTY(int activeSlot READ activeSlot NOTIFY deviceConnectedChanged)
 
 public:
     explicit DeviceModel(QObject *parent = nullptr);
 
     void setDeviceManager(DeviceManager *dm);
+    void setDesktopIntegration(IDesktopIntegration *desktop);
+    Q_INVOKABLE void blockGlobalShortcuts(bool block);
+    Q_INVOKABLE QVariantList runningApplications() const;
 
     bool deviceConnected() const;
     QString deviceName() const;
     int batteryLevel() const;
     bool batteryCharging() const;
+    QString batteryStatusText() const;
     QString connectionType() const;
     int currentDPI() const;
     int minDPI() const;
@@ -42,6 +62,19 @@ public:
     bool smartShiftEnabled() const;
     int smartShiftThreshold() const;
     QString activeProfileName() const;
+    QString activeWmClass() const;
+
+    // Device descriptor getters
+    QString frontImage() const;
+    QString sideImage() const;
+    QString backImage() const;
+    QVariantList buttonHotspots() const;
+    QVariantList scrollHotspots() const;
+    QVariantList controlDescriptors() const;
+    int easySwitchSlots() const;
+    QString deviceSerial() const;
+    int activeSlot() const;
+    Q_INVOKABLE bool isSlotPaired(int slot) const;  // 1-based
 
     Q_INVOKABLE void setDPI(int value);
     Q_INVOKABLE void setSmartShift(bool enabled, int threshold);
@@ -51,15 +84,18 @@ public:
     Q_INVOKABLE void setGestureAction(const QString &direction, const QString &actionName, const QString &keystroke);
     Q_INVOKABLE QString gestureActionName(const QString &direction) const;
     Q_INVOKABLE QString gestureKeystroke(const QString &direction) const;
-    Q_PROPERTY(QString thumbWheelMode READ thumbWheelMode NOTIFY thumbWheelModeChanged)
+    Q_PROPERTY(QString thumbWheelMode READ thumbWheelMode NOTIFY settingsReloaded)
     bool scrollHiRes() const;
     bool scrollInvert() const;
     QString thumbWheelMode() const;
 
-    // Called from main integration to sync profile state into the model
-    void setCurrentDPI(int dpi);
-    void setSmartShiftState(bool enabled, int threshold);
+    void loadGesturesFromProfile(const QMap<QString, QPair<QString, QString>> &gestures);
+
+    // Called from AppController to sync displayed profile state into the model
     void setActiveProfileName(const QString &name);
+    void setActiveWmClass(const QString &wmClass);
+    void setDisplayValues(int dpi, bool smartShiftEnabled, int smartShiftThreshold,
+                          bool scrollHiRes, bool scrollInvert, const QString &thumbWheelMode);
 
 signals:
     void deviceConnectedChanged();
@@ -72,16 +108,31 @@ signals:
     void smartShiftThresholdChanged();
     void scrollConfigChanged();
     void thumbWheelModeChanged();
+    void settingsReloaded();  // batch notification for all settings properties
     void activeProfileNameChanged();
+    void activeWmClassChanged();
     void gestureChanged();
+    void userGestureChanged(const QString &direction, const QString &actionName, const QString &keystroke);
+    void dpiChangeRequested(int value);
+    void smartShiftChangeRequested(bool enabled, int threshold);
+    void scrollConfigChangeRequested(bool hiRes, bool invert);
+    void thumbWheelModeChangeRequested(const QString &mode);
 
 private:
     DeviceManager *m_dm = nullptr;
-    QMap<QString, QPair<QString, QString>> m_gestures; // direction → (actionName, keystroke)
-    int m_currentDPI = 1000;
-    bool m_smartShiftEnabled = true;
-    int m_smartShiftThreshold = 128;
+    IDesktopIntegration *m_desktop = nullptr;
+    QMap<QString, QPair<QString, QString>> m_gestures; // direction -> (actionName, keystroke)
     QString m_activeProfileName;
+    QString m_activeWmClass;
+
+    // Display values — what the UI shows (may differ from hardware when viewing non-active profile)
+    int m_displayDpi = -1;              // -1 = use DeviceManager value
+    bool m_displaySmartShiftEnabled = false;
+    int m_displaySmartShiftThreshold = 0;
+    bool m_displayScrollHiRes = false;
+    bool m_displayScrollInvert = false;
+    QString m_displayThumbWheelMode;
+    bool m_hasDisplayValues = false;     // false = read from DeviceManager
 };
 
 } // namespace logitune

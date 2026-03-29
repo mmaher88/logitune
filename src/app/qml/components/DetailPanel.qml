@@ -267,9 +267,6 @@ Rectangle {
                     to: 100
                     value: DeviceModel.smartShiftThreshold
                     visible: smartShiftToggle.checked
-                    onValueChanged: {
-                        if (!pressed) return
-                    }
                     // Commit on release via the underlying Slider
                     Connections {
                         target: smartShiftSlider

@@ -63,6 +63,9 @@ bool UinputInjector::init()
         KEY_MUTE, KEY_PLAYPAUSE, KEY_SYSRQ,
         KEY_HOME, KEY_END, KEY_PAGEUP, KEY_PAGEDOWN,
         KEY_BRIGHTNESSUP, KEY_BRIGHTNESSDOWN,
+        KEY_MINUS, KEY_EQUAL, KEY_LEFTBRACE, KEY_RIGHTBRACE,
+        KEY_SEMICOLON, KEY_COMMA, KEY_DOT, KEY_SLASH,
+        KEY_BACKSLASH, KEY_GRAVE, KEY_APOSTROPHE, KEY_KPPLUS,
     };
     for (int k : keys)
         ::ioctl(m_uinputFd, UI_SET_KEYBIT, k);
@@ -187,6 +190,9 @@ void UinputInjector::launchApp(const QString &command)
 
 std::vector<int> UinputInjector::parseKeystroke(const QString &combo)
 {
+    // Handle bare "+" before splitting (since "+" is the delimiter)
+    if (combo == QLatin1String("+")) return { KEY_KPPLUS };
+
     const QStringList parts = combo.split(QLatin1Char('+'));
     std::vector<int> keys;
     keys.reserve(static_cast<size_t>(parts.size()));
@@ -261,7 +267,22 @@ std::vector<int> UinputInjector::parseKeystroke(const QString &combo)
                 keys.push_back(keycode);
                 continue;
             }
+            // Punctuation / symbol keys
+            switch (ch.toLatin1()) {
+            case '-': keys.push_back(KEY_MINUS);      continue;
+            case '=': keys.push_back(KEY_EQUAL);      continue;
+            case '[': keys.push_back(KEY_LEFTBRACE);   continue;
+            case ']': keys.push_back(KEY_RIGHTBRACE);  continue;
+            case ';': keys.push_back(KEY_SEMICOLON);   continue;
+            case ',': keys.push_back(KEY_COMMA);       continue;
+            case '.': keys.push_back(KEY_DOT);         continue;
+            case '/': keys.push_back(KEY_SLASH);       continue;
+            case '\\': keys.push_back(KEY_BACKSLASH);  continue;
+            case '`': keys.push_back(KEY_GRAVE);       continue;
+            case '\'': keys.push_back(KEY_APOSTROPHE); continue;
+            }
         }
+
     }
 
     return keys;
