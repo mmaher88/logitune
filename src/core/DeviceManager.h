@@ -10,6 +10,8 @@
 struct udev;
 struct udev_monitor;
 
+namespace logitune::test { class AppControllerFixture; }
+
 namespace logitune {
 
 class DeviceRegistry;
@@ -17,6 +19,7 @@ class IDevice;
 
 class DeviceManager : public QObject {
     Q_OBJECT
+    friend class test::AppControllerFixture;
     Q_PROPERTY(bool deviceConnected READ deviceConnected NOTIFY deviceConnectedChanged)
     Q_PROPERTY(QString deviceName READ deviceName NOTIFY deviceNameChanged)
     Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged)

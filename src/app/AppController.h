@@ -16,6 +16,8 @@
 #include <memory>
 #include <unordered_map>
 
+namespace logitune::test { class AppControllerFixture; }
+
 namespace logitune {
 
 class AppController : public QObject {
@@ -31,6 +33,8 @@ public:
     /// Start device monitoring and window tracking.
     /// Call after QML is loaded.
     void startMonitoring();
+
+    friend class test::AppControllerFixture;
 
     // Accessors for QML singleton registration
     DeviceModel  *deviceModel()  { return &m_deviceModel; }
