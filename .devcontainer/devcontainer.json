@@ -14,7 +14,10 @@
                 "llvm-vs-code-extensions.vscode-clangd",
                 "ms-vscode.cmake-tools",
                 "twxs.cmake",
-                "vscode-icons-team.vscode-icons"
+                "vscode-icons-team.vscode-icons",
+                "theqtcompany.qt",
+                "theqtcompany.qt-qml",
+                "theqtcompany.qt-cpp"
             ],
             "settings": {
                 "cmake.buildDirectory": "${workspaceFolder}/build",
@@ -30,8 +33,15 @@
                     "--background-index"
                 ],
                 "C_Cpp.intelliSenseEngine": "disabled",
+                "workbench.iconTheme": "vscode-icons",
+                "qt-qml.qmlls.enabled": true,
+                "qt-qml.qmlls.verboseOutput": false,
                 "editor.tabSize": 4,
-                "editor.insertSpaces": true
+                "editor.insertSpaces": true,
+                "files.associations": {
+                    "*.qml": "qml",
+                    "CMakeLists.txt": "cmake"
+                }
             }
         }
     },
