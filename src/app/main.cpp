@@ -118,8 +118,16 @@ int main(int argc, char *argv[])
     }
 
     // Set theme
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     if (auto *theme = engine.singletonInstance<QObject*>("Logitune", "Theme"))
         theme->setProperty("dark", isDark);
+#else
+    // Qt 6.4 fallback: find Theme via root context
+    for (auto *obj : engine.rootObjects()) {
+        auto *theme = obj->findChild<QObject*>("themeObject");
+        if (theme) { theme->setProperty("dark", isDark); break; }
+    }
+#endif
 
     controller.startMonitoring();
 

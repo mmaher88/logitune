@@ -1,0 +1,41 @@
+app-id: com.logitune.Logitune
+runtime: org.kde.Platform
+runtime-version: '6.10'
+sdk: org.kde.Sdk
+command: logitune
+
+finish-args:
+  # X11 + Wayland display
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+
+  # D-Bus access for KWin focus tracking and KDE global shortcuts
+  - --talk-name=org.kde.KWin
+  - --talk-name=org.kde.kglobalaccel
+
+  # HID++ device access (hidraw)
+  - --device=all
+
+  # System tray
+  - --talk-name=org.kde.StatusNotifierWatcher
+
+  # udev for device discovery
+  - --system-talk-name=org.freedesktop.UDisks2
+
+  # User config for profiles
+  - --filesystem=xdg-config/Logitune:create
+  - --filesystem=xdg-data/Logitune:create
+
+  # Temp files for KWin script and logs
+  - --filesystem=/tmp:create
+
+modules:
+  - name: logitune
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_TESTING=OFF
+    sources:
+      - type: dir
+        path: .

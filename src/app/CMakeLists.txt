@@ -19,6 +19,9 @@ target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widg
 
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
+if(COMMAND qt_policy)
+    qt_policy(SET QTP0004 NEW)
+endif()
 qt_add_qml_module(logitune-app-lib
     URI Logitune
     VERSION 1.0

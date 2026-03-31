@@ -1,0 +1,43 @@
+{
+    "name": "Logitune Dev",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+
+    "features": {
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    },
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "llvm-vs-code-extensions.vscode-clangd",
+                "ms-vscode.cmake-tools",
+                "twxs.cmake",
+                "vscode-icons-team.vscode-icons"
+            ],
+            "settings": {
+                "cmake.buildDirectory": "${workspaceFolder}/build",
+                "cmake.generator": "Ninja",
+                "cmake.configureArgs": [
+                    "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+                    "-DCMAKE_BUILD_TYPE=Debug"
+                ],
+                "clangd.path": "/usr/bin/clangd",
+                "clangd.arguments": [
+                    "--compile-commands-dir=${workspaceFolder}/build",
+                    "--header-insertion=iwyu",
+                    "--background-index"
+                ],
+                "C_Cpp.intelliSenseEngine": "disabled",
+                "editor.tabSize": 4,
+                "editor.insertSpaces": true
+            }
+        }
+    },
+
+    "postCreateCommand": "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build build -j$(nproc)",
+    "postStartCommand": "echo '✅ Logitune dev environment ready. Run: cmake --build build -j$(nproc) && QT_QPA_PLATFORM=offscreen ./build/tests/logitune-tests'",
+
+    "remoteUser": "vscode"
+}

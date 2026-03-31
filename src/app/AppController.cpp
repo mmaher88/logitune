@@ -516,9 +516,10 @@ void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
     // Read actions from the hardware profile (not ButtonModel, which holds the displayed profile)
     const Profile &hwProfile = m_profileEngine.cachedProfile(m_profileEngine.hardwareProfile());
 
-    // Handle gesture release — only resolve on the gesture button's release
-    // Release: controlId=0 means all buttons released. If a gesture is active, resolve it.
-    if (!pressed && m_gestureActive) {
+    // Resolve gesture on all-released (controlId=0) or on the gesture button's own CID.
+    // Don't resolve on other buttons being released while gesture is held.
+    if (!pressed && m_gestureActive
+        && (controlId == 0 || controlId == m_gestureControlId)) {
         m_gestureActive = false;
         int dx = m_gestureTotalDx;
         int dy = m_gestureTotalDy;

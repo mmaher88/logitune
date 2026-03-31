@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.logitune.Logitune</id>
+  <name>Logitune</name>
+  <summary>Configure your Logitech MX Master 3S mouse</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <description>
+    <p>
+      Logitune is a Linux configurator for Logitech peripherals, starting with the
+      MX Master 3S. It provides per-application profiles for button remapping,
+      gesture configuration, DPI/SmartShift/scroll settings, and thumb wheel modes
+      (volume, zoom, horizontal scroll).
+    </p>
+    <p>
+      Features include automatic profile switching on window focus, HID++ 2.0
+      communication via Bolt receiver, and a dark-themed Qt Quick UI matching
+      Logitech Options+.
+    </p>
+  </description>
+  <url type="homepage">https://github.com/mmaher88/logitune</url>
+  <url type="bugtracker">https://github.com/mmaher88/logitune/issues</url>
+  <developer id="com.logitune">
+    <name>Mina Maher</name>
+  </developer>
+  <launchable type="desktop-id">com.logitune.Logitune.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-03-30">
+      <description>
+        <p>Initial release with MX Master 3S support.</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Quick Quick3D Svg DBus Widgets Concurrent Test QuickTest)
+find_package(Qt6 REQUIRED COMPONENTS Core Quick Svg DBus Widgets Concurrent Test QuickTest)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(UDEV REQUIRED libudev)
 
@@ -21,5 +21,7 @@ if(BUILD_TESTING)
 endif()
 
 install(FILES data/71-logitune.rules DESTINATION lib/udev/rules.d)
-install(FILES data/logitune.desktop DESTINATION share/applications)
-install(FILES data/logitune.desktop DESTINATION etc/xdg/autostart)
+install(FILES data/com.logitune.Logitune.desktop DESTINATION share/applications)
+install(FILES data/com.logitune.Logitune.desktop DESTINATION etc/xdg/autostart)
+install(FILES data/com.logitune.Logitune.metainfo.xml DESTINATION share/metainfo)
+install(FILES data/com.logitune.Logitune.svg DESTINATION share/icons/hicolor/scalable/apps)
