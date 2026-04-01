@@ -4,6 +4,7 @@
 #include <QSettings>
 #include <signal.h>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QQuickWindow>
 #include <QQuickImageProvider>
 #include <QIcon>
@@ -106,10 +107,19 @@ int main(int argc, char *argv[])
     };
     engine.addImageProvider(QStringLiteral("icon"), new IconProvider);
 
+    // Qt 6.5+: register into the module. Qt 6.4: module is protected by plugin,
+    // use context properties instead (globally available in QML, same effect).
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     qmlRegisterSingletonInstance("Logitune", 1, 0, "DeviceModel",  controller.deviceModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ButtonModel",  controller.buttonModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ActionModel",  controller.actionModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ProfileModel", controller.profileModel());
+#else
+    engine.rootContext()->setContextProperty("DeviceModel",  controller.deviceModel());
+    engine.rootContext()->setContextProperty("ButtonModel",  controller.buttonModel());
+    engine.rootContext()->setContextProperty("ActionModel",  controller.actionModel());
+    engine.rootContext()->setContextProperty("ProfileModel", controller.profileModel());
+#endif
 
     engine.load(QUrl(QStringLiteral("qrc:/Logitune/qml/Main.qml")));
 

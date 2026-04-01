@@ -19,7 +19,23 @@ target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widg
 
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
-qt_policy(SET QTP0004 NEW)
+# Qt 6.5+ handles QML subdirectories automatically via QTP0004.
+# Qt 6.4: QT_RESOURCE_ALIAS maps subdirectory files to flat type names.
+if(COMMAND qt_policy)
+    qt_policy(SET QTP0004 NEW)
+else()
+    foreach(_file
+        SideNav BatteryChip LogituneSlider LogituneToggle InfoCallout
+        DetailPanel KeystrokeCapture ButtonCallout ActionsPanel
+        DeviceRender AppProfileBar Toast)
+        set_source_files_properties(qml/components/${_file}.qml
+            PROPERTIES QT_RESOURCE_ALIAS qml/${_file}.qml)
+    endforeach()
+    foreach(_file PointScrollPage ButtonsPage EasySwitchPage SettingsPage)
+        set_source_files_properties(qml/pages/${_file}.qml
+            PROPERTIES QT_RESOURCE_ALIAS qml/${_file}.qml)
+    endforeach()
+endif()
 
 qt_add_qml_module(logitune-app-lib
     URI Logitune
