@@ -1,21 +1,68 @@
-# Logitune
+<p align="center">
+  <img src="data/com.logitune.Logitune.svg" width="80">
+  <h1 align="center">Logitune</h1>
+  <p align="center">A Linux configurator for Logitech peripherals — per-application profiles, gesture mapping, thumb wheel modes, and a dark-themed Qt Quick UI matching Logitech Options+.</p>
+</p>
 
-A Linux configurator for Logitech peripherals, starting with the MX Master 3S. Per-application profiles, gesture mapping, thumb wheel modes, and a dark-themed Qt Quick UI matching Logitech Options+.
+<p align="center">
+  <a href="https://github.com/mmaher88/logitune/actions/workflows/ci.yml"><img src="https://github.com/mmaher88/logitune/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="License">
+  <img src="https://img.shields.io/badge/Qt-6-green" alt="Qt">
+  <img src="https://img.shields.io/badge/C%2B%2B-20-orange" alt="C++">
+  <img src="https://img.shields.io/badge/device-MX%20Master%203S-teal" alt="Device">
+</p>
 
-[![CI](https://github.com/mmaher88/logitune/actions/workflows/ci.yml/badge.svg)](https://github.com/mmaher88/logitune/actions/workflows/ci.yml)
+<p align="center">
+  <img src="docs/images/buttons-page.jpeg" width="800" alt="Logitune — Buttons Page">
+</p>
 
-## Features
+## ✨ Features
 
-- **Per-app profiles** — automatic button/scroll/DPI switching on window focus
-- **Button remapping** — keystrokes, app launch, gestures, SmartShift toggle
-- **Thumb wheel modes** — volume, zoom, horizontal scroll with invert control
-- **Gesture support** — hold + swipe for desktop switching, task view, custom keystrokes
-- **DPI / SmartShift / Scroll** — full control with live preview
-- **System tray** — battery status, minimize to tray
-- **HID++ 2.0** — direct communication via Bolt receiver, no daemon needed
-- **Disconnect/reconnect** — automatic re-enumeration and profile reapplication
+- 🖱️ **Per-app profiles** — automatic button/scroll/DPI switching on window focus
+- ⌨️ **Button remapping** — keystrokes, app launch, gestures, SmartShift toggle
+- 🎛️ **Thumb wheel modes** — volume, zoom, horizontal scroll with invert control
+- 👆 **Gesture support** — hold + swipe for desktop switching, task view, custom keystrokes
+- ⚡ **DPI / SmartShift / Scroll** — full control with live preview
+- 🔋 **System tray** — battery status, minimize to tray
+- 📡 **HID++ 2.0** — direct communication via Bolt receiver, no daemon needed
+- 🔄 **Disconnect/reconnect** — automatic re-enumeration and profile reapplication
 
-## Quick Start
+## 📸 Screenshots
+
+<table>
+<tr>
+<td width="50%">
+<img src="docs/images/buttons-page.jpeg" alt="Buttons Page">
+<p align="center"><em>Button remapping with callout cards</em></p>
+</td>
+<td width="50%">
+<img src="docs/images/buttons-actions-panel.jpeg" alt="Actions Panel">
+<p align="center"><em>Action selection panel</em></p>
+</td>
+</tr>
+<tr>
+<td>
+<img src="docs/images/point-scroll-page.jpeg" alt="Point & Scroll">
+<p align="center"><em>Scroll, thumb wheel & pointer speed</em></p>
+</td>
+<td>
+<img src="docs/images/point-scroll-detail-panel.jpeg" alt="Scroll Settings">
+<p align="center"><em>Scroll direction, SmartShift, smooth scrolling</em></p>
+</td>
+</tr>
+<tr>
+<td>
+<img src="docs/images/settings-page.jpeg" alt="Settings">
+<p align="center"><em>Device info, dark mode, debug logging</em></p>
+</td>
+<td>
+<img src="docs/images/easy-switch-page.jpeg" alt="Easy-Switch">
+<p align="center"><em>Easy-Switch channel management</em></p>
+</td>
+</tr>
+</table>
+
+## 🚀 Quick Start
 
 **Flatpak:**
 ```bash
@@ -32,29 +79,29 @@ make run
 
 **GitHub Codespaces:** Click "Create codespace" — full dev environment in one click.
 
-## Documentation
+## 📚 Documentation
 
 | Guide | Description |
 |-------|-------------|
-| [Getting Started](docs/wiki/Getting-Started.md) | Installation, permissions, UI overview |
-| [Building](docs/wiki/Building.md) | Prerequisites, build commands, Flatpak, devcontainer |
-| [Architecture](docs/wiki/Architecture.md) | System design, signal flow, 14 Mermaid diagrams |
-| [Adding a Device](docs/wiki/Adding-a-Device.md) | Step-by-step guide with code examples |
-| [Adding a Desktop Environment](docs/wiki/Adding-a-Desktop-Environment.md) | Interface, GNOME scaffold, DE comparison |
-| [Testing](docs/wiki/Testing.md) | Philosophy, 4 test tiers, writing tests |
-| [HID++ Protocol](docs/wiki/HID++-Protocol.md) | Report format, features, Bolt receiver, async matching |
-| [Contributing](docs/wiki/Contributing.md) | Workflow, code style, commit format |
+| [🏁 Getting Started](docs/wiki/Getting-Started.md) | Installation, permissions, UI overview |
+| [🔨 Building](docs/wiki/Building.md) | Prerequisites, build commands, Flatpak, devcontainer |
+| [🏗️ Architecture](docs/wiki/Architecture.md) | System design, signal flow, 14 Mermaid diagrams |
+| [🖱️ Adding a Device](docs/wiki/Adding-a-Device.md) | Step-by-step guide with code examples |
+| [🖥️ Adding a Desktop Environment](docs/wiki/Adding-a-Desktop-Environment.md) | Interface, GNOME scaffold, DE comparison |
+| [🧪 Testing](docs/wiki/Testing.md) | Philosophy, 4 test tiers, writing tests |
+| [📡 HID++ Protocol](docs/wiki/HID++-Protocol.md) | Report format, features, Bolt receiver, async matching |
+| [🤝 Contributing](docs/wiki/Contributing.md) | Workflow, code style, commit format |
 
-## Supported Devices
+## 🖱️ Supported Devices
 
 | Device | Status |
 |--------|--------|
-| MX Master 3S | Full support |
+| MX Master 3S | ✅ Full support |
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 C++20 · Qt 6 Quick · CMake · HID++ 2.0 · GTest · Flatpak
 
-## License
+## 📄 License
 
 GPL-3.0
