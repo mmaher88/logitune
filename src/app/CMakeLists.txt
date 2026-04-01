@@ -22,6 +22,26 @@ set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 if(COMMAND qt_policy)
     qt_policy(SET QTP0004 NEW)
 endif()
+
+# Qt 6.4 compat: strip subdirectory prefix so types register as top-level module types.
+# e.g. qml/components/Toast.qml registers as "Toast" not "components/Toast"
+set_source_files_properties(qml/components/SideNav.qml         PROPERTIES QT_RESOURCE_ALIAS qml/SideNav.qml)
+set_source_files_properties(qml/components/BatteryChip.qml     PROPERTIES QT_RESOURCE_ALIAS qml/BatteryChip.qml)
+set_source_files_properties(qml/components/LogituneSlider.qml  PROPERTIES QT_RESOURCE_ALIAS qml/LogituneSlider.qml)
+set_source_files_properties(qml/components/LogituneToggle.qml  PROPERTIES QT_RESOURCE_ALIAS qml/LogituneToggle.qml)
+set_source_files_properties(qml/components/InfoCallout.qml     PROPERTIES QT_RESOURCE_ALIAS qml/InfoCallout.qml)
+set_source_files_properties(qml/components/DetailPanel.qml     PROPERTIES QT_RESOURCE_ALIAS qml/DetailPanel.qml)
+set_source_files_properties(qml/components/KeystrokeCapture.qml PROPERTIES QT_RESOURCE_ALIAS qml/KeystrokeCapture.qml)
+set_source_files_properties(qml/components/ButtonCallout.qml   PROPERTIES QT_RESOURCE_ALIAS qml/ButtonCallout.qml)
+set_source_files_properties(qml/components/ActionsPanel.qml    PROPERTIES QT_RESOURCE_ALIAS qml/ActionsPanel.qml)
+set_source_files_properties(qml/components/DeviceRender.qml    PROPERTIES QT_RESOURCE_ALIAS qml/DeviceRender.qml)
+set_source_files_properties(qml/components/AppProfileBar.qml   PROPERTIES QT_RESOURCE_ALIAS qml/AppProfileBar.qml)
+set_source_files_properties(qml/components/Toast.qml           PROPERTIES QT_RESOURCE_ALIAS qml/Toast.qml)
+set_source_files_properties(qml/pages/PointScrollPage.qml      PROPERTIES QT_RESOURCE_ALIAS qml/PointScrollPage.qml)
+set_source_files_properties(qml/pages/ButtonsPage.qml          PROPERTIES QT_RESOURCE_ALIAS qml/ButtonsPage.qml)
+set_source_files_properties(qml/pages/EasySwitchPage.qml       PROPERTIES QT_RESOURCE_ALIAS qml/EasySwitchPage.qml)
+set_source_files_properties(qml/pages/SettingsPage.qml         PROPERTIES QT_RESOURCE_ALIAS qml/SettingsPage.qml)
+
 qt_add_qml_module(logitune-app-lib
     URI Logitune
     VERSION 1.0
