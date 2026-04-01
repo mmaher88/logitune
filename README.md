@@ -83,14 +83,14 @@ make run
 
 | Guide | Description |
 |-------|-------------|
-| [🏁 Getting Started](docs/wiki/Getting-Started.md) | Installation, permissions, UI overview |
-| [🔨 Building](docs/wiki/Building.md) | Prerequisites, build commands, Flatpak, devcontainer |
-| [🏗️ Architecture](docs/wiki/Architecture.md) | System design, signal flow, 14 Mermaid diagrams |
-| [🖱️ Adding a Device](docs/wiki/Adding-a-Device.md) | Step-by-step guide with code examples |
-| [🖥️ Adding a Desktop Environment](docs/wiki/Adding-a-Desktop-Environment.md) | Interface, GNOME scaffold, DE comparison |
-| [🧪 Testing](docs/wiki/Testing.md) | Philosophy, 4 test tiers, writing tests |
-| [📡 HID++ Protocol](docs/wiki/HID++-Protocol.md) | Report format, features, Bolt receiver, async matching |
-| [🤝 Contributing](docs/wiki/Contributing.md) | Workflow, code style, commit format |
+| [🏁 Getting Started](https://github.com/mmaher88/logitune/wiki/Getting-Started) | Installation, permissions, UI overview |
+| [🔨 Building](https://github.com/mmaher88/logitune/wiki/Building) | Prerequisites, build commands, Flatpak, devcontainer |
+| [🏗️ Architecture](https://github.com/mmaher88/logitune/wiki/Architecture) | System design, signal flow, 14 Mermaid diagrams |
+| [🖱️ Adding a Device](https://github.com/mmaher88/logitune/wiki/Adding-a-Device) | Step-by-step guide with code examples |
+| [🖥️ Adding a Desktop Environment](https://github.com/mmaher88/logitune/wiki/Adding-a-Desktop-Environment) | Interface, GNOME scaffold, DE comparison |
+| [🧪 Testing](https://github.com/mmaher88/logitune/wiki/Testing) | Philosophy, 4 test tiers, writing tests |
+| [📡 HID++ Protocol](https://github.com/mmaher88/logitune/wiki/HID++-Protocol) | Report format, features, Bolt receiver, async matching |
+| [🤝 Contributing](https://github.com/mmaher88/logitune/wiki/Contributing) | Workflow, code style, commit format |
 
 ## 🖱️ Supported Devices
 
