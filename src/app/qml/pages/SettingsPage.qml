@@ -121,8 +121,9 @@ Item {
                 }
             }
 
-            // Test crash button (temporary)
+            // Test crash button (debug builds only)
             Rectangle {
+                visible: DeviceModel.loggingEnabled
                 width: 180; height: 40
                 radius: 4; color: "transparent"
                 border.color: "#ff4444"; border.width: 1
