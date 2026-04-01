@@ -52,28 +52,11 @@ git commit -m "release: v$NEW_VERSION"
 git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
 echo "🏷️  Tagged v$NEW_VERSION"
 
-# Build Flatpak bundle
-echo "📦 Building Flatpak..."
-flatpak-builder --user --install --force-clean build-flatpak com.logitune.Logitune.yml > /dev/null 2>&1
-flatpak build-bundle ~/.local/share/flatpak/repo "logitune-$NEW_VERSION.flatpak" com.logitune.Logitune
-echo "✅ Flatpak bundle: logitune-$NEW_VERSION.flatpak"
-
-# Push commit + tag
+# Push commit + tag — CI builds Flatpak and creates GitHub release
 git push origin master
 git push origin "v$NEW_VERSION"
 echo "🚀 Pushed to origin"
-
-# Create GitHub release with the bundle
-if command -v gh > /dev/null 2>&1; then
-    gh release create "v$NEW_VERSION" \
-        "logitune-$NEW_VERSION.flatpak" \
-        --title "Logitune v$NEW_VERSION" \
-        --generate-notes
-    echo "✅ GitHub release created"
-else
-    echo "⚠️  gh CLI not installed — create the release manually at:"
-    echo "   https://github.com/mmaher88/logitune/releases/new?tag=v$NEW_VERSION"
-fi
+echo "📦 CI will build Flatpak and create GitHub release automatically"
 
 echo ""
 echo "🎉 Released v$NEW_VERSION"
