@@ -11,6 +11,9 @@
 #include <QTimer>
 #include <QLockFile>
 #include <QStandardPaths>
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusVariant>
 
 #include "AppController.h"
 #include "logging/LogManager.h"
@@ -22,6 +25,19 @@ int main(int argc, char *argv[])
 {
     // Ignore SIGPIPE — hidraw writes to wrong interface cause EPIPE
     signal(SIGPIPE, SIG_IGN);
+
+    // Prevent dconf hang on GNOME — Qt's platform theme triggers dconf
+    // initialization which deadlocks on some D-Bus session configurations.
+    // Memory backend is safe: we handle theming ourselves via Theme.qml.
+    if (qEnvironmentVariableIsEmpty("GSETTINGS_BACKEND"))
+        qputenv("GSETTINGS_BACKEND", "memory");
+
+    // Qt 6.4 QML JIT hangs on some CPU/kernel combinations during compilation.
+    // Force the interpreter — startup is ~100ms either way for our QML set.
+#if QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
+    if (qEnvironmentVariableIsEmpty("QV4_FORCE_INTERPRETER"))
+        qputenv("QV4_FORCE_INTERPRETER", "1");
+#endif
 
     QApplication app(argc, argv);
     app.setOrganizationName("Logitune");
@@ -80,10 +96,31 @@ int main(int argc, char *argv[])
         logMgr.shutdown();
     });
 
-    // Detect dark mode
-    QColor windowBg = app.palette().window().color();
-    double lum = windowBg.redF() * 0.299 + windowBg.greenF() * 0.587 + windowBg.blueF() * 0.114;
-    bool isDark = lum < 0.5;
+    // Detect dark mode — XDG portal first (works with GSETTINGS_BACKEND=memory),
+    // palette luminance as fallback
+    bool isDark = false;
+    {
+        QDBusMessage msg = QDBusMessage::createMethodCall(
+            "org.freedesktop.portal.Desktop",
+            "/org/freedesktop/portal/desktop",
+            "org.freedesktop.portal.Settings",
+            "Read");
+        msg << QStringLiteral("org.freedesktop.appearance")
+            << QStringLiteral("color-scheme");
+        QDBusMessage reply = QDBusConnection::sessionBus().call(msg, QDBus::Block, 250);
+        if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+            // Portal returns variant<uint32>: 0=default, 1=dark, 2=light
+            QVariant value = reply.arguments().first().value<QDBusVariant>().variant();
+            if (value.canConvert<QDBusVariant>())
+                value = value.value<QDBusVariant>().variant();
+            isDark = (value.toUInt() == 1);
+        } else {
+            QColor windowBg = app.palette().window().color();
+            double lum = windowBg.redF() * 0.299 + windowBg.greenF() * 0.587
+                         + windowBg.blueF() * 0.114;
+            isDark = lum < 0.5;
+        }
+    }
 
     // AppController
     logitune::AppController controller;
@@ -131,8 +168,16 @@ int main(int argc, char *argv[])
     }
 
     // Set theme
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     if (auto *theme = engine.singletonInstance<QObject*>("Logitune", "Theme"))
         theme->setProperty("dark", isDark);
+#else
+    {
+        int typeId = qmlTypeId("Logitune", 1, 0, "Theme");
+        if (auto *theme = engine.singletonInstance<QObject*>(typeId))
+            theme->setProperty("dark", isDark);
+    }
+#endif
 
     controller.startMonitoring();
 
