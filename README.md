@@ -19,13 +19,14 @@
 ## ✨ Features
 
 - 🖱️ **Per-app profiles** — automatic button/scroll/DPI switching on window focus
-- ⌨️ **Button remapping** — keystrokes, app launch, gestures, SmartShift toggle
+- ⌨️ **Button remapping** — keystrokes, media controls, app launch, gestures, SmartShift toggle
 - 🎛️ **Thumb wheel modes** — volume, zoom, horizontal scroll with invert control
 - 👆 **Gesture support** — hold + swipe for desktop switching, task view, custom keystrokes
 - ⚡ **DPI / SmartShift / Scroll** — full control with live preview
 - 🔋 **System tray** — battery status, minimize to tray
 - 📡 **HID++ 2.0** — direct communication via Bolt receiver, no daemon needed
 - 🔄 **Disconnect/reconnect** — automatic re-enumeration and profile reapplication
+- 🖥️ **KDE + GNOME** — native focus tracking on both desktops
 
 ## 📸 Screenshots
 
@@ -62,35 +63,34 @@
 </tr>
 </table>
 
-## 🚀 Quick Start
+## 🚀 Install
 
-**Ubuntu/Debian:**
+**Ubuntu 24.04 (via OBS repo):**
 ```bash
-sudo apt install ./logitune-VERSION_amd64.deb
-logitune
+echo 'deb http://download.opensuse.org/repositories/home:/mmaher88:/logitune/xUbuntu_24.04/ /' | sudo tee /etc/apt/sources.list.d/logitune.list
+curl -fsSL https://download.opensuse.org/repositories/home:mmaher88:logitune/xUbuntu_24.04/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/logitune.gpg > /dev/null
+sudo apt update && sudo apt install logitune
 ```
 
-**Fedora:**
+**Fedora 42 (via OBS repo):**
 ```bash
-sudo dnf install logitune-VERSION.rpm
-logitune
+sudo dnf config-manager addrepo --from-repofile=https://download.opensuse.org/repositories/home:mmaher88:logitune/Fedora_42/home:mmaher88:logitune.repo
+sudo dnf install logitune
 ```
 
 **Arch Linux:**
 ```bash
-makepkg -si   # from AUR, or: make package-arch
-logitune
+bash scripts/package-arch.sh
+sudo pacman -U logitune-*.pkg.tar.zst
 ```
 
 **From source:**
 ```bash
-make build
-make test-all
-make install
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build build
+sudo cmake --install build
 logitune
 ```
-
-**GitHub Codespaces:** Click "Create codespace" — full dev environment in one click.
 
 ## 📚 Documentation
 
@@ -115,18 +115,19 @@ logitune
 
 ## 🖥️ Desktop Environment Support
 
-| Feature | KDE Plasma 6 | GNOME | XFCE / Cinnamon | Hyprland / Sway | Other |
-|---------|:---:|:---:|:---:|:---:|:---:|
-| Button remapping | ✅ | ✅ | ✅ | ✅ | ✅ |
-| DPI / SmartShift / Scroll | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Thumb wheel modes | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Gesture actions | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Per-app profiles | ✅ | 🔜 Planned | ❌ | ❌ | ❌ |
-| Auto profile switching | ✅ | 🔜 Planned | ❌ | ❌ | ❌ |
-| Block shortcuts during capture | ✅ | 🔜 Planned | ❌ | ❌ | ❌ |
-| System tray | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feature | KDE Plasma 6 | GNOME 42+ (Wayland) | Other DEs |
+|---------|:---:|:---:|:---:|
+| Button remapping | ✅ | ✅ | ✅ |
+| Media controls | ✅ | ✅ | ✅ |
+| DPI / SmartShift / Scroll | ✅ | ✅ | ✅ |
+| Thumb wheel modes | ✅ | ✅ | ✅ |
+| Gesture actions | ✅ | ✅ | ✅ |
+| Per-app profiles | ✅ | ✅ | ❌ |
+| Auto profile switching | ✅ | ✅ | ❌ |
+| Block shortcuts during capture | ✅ | ✅ | ❌ |
+| System tray | ✅ | ✅ | ✅ |
 
-> **Note:** All device configuration (buttons, DPI, scroll, gestures, thumb wheel) works on every DE — it's pure HID++ over hidraw. Per-app profile switching requires desktop-specific integration for window focus tracking. See [Adding a Desktop Environment](https://github.com/mmaher88/logitune/wiki/Adding-a-Desktop-Environment) to contribute support.
+> **Note:** All device configuration (buttons, DPI, scroll, gestures, thumb wheel) works on every DE — it's pure HID++ over hidraw. Per-app profile switching requires desktop-specific focus tracking. KDE uses a KWin script, GNOME uses a Shell extension (auto-installed on first run). See [Adding a Desktop Environment](https://github.com/mmaher88/logitune/wiki/Adding-a-Desktop-Environment) to contribute support for other DEs.
 
 ## 🛠️ Tech Stack
 
