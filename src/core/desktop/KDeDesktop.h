@@ -1,11 +1,11 @@
 #pragma once
-#include "interfaces/IDesktopIntegration.h"
+#include "desktop/LinuxDesktopBase.h"
 #include <QDBusInterface>
 #include <QTimer>
 
 namespace logitune {
 
-class KDeDesktop : public IDesktopIntegration {
+class KDeDesktop : public LinuxDesktopBase {
     Q_OBJECT
 public:
     explicit KDeDesktop(QObject *parent = nullptr);
@@ -15,7 +15,6 @@ public:
     QString desktopName() const override;
     QStringList detectedCompositors() const override;
     void blockGlobalShortcuts(bool block) override;
-    QVariantList runningApplications() const override;
 
 public slots:
     // Called by KWin focus watcher script via D-Bus
@@ -27,14 +26,9 @@ private slots:
     void pollActiveWindow();
 
 private:
-    /// Resolve a resourceClass to a .desktop file completeBaseName by scanning
-    /// installed .desktop files for matching StartupWMClass or name component.
-    QString resolveDesktopFile(const QString &resourceClass) const;
-
     QDBusInterface *m_kwin = nullptr;
     QTimer *m_pollTimer = nullptr;
     QString m_lastWmClass;
-    mutable QHash<QString, QString> m_resolveCache;  // resourceClass -> .desktop baseName
     bool m_available = false;
 };
 
