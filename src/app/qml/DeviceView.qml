@@ -68,7 +68,7 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: StackView.view.pop()
+                        onClicked: root.StackView.view.pop()
                     }
                 }
 
@@ -173,7 +173,7 @@ Item {
     Timer {
         id: disconnectTimer
         interval: 3000
-        onTriggered: StackView.view.pop()
+        onTriggered: root.StackView.view.pop()
     }
 
     Toast { id: toast }

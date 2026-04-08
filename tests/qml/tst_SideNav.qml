@@ -32,9 +32,9 @@ Item {
             waitForRendering(nav)
 
             // Layout: 16px spacer + ~20px header + 17px margins + 40px items
-            // Header ≈ 53px. Items: 0→53, 1→110, 2→167, 3→224, 4→281
-            // Settings (index 4) center ≈ 301
-            mouseClick(nav, 100, 301)
+            // Header ≈ 53px. Items: 0→53, 1→110, 2→167, 3→224
+            // Settings (index 3) center ≈ 244
+            mouseClick(nav, 100, 244)
 
             compare(nav.currentPage, "settings", "clicking settings should update currentPage")
             compare(spy.count, 1, "pageSelected signal should fire")
@@ -49,13 +49,6 @@ Item {
             compare(nav.currentPage, "pointscroll", "clicking point & scroll should update currentPage")
         }
 
-        function test_disabledFlowDoesNotChangePage() {
-            waitForRendering(nav)
-
-            // flow (index 3) center ≈ 244
-            mouseClick(nav, 100, 244)
-
-            compare(nav.currentPage, "buttons", "clicking disabled flow item should not change page")
-        }
+        // Flow section removed — no longer part of the app
     }
 }

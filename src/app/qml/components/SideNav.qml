@@ -15,7 +15,6 @@ Rectangle {
         { name: "buttons",     label: "BUTTONS",         icon: "\uD83D\uDDB1", enabled: true  },
         { name: "pointscroll", label: "POINT & SCROLL",  icon: "\u25CE",       enabled: true  },
         { name: "easyswitch",  label: "EASY-SWITCH",     icon: "\u21C4",       enabled: true  },
-        { name: "flow",        label: "FLOW",             icon: "\u2194",       enabled: false },
         { name: "settings",    label: "SETTINGS",         icon: "\u2261",       enabled: true  }
     ]
 
