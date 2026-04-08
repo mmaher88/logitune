@@ -78,10 +78,9 @@ sudo dnf config-manager addrepo --from-repofile=https://download.opensuse.org/re
 sudo dnf install logitune
 ```
 
-**Arch Linux:**
+**Arch Linux (AUR):**
 ```bash
-bash scripts/package-arch.sh
-sudo pacman -U logitune-*.pkg.tar.zst
+yay -S logitune
 ```
 
 **From source:**
@@ -100,7 +99,7 @@ logitune
 | [🔨 Building](https://github.com/mmaher88/logitune/wiki/Building) | Prerequisites, build commands, native packages, devcontainer |
 | [🏗️ Architecture](https://github.com/mmaher88/logitune/wiki/Architecture) | System design, signal flow, 14 Mermaid diagrams |
 | [🖱️ Adding a Device](https://github.com/mmaher88/logitune/wiki/Adding-a-Device) | Step-by-step guide with code examples |
-| [🖥️ Adding a Desktop Environment](https://github.com/mmaher88/logitune/wiki/Adding-a-Desktop-Environment) | Interface, GNOME scaffold, DE comparison |
+| [🖥️ Adding a Desktop Environment](https://github.com/mmaher88/logitune/wiki/Adding-a-Desktop-Environment) | KDE + GNOME implementation, adding new DEs |
 | [🧪 Testing](https://github.com/mmaher88/logitune/wiki/Testing) | Philosophy, 4 test tiers, writing tests |
 | [📡 HID++ Protocol](https://github.com/mmaher88/logitune/wiki/HID++-Protocol) | Report format, features, Bolt receiver, async matching |
 | [🤝 Contributing](https://github.com/mmaher88/logitune/wiki/Contributing) | Workflow, code style, commit format |
