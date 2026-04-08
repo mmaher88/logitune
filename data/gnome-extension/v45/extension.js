@@ -24,7 +24,7 @@ export default class LogituneFocusExtension extends Extension {
             Gio.DBus.session.call(
                 'com.logitune.app',
                 '/FocusWatcher',
-                'local.Logitune.logitune.GnomeDesktop',
+                'com.logitune.FocusWatcher',
                 'focusChanged',
                 new GLib.Variant('(ss)', [appId, title]),
                 null,

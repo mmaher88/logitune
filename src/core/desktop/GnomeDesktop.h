@@ -5,6 +5,7 @@ namespace logitune {
 
 class GnomeDesktop : public LinuxDesktopBase {
     Q_OBJECT
+    Q_CLASSINFO("D-Bus Interface", "com.logitune.FocusWatcher")
 public:
     explicit GnomeDesktop(QObject *parent = nullptr);
 
