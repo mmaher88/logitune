@@ -1,5 +1,5 @@
 Name:           logitune
-Version:        0.1.2
+Version:        0.2.0
 Release:        1%{?dist}
 Summary:        Logitech device configurator for Linux
 License:        GPL-3.0-or-later

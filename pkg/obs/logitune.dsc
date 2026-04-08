@@ -1,6 +1,6 @@
 Format: 1.0
 Source: logitune
-Version: 0.1.2-1
+Version: 0.2.0-1
 Binary: logitune
 Maintainer: mmaher88 <mina.maher88@hotmail.com>
 Architecture: any

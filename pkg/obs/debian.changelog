@@ -1,3 +1,18 @@
+logitune (0.2.0-1) unstable; urgency=medium
+
+  * GNOME 42+ Wayland support (Shell extension focus tracking)
+  * Options+-style battery indicator with Bolt/Bluetooth icons
+  * Bluetooth transport reconnection fix
+  * Real device serial number and firmware version display
+  * App settings separated from device settings (gear icon)
+  * Dark mode preference persists across restarts
+  * New app icon (mouse silhouette for tray legibility)
+  * Sidebar hover animation fix for light theme
+  * SettingsModel MVVM refactor
+  * 389 C++ + 63 QML tests
+
+ -- mmaher88 <mina.maher88@hotmail.com>  Tue, 08 Apr 2026 00:00:00 +0000
+
 logitune (0.1.2-1) unstable; urgency=medium
 
   * Initial OBS release
