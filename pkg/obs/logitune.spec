@@ -61,6 +61,7 @@ DPI, SmartShift, scroll, gesture, and thumb wheel settings.
 %dir %{_datadir}/gnome-shell/extensions
 %dir %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com
 %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/metadata.json
+%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/extension.js
 %dir %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v42
 %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v42/extension.js
 %dir %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v45
