@@ -38,11 +38,11 @@ QList<ControlDescriptor> MxMaster4Descriptor::controls() const
 QList<HotspotDescriptor> MxMaster4Descriptor::buttonHotspots() const
 {
     return {
-        { 2, 0.71, 0.15,  QStringLiteral("right"), 0.0  },
-        { 6, 0.81, 0.34,  QStringLiteral("right"), 0.0  },
-        { 7, 0.55, 0.515, QStringLiteral("right"), 0.0  },
-        { 4, 0.35, 0.43,  QStringLiteral("left"),  0.0  },
-        { 3, 0.45, 0.60,  QStringLiteral("left"),  0.20 },
+        { 2, 0.75, 0.23,  QStringLiteral("right"), 0.0  },
+        { 6, 0.81, 0.43,  QStringLiteral("right"), 0.0  },
+        { 7, 0.55, 0.515, QStringLiteral("right"), 0.20  },
+        { 4, 0.43, 0.50,  QStringLiteral("left"),  0.0  },
+        { 3, 0.47, 0.60,  QStringLiteral("left"),  0.20 },
         { 5, 0.08, 0.58,  QStringLiteral("left"),  0.0  },
     };
 }
