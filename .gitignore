@@ -1,4 +1,7 @@
+# Build outputs
 build/
+build-release/
+build-*/
 .cache/
 *.o
 *.a
@@ -7,8 +10,26 @@ cmake_install.cmake
 **/Makefile
 !/Makefile
 CMakeCache.txt
+.qmlls.ini
+.flatpak-builder/
+
+# Package artifacts
+*.deb
+*.rpm
+*.pkg.tar.zst
+*.pkg.tar.xz
+*.tar.gz
+*.tar.xz
+
+# Arch makepkg staging
+pkg/logitune/
+src/*/PKGBUILD
+PKGBUILD
+
+# Editor/IDE
 .superpowers/
 .claude/
 .vscode/
-.qmlls.ini
+
+# Reference material (not to ship)
 reference/
