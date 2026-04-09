@@ -1,10 +1,12 @@
 #include "DeviceRegistry.h"
 #include "devices/MxMaster3sDescriptor.h"
+#include "devices/ProXWirelessDescriptor.h"
 
 namespace logitune {
 
 DeviceRegistry::DeviceRegistry() {
     registerDevice(std::make_unique<MxMaster3sDescriptor>());
+    registerDevice(std::make_unique<ProXWirelessDescriptor>());
 }
 
 const IDevice* DeviceRegistry::findByPid(uint16_t pid) const {
