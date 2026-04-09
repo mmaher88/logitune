@@ -1,4 +1,14 @@
 # Logitune - Grant logged-in user access to Logitech hidraw devices
+#
+# Matches both USB-connected and Bluetooth-connected Logitech devices.
+# Approach adapted from Solaar's 42-logitech-unify-permissions.rules.
+
+# USB-connected Logitech devices (MX mice, keyboards, Bolt/Unifying receivers)
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", TAG+="uaccess"
+
+# Direct Bluetooth-connected Logitech HID devices
+# Kernel path format: BT connection type 0005 + Logitech vendor ID 046D
+SUBSYSTEM=="hidraw", KERNELS=="0005:046D:*", TAG+="uaccess"
+
 # Grant logged-in user access to uinput for keystroke injection
 KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess"
