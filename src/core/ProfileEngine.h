@@ -20,7 +20,7 @@ struct Profile {
     bool smoothScrolling = false;
     QString scrollDirection = "standard";  // "standard" or "natural"
     bool hiResScroll = true;
-    std::array<ButtonAction, 8> buttons;   // indexed 0-7 (includes thumb wheel virtual entry)
+    std::array<ButtonAction, 16> buttons;  // indexed by ControlDescriptor::buttonIndex
     std::map<QString, ButtonAction> gestures;  // "up","down","left","right","click"
     QString thumbWheelMode = "scroll";  // "scroll", "zoom", "volume", "none"
     bool thumbWheelInvert = false;

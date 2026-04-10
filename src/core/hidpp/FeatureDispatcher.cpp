@@ -13,6 +13,7 @@ static constexpr FeatureId kKnownFeatures[] = {
     FeatureId::ChangeHost,
     FeatureId::ReprogControlsV4,
     FeatureId::SmartShift,
+    FeatureId::SmartShiftEnhanced,
     FeatureId::HiResWheel,
     FeatureId::ThumbWheel,
     FeatureId::AdjustableDPI,

@@ -653,18 +653,31 @@ void DeviceManager::enumerateAndSetup()
         }
     }
 
-    // Read SmartShift — V1 (0x2110): fn0=GetStatus, response=[mode, autoDisengage, default]
-    if (m_features->hasFeature(hidpp::FeatureId::SmartShift)) {
-        auto resp = m_features->call(m_transport.get(), m_deviceIndex,
-                                     hidpp::FeatureId::SmartShift,
-                                     hidpp::features::SmartShift::kFnGetStatus);
-        if (resp.has_value()) {
-            auto cfg = hidpp::features::SmartShift::parseConfig(*resp);
-            m_smartShiftEnabled = cfg.isRatchet(); // mode=2 means SmartShift active
-            m_smartShiftThreshold = cfg.autoDisengage;
-            qCDebug(lcDevice) << "SmartShift: mode=" << cfg.mode
-                              << (m_smartShiftEnabled ? "(ratchet)" : "(freespin)")
-                              << "autoDisengage=" << m_smartShiftThreshold;
+    // Read SmartShift — try V1 (0x2110) first, fall back to Enhanced (0x2111)
+    // V1: fn0=GetStatus, fn1=SetStatus
+    // Enhanced: fn1=GetStatus, fn2=SetStatus (fn0 is getCapabilities)
+    {
+        hidpp::FeatureId ssFeature = hidpp::FeatureId::SmartShift;
+        uint8_t ssGetFn = hidpp::features::SmartShift::kFnGetStatus;  // 0x00
+
+        if (!m_features->hasFeature(hidpp::FeatureId::SmartShift) &&
+            m_features->hasFeature(hidpp::FeatureId::SmartShiftEnhanced)) {
+            ssFeature = hidpp::FeatureId::SmartShiftEnhanced;
+            ssGetFn = 0x01;  // Enhanced uses fn1 for GetStatus
+            qCDebug(lcDevice) << "using SmartShift Enhanced (0x2111)";
+        }
+
+        if (m_features->hasFeature(ssFeature)) {
+            auto resp = m_features->call(m_transport.get(), m_deviceIndex,
+                                         ssFeature, ssGetFn);
+            if (resp.has_value()) {
+                auto cfg = hidpp::features::SmartShift::parseConfig(*resp);
+                m_smartShiftEnabled = cfg.isRatchet();
+                m_smartShiftThreshold = cfg.autoDisengage;
+                qCDebug(lcDevice) << "SmartShift: mode=" << cfg.mode
+                                  << (m_smartShiftEnabled ? "(ratchet)" : "(freespin)")
+                                  << "autoDisengage=" << m_smartShiftThreshold;
+            }
         }
     }
 
@@ -983,21 +996,22 @@ void DeviceManager::handleNotification(const hidpp::Report &report)
         }
     }
 
-    // SmartShift feature notification (if device sends one)
-    if (m_features && m_features->hasFeature(hidpp::FeatureId::SmartShift)) {
-        auto idx = m_features->featureIndex(hidpp::FeatureId::SmartShift);
-        if (idx.has_value() && report.featureIndex == *idx) {
-            // The notification contains the new status directly
-            auto cfg = hidpp::features::SmartShift::parseConfig(report);
-            bool newEnabled = cfg.isRatchet();
-            if (m_smartShiftEnabled != newEnabled) {
-                m_smartShiftEnabled = newEnabled;
-                m_smartShiftThreshold = cfg.autoDisengage;
-                qCDebug(lcDevice) << "SmartShift button toggled:"
-                                  << (newEnabled ? "ratchet" : "freespin");
-                emit smartShiftChanged();
+    // SmartShift feature notification (V1 or Enhanced)
+    for (auto ssId : {hidpp::FeatureId::SmartShift, hidpp::FeatureId::SmartShiftEnhanced}) {
+        if (m_features && m_features->hasFeature(ssId)) {
+            auto idx = m_features->featureIndex(ssId);
+            if (idx.has_value() && report.featureIndex == *idx) {
+                auto cfg = hidpp::features::SmartShift::parseConfig(report);
+                bool newEnabled = cfg.isRatchet();
+                if (m_smartShiftEnabled != newEnabled) {
+                    m_smartShiftEnabled = newEnabled;
+                    m_smartShiftThreshold = cfg.autoDisengage;
+                    qCDebug(lcDevice) << "SmartShift toggled:"
+                                      << (newEnabled ? "ratchet" : "freespin");
+                    emit smartShiftChanged();
+                }
+                return;
             }
-            return;
         }
     }
 
@@ -1128,8 +1142,19 @@ void DeviceManager::setSmartShift(bool enabled, int threshold)
 {
     if (!m_connected || !m_features || !m_commandQueue)
         return;
-    if (!m_features->hasFeature(hidpp::FeatureId::SmartShift))
+
+    // Resolve which feature to use: V1 (0x2110) or Enhanced (0x2111)
+    hidpp::FeatureId ssFeature;
+    uint8_t ssSetFn;
+    if (m_features->hasFeature(hidpp::FeatureId::SmartShift)) {
+        ssFeature = hidpp::FeatureId::SmartShift;
+        ssSetFn = hidpp::features::SmartShift::kFnSetStatus;  // fn1
+    } else if (m_features->hasFeature(hidpp::FeatureId::SmartShiftEnhanced)) {
+        ssFeature = hidpp::FeatureId::SmartShiftEnhanced;
+        ssSetFn = 0x02;  // Enhanced uses fn2 for SetStatus
+    } else {
         return;
+    }
 
     threshold = qBound(1, threshold, 255);
 
@@ -1141,10 +1166,10 @@ void DeviceManager::setSmartShift(bool enabled, int threshold)
     uint8_t ad = static_cast<uint8_t>(threshold);
 
     auto params = hidpp::features::SmartShift::buildSetConfig(mode, ad);
-    m_commandQueue->enqueue(hidpp::FeatureId::SmartShift,
-                            hidpp::features::SmartShift::kFnSetStatus,
+    m_commandQueue->enqueue(ssFeature, ssSetFn,
                             std::span<const uint8_t>(params));
-    qCDebug(lcDevice) << "SmartShift set: mode=" << mode << "autoDisengage=" << ad;
+    qCDebug(lcDevice) << "SmartShift set: feature=" << Qt::hex << static_cast<uint16_t>(ssFeature)
+                      << "mode=" << mode << "autoDisengage=" << ad;
 }
 
 void DeviceManager::setScrollConfig(bool hiRes, bool invert)

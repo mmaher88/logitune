@@ -311,8 +311,9 @@ void AppController::restoreButtonModelFromProfile(const Profile &p)
 
     QList<QPair<QString, QString>> buttons;
     for (int i = 0; i < static_cast<int>(controls.size()); ++i) {
-        if (i == 7) {
-            // Thumb wheel label from profile mode
+        const auto &ctrl = controls[i];
+        if (ctrl.controlId == 0) {
+            // Thumb wheel virtual entry — label from profile mode
             static const QMap<QString, QString> kWheelNames = {
                 {"scroll", "Horizontal scroll"}, {"zoom", "Zoom in/out"},
                 {"volume", "Volume control"}, {"none", "No action"}
@@ -322,7 +323,6 @@ void AppController::restoreButtonModelFromProfile(const Profile &p)
             buttons.append({wheelName, wheelType});
             continue;
         }
-        const auto &ctrl = controls[i];
         const auto &ba = (static_cast<std::size_t>(i) < p.buttons.size())
             ? p.buttons[static_cast<std::size_t>(i)]
             : ButtonAction{ButtonAction::Default, {}};
@@ -414,11 +414,10 @@ void AppController::applyProfileToHardware(const Profile &p)
                                     p.scrollDirection == QStringLiteral("natural"));
     m_deviceManager.setThumbWheelMode(p.thumbWheelMode, p.thumbWheelInvert);
 
-    // Apply button diversions to hardware via HID++ (skip button 7 = thumb wheel)
+    // Apply button diversions to hardware via HID++
     for (int i = 0; i < buttonCount; ++i) {
-        if (i == 7) continue;
         const auto &ctrl = controls[i];
-        if (ctrl.controlId == 0) continue; // virtual entry -- no ReprogControls divert
+        if (ctrl.controlId == 0) continue; // virtual entry (thumb wheel) -- no ReprogControls divert
         if (!ctrl.configurable) continue;  // non-divertable (e.g. left/right click)
         const auto &ba = (static_cast<std::size_t>(i) < p.buttons.size())
             ? p.buttons[static_cast<std::size_t>(i)]
@@ -440,11 +439,11 @@ void AppController::saveCurrentProfile()
     Profile &p = m_profileEngine.cachedProfile(name);
     if (p.name.isEmpty()) p.name = name;
 
-    // Save buttons (skip 7 — thumb wheel is stored as thumbWheelMode)
+    // Save buttons (skip thumb wheel virtual entry, stored as thumbWheelMode)
     if (m_currentDevice) {
-        int count = m_currentDevice->controls().size();
-        for (int i = 0; i < count && i < 8; ++i) {
-            if (i == 7) continue;
+        const auto controls = m_currentDevice->controls();
+        for (int i = 0; i < static_cast<int>(controls.size()); ++i) {
+            if (controls[i].controlId == 0) continue;
             if (static_cast<std::size_t>(i) < p.buttons.size())
                 p.buttons[static_cast<std::size_t>(i)] = buttonEntryToAction(
                     m_buttonModel.actionTypeForButton(i),
