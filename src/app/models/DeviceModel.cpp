@@ -1,5 +1,6 @@
 #include "DeviceModel.h"
 #include "interfaces/IDevice.h"
+#include "devices/JsonDevice.h"
 #include "desktop/GnomeDesktop.h"
 #include "logging/LogManager.h"
 #include <QTimer>
@@ -247,6 +248,13 @@ QVariantList DeviceModel::easySwitchSlotPositions() const
     return result;
 }
 
+bool DeviceModel::smoothScrollSupported() const
+{
+    if (m_dm && m_dm->activeDevice())
+        return m_dm->activeDevice()->features().smoothScroll;
+    return true;
+}
+
 QString DeviceModel::deviceSerial() const
 {
     if (m_dm)
@@ -407,5 +415,20 @@ void DeviceModel::setActiveWmClass(const QString &wmClass)
     emit activeWmClassChanged();
 }
 
+QString DeviceModel::deviceStatus() const
+{
+    if (!m_dm || !m_dm->activeDevice())
+        return QStringLiteral("unknown");
+    auto* json = dynamic_cast<const JsonDevice*>(m_dm->activeDevice());
+    if (!json)
+        return QStringLiteral("implemented");
+    switch (json->status()) {
+    case JsonDevice::Status::Implemented:       return QStringLiteral("implemented");
+    case JsonDevice::Status::CommunityVerified: return QStringLiteral("community-verified");
+    case JsonDevice::Status::CommunityLocal:    return QStringLiteral("community-local");
+    case JsonDevice::Status::Placeholder:       return QStringLiteral("placeholder");
+    }
+    return QStringLiteral("unknown");
+}
 
 } // namespace logitune

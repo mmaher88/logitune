@@ -99,11 +99,15 @@ Item {
 
                 calloutType: "scrollwheel"
                 title: "Scroll wheel"
-                settings: [
-                    "Scroll direction: " + (DeviceModel.scrollInvert ? "Natural" : "Standard"),
-                    "Smooth scrolling: " + (DeviceModel.scrollHiRes ? "On" : "Off"),
-                    "SmartShift: " + (DeviceModel.smartShiftEnabled ? "On" : "Off")
-                ]
+                settings: {
+                    var s = [
+                        "Scroll direction: " + (DeviceModel.scrollInvert ? "Natural" : "Standard")
+                    ];
+                    if (DeviceModel.smoothScrollSupported)
+                        s.push("Smooth scrolling: " + (DeviceModel.scrollHiRes ? "On" : "Off"));
+                    s.push("SmartShift: " + (DeviceModel.smartShiftEnabled ? "On" : "Off"));
+                    return s;
+                }
 
                 onCalloutClicked: function(type) {
                     root.activePanelType = (root.activePanelType === type) ? "" : type
