@@ -75,6 +75,7 @@ void AppController::startMonitoring()
 {
     m_deviceManager.start();
     m_desktop->start();
+    m_deviceFetcher.fetchManifest();
 }
 
 // Signal wiring --------------------------------------------------------------
@@ -125,7 +126,17 @@ void AppController::wireSignals()
     connect(&m_deviceManager, &DeviceManager::thumbWheelRotation,
             this, &AppController::onThumbWheelRotation);
 
-    // 10. DeviceModel change requests -> update cache + save + conditionally write to hardware
+    // 10. Community device fetch: reload registry when new descriptors arrive
+    connect(&m_deviceFetcher, &DeviceFetcher::descriptorsUpdated,
+            this, [this]() {
+        m_registry.reloadAll();
+    });
+
+    // 11. Unknown device -> trigger community fetch for that PID
+    connect(&m_deviceManager, &DeviceManager::unknownDeviceDetected,
+            &m_deviceFetcher, &DeviceFetcher::fetchForPid);
+
+    // 12. DeviceModel change requests -> update cache + save + conditionally write to hardware
     connect(&m_deviceModel, &DeviceModel::dpiChangeRequested,
             this, &AppController::onDpiChangeRequested);
     connect(&m_deviceModel, &DeviceModel::smartShiftChangeRequested,
