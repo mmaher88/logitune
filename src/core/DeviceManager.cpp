@@ -712,9 +712,11 @@ void DeviceManager::enumerateAndSetup()
     }
     if (m_activeDevice)
         qCDebug(lcDevice) << "matched device descriptor:" << m_activeDevice->deviceName();
-    else
+    else {
         qCDebug(lcDevice) << "no device descriptor found for PID"
                           << Qt::hex << m_device->info().productId << "name:" << name;
+        emit unknownDeviceDetected(m_device->info().productId);
+    }
 
     // Undivert ALL buttons to ensure clean native state on startup.
     // Previous sessions may have left diversions active on the device.

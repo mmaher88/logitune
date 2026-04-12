@@ -1,4 +1,5 @@
 #pragma once
+#include "DeviceFetcher.h"
 #include "DeviceManager.h"
 #include "DeviceRegistry.h"
 #include "interfaces/IDevice.h"
@@ -71,6 +72,7 @@ private:
     // Subsystems
     DeviceRegistry m_registry;
     DeviceManager  m_deviceManager;
+    DeviceFetcher  m_deviceFetcher;
     DeviceModel    m_deviceModel;
     SettingsModel  m_settingsModel;
     ButtonModel    m_buttonModel;
