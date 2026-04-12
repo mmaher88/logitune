@@ -66,6 +66,7 @@ FeatureSupport MxMaster4Descriptor::features() const
     f.thumbWheel     = true;
     f.reprogControls = true;
     f.gestureV2      = false;
+    f.smoothScroll   = false;
     return f;
 }
 

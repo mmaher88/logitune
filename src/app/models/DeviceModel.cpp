@@ -235,6 +235,13 @@ QVariantList DeviceModel::easySwitchSlotPositions() const
     return result;
 }
 
+bool DeviceModel::smoothScrollSupported() const
+{
+    if (m_dm && m_dm->activeDevice())
+        return m_dm->activeDevice()->features().smoothScroll;
+    return true;
+}
+
 QString DeviceModel::deviceSerial() const
 {
     if (m_dm)
