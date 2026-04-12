@@ -40,8 +40,11 @@ add_executable(logitune-tests
 )
 target_include_directories(logitune-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(logitune-tests PRIVATE logitune-core logitune-app-lib Qt6::Test Qt6::Widgets GTest::gtest)
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/logitune)
+file(CREATE_LINK ${CMAKE_SOURCE_DIR}/devices ${CMAKE_BINARY_DIR}/logitune/devices SYMBOLIC)
+
 gtest_discover_tests(logitune-tests
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;XDG_DATA_DIRS=${CMAKE_BINARY_DIR}"
     DISCOVERY_MODE PRE_TEST)
 
 # Tray tests need a clean QApplication — separate binary to avoid fixture conflicts
@@ -49,7 +52,7 @@ add_executable(logitune-tray-tests test_main.cpp test_tray_manager.cpp)
 target_include_directories(logitune-tray-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(logitune-tray-tests PRIVATE logitune-app-lib Qt6::Test Qt6::Widgets GTest::gtest)
 gtest_discover_tests(logitune-tray-tests
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;XDG_DATA_DIRS=${CMAKE_BINARY_DIR}"
     DISCOVERY_MODE PRE_TEST)
 
 add_subdirectory(qml)

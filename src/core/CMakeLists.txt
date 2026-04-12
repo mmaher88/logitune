@@ -20,8 +20,6 @@ target_sources(logitune-core PRIVATE
     ProfileEngine.cpp
     ActionExecutor.cpp
     DeviceRegistry.cpp
-    devices/MxMaster3sDescriptor.cpp
-    devices/MxMaster4Descriptor.cpp
     devices/JsonDevice.cpp
     interfaces/IDesktopIntegration.cpp
     interfaces/IInputInjector.cpp
