@@ -8,7 +8,6 @@ Item {
     signal deviceClicked()
     signal settingsClicked()
 
-    // ── Top bar — 18.5vh max 144px ──────────────────────────────────────────
     RowLayout {
         id: topBar
         anchors {
@@ -19,7 +18,7 @@ Item {
         height: Math.min(root.height * 0.185, 144)
         spacing: 12
 
-        Item { width: 24 }  // left margin
+        Item { width: 24 }
 
         Text {
             id: greeting
@@ -29,7 +28,6 @@ Item {
                 if (hour >= 12 && hour < 17) return "Good Afternoon";
                 return "Good Evening";
             }
-            // Responsive: calc(1vw + 2.8vh) equivalent, clamped 24–36px
             font.pixelSize: Math.max(24, Math.min(36, root.width * 0.01 + root.height * 0.028))
             font.bold: true
             font.family: "Inter, sans-serif"
@@ -54,10 +52,9 @@ Item {
             }
         }
 
-        Item { width: 24 }  // right margin
+        Item { width: 24 }
     }
 
-    // ── Center content ────────────────────────────────────────────────────────
     Item {
         anchors {
             top: topBar.bottom
@@ -66,47 +63,64 @@ Item {
             right: parent.right
         }
 
-        // Device connected state
-        Column {
-            anchors.centerIn: parent
-            spacing: 16
-            visible: DeviceModel.deviceConnected
+        // Multi-device carousel
+        PathView {
+            id: carousel
+            anchors {
+                fill: parent
+                bottomMargin: 40
+            }
+            model: DeviceModel
+            currentIndex: DeviceModel.selectedIndex
+            onCurrentIndexChanged: DeviceModel.selectedIndex = currentIndex
+            visible: DeviceModel.count > 0
 
-            // Mouse device image
-            Image {
-                id: deviceCard
-                width: 200
-                height: 296
-                anchors.horizontalCenter: parent.horizontalCenter
-                source: DeviceModel.frontImage
-                fillMode: Image.PreserveAspectFit
-                smooth: true
-                mipmap: true
+            pathItemCount: Math.min(DeviceModel.count, 5)
+            preferredHighlightBegin: 0.5
+            preferredHighlightEnd: 0.5
+            highlightRangeMode: PathView.StrictlyEnforceRange
+            interactive: DeviceModel.count > 1
 
-                HoverHandler { id: cardHover }
+            path: Path {
+                startX: 0; startY: carousel.height / 2
+                PathLine { x: carousel.width; y: carousel.height / 2 }
+            }
 
-                scale: cardHover.hovered ? 1.03 : 1.0
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+            delegate: DeviceCard {
+                scale: PathView.isCurrentItem ? 1.0 : 0.65
+                opacity: PathView.isCurrentItem ? 1.0 : 0.5
+                z: PathView.isCurrentItem ? 2 : 1
 
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.deviceClicked()
+                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                onClicked: {
+                    if (PathView.isCurrentItem)
+                        root.deviceClicked()
+                    else
+                        carousel.currentIndex = index
                 }
             }
+        }
 
-            // Device name label below the card
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: DeviceModel.deviceName || "MX Master 3S"
-                font.pixelSize: 15
-                font.bold: true
-                color: Theme.text
+        // Dot indicators
+        Row {
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                bottom: parent.bottom
+                bottomMargin: 12
             }
+            spacing: 8
+            visible: DeviceModel.count > 1
 
-            BatteryChip {
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: DeviceModel.deviceConnected
+            Repeater {
+                model: DeviceModel.count
+                Rectangle {
+                    required property int index
+                    width: 8; height: 8; radius: 4
+                    color: index === DeviceModel.selectedIndex ? Theme.accent : Theme.border
+                    Behavior on color { ColorAnimation { duration: 200 } }
+                }
             }
         }
 
@@ -114,7 +128,7 @@ Item {
         Column {
             anchors.centerIn: parent
             spacing: 12
-            visible: !DeviceModel.deviceConnected
+            visible: DeviceModel.count === 0
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -185,7 +199,6 @@ Item {
                 }
             }
 
-            // Dismiss button
             Text {
                 anchors { top: parent.top; right: parent.right; margins: 8 }
                 text: "\u2715"
@@ -199,5 +212,4 @@ Item {
             }
         }
     }
-
 }
