@@ -116,6 +116,7 @@ signals:
     void divertedButtonPressed(uint16_t controlId, bool pressed);
     void gestureRawXY(int16_t dx, int16_t dy);  // raw mouse deltas from diverted gesture button
     void deviceWoke();
+    void unknownDeviceDetected(uint16_t pid);
 
 private slots:
     void onUdevReady();
