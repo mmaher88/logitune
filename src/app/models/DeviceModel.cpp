@@ -3,6 +3,11 @@
 #include "devices/JsonDevice.h"
 #include "desktop/GnomeDesktop.h"
 #include "logging/LogManager.h"
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QSettings>
 #include <QVariantMap>
@@ -131,11 +136,76 @@ QString DeviceModel::selectedDeviceId() const
 
 void DeviceModel::addSession(DeviceSession *session)
 {
-    int row = m_sessions.size();
-    beginInsertRows(QModelIndex(), row, row);
-    m_sessions.append(session);
+    // Determine insertion position based on saved order
+    QStringList savedOrder = loadDeviceOrder();
+    int insertAt = m_sessions.size();
+    if (!savedOrder.isEmpty()) {
+        int savedPos = savedOrder.indexOf(session->deviceId());
+        if (savedPos >= 0) {
+            insertAt = 0;
+            for (int i = 0; i < m_sessions.size(); ++i) {
+                int existingPos = savedOrder.indexOf(m_sessions[i]->deviceId());
+                if (existingPos < 0 || existingPos < savedPos)
+                    insertAt = i + 1;
+            }
+        }
+    }
+
+    beginInsertRows(QModelIndex(), insertAt, insertAt);
+    m_sessions.insert(insertAt, session);
     endInsertRows();
     emit countChanged();
+}
+
+void DeviceModel::moveDevice(int from, int to)
+{
+    if (from < 0 || from >= m_sessions.size()) return;
+    if (to < 0 || to >= m_sessions.size()) return;
+    if (from == to) return;
+
+    int destRow = to > from ? to + 1 : to;
+    beginMoveRows(QModelIndex(), from, from, QModelIndex(), destRow);
+    m_sessions.move(from, to);
+    endMoveRows();
+
+    if (m_selectedIndex == from)
+        m_selectedIndex = to;
+    else if (from < m_selectedIndex && to >= m_selectedIndex)
+        m_selectedIndex--;
+    else if (from > m_selectedIndex && to <= m_selectedIndex)
+        m_selectedIndex++;
+
+    saveDeviceOrder();
+}
+
+void DeviceModel::saveDeviceOrder() const
+{
+    QJsonArray order;
+    for (auto *session : m_sessions)
+        order.append(session->deviceId());
+
+    QJsonObject root;
+    root["order"] = order;
+
+    QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
+                   + "/device-order.json";
+    QFile f(path);
+    if (f.open(QIODevice::WriteOnly))
+        f.write(QJsonDocument(root).toJson());
+}
+
+QStringList DeviceModel::loadDeviceOrder() const
+{
+    QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
+                   + "/device-order.json";
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) return {};
+
+    QJsonArray order = QJsonDocument::fromJson(f.readAll()).object()["order"].toArray();
+    QStringList result;
+    for (const auto &v : order)
+        result.append(v.toString());
+    return result;
 }
 
 void DeviceModel::removeSession(const QString &deviceId)
