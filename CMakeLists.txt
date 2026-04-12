@@ -9,6 +9,8 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS Core Quick Svg DBus Widgets Concurrent 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(UDEV REQUIRED libudev)
 
+include(GNUInstallDirs)
+
 option(BUILD_TESTING "Build tests" ON)
 option(BUILD_HW_TESTING "Build hardware integration tests (requires connected device)" OFF)
 
@@ -24,6 +26,9 @@ install(FILES data/71-logitune.rules DESTINATION lib/udev/rules.d)
 install(FILES data/logitune.desktop DESTINATION share/applications)
 install(FILES data/logitune.desktop DESTINATION etc/xdg/autostart)
 install(FILES data/com.logitune.Logitune.svg DESTINATION share/icons/hicolor/scalable/apps)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/devices/
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/logitune/devices)
 
 # GNOME Shell extension (both API versions — app selects correct one at runtime)
 # Root extension.js = v45 (GNOME 45+, most common). Shell loads from root.

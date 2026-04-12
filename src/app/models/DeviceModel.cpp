@@ -124,23 +124,35 @@ QString DeviceModel::activeProfileName() const
 
 QString DeviceModel::frontImage() const
 {
-    if (m_dm && m_dm->activeDevice())
-        return m_dm->activeDevice()->frontImagePath();
-    return QStringLiteral("qrc:/Logitune/qml/assets/mx-master-3s.png");
+    if (m_dm && m_dm->activeDevice()) {
+        QString path = m_dm->activeDevice()->frontImagePath();
+        if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
+            return "file://" + path;
+        return path;
+    }
+    return {};
 }
 
 QString DeviceModel::sideImage() const
 {
-    if (m_dm && m_dm->activeDevice())
-        return m_dm->activeDevice()->sideImagePath();
-    return QStringLiteral("qrc:/Logitune/qml/assets/mx-master-3s-side.png");
+    if (m_dm && m_dm->activeDevice()) {
+        QString path = m_dm->activeDevice()->sideImagePath();
+        if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
+            return "file://" + path;
+        return path;
+    }
+    return {};
 }
 
 QString DeviceModel::backImage() const
 {
-    if (m_dm && m_dm->activeDevice())
-        return m_dm->activeDevice()->backImagePath();
-    return QStringLiteral("qrc:/Logitune/qml/assets/mx-master-3s-back.png");
+    if (m_dm && m_dm->activeDevice()) {
+        QString path = m_dm->activeDevice()->backImagePath();
+        if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
+            return "file://" + path;
+        return path;
+    }
+    return {};
 }
 
 QVariantList DeviceModel::buttonHotspots() const
