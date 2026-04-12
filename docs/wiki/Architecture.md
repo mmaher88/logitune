@@ -225,14 +225,18 @@ Known features (from `HidppTypes.h`):
 | Root | `0x0000` | Feature discovery |
 | FeatureSet | `0x0001` | List all features |
 | DeviceName | `0x0005` | Read device name string |
-| BatteryUnified | `0x1004` | Battery level and charging status |
+| BatteryStatus | `0x1000` | Battery level (legacy format, MX Master 2S and older) |
+| BatteryUnified | `0x1004` | Battery level and charging status (MX Master 3S+) |
 | ChangeHost | `0x1814` | Easy-Switch host info |
 | ReprogControlsV4 | `0x1b04` | Button diversion and remapping |
-| SmartShift | `0x2110` | SmartShift ratchet/freespin control |
+| SmartShift | `0x2110` | SmartShift V1 ratchet/freespin control |
+| SmartShiftEnhanced | `0x2111` | SmartShift V2 (MX Master 4, different function IDs) |
 | HiResWheel | `0x2121` | Scroll wheel mode and ratchet |
 | ThumbWheel | `0x2150` | Thumb wheel diversion and direction |
 | AdjustableDPI | `0x2201` | DPI range and current value |
 | GestureV2 | `0x6501` | Gesture engine (reserved) |
+
+Features with multiple variants (Battery, SmartShift) are resolved at enumeration time via capability dispatch tables in `src/core/hidpp/capabilities/`. DeviceManager stores the resolved variant and uses it everywhere, so adding new variants requires only a table entry with zero DeviceManager changes.
 
 ### Command Queue
 
@@ -328,7 +332,7 @@ struct Profile {
     bool smoothScrolling = false;
     QString scrollDirection = "standard";  // "standard" or "natural"
     bool hiResScroll = true;
-    std::array<ButtonAction, 8> buttons;   // indexed 0-7
+    std::array<ButtonAction, 16> buttons;  // indexed by ControlDescriptor::buttonIndex
     std::map<QString, ButtonAction> gestures;  // "up","down","left","right","click"
     QString thumbWheelMode = "scroll";  // "scroll", "zoom", "volume", "none"
     bool thumbWheelInvert = false;

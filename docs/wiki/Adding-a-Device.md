@@ -79,6 +79,8 @@ struct FeatureSupport {
 };
 ```
 
+> **Note:** You don't need to specify *which variant* of a feature your device uses. For example, set `battery = true` regardless of whether the device uses Battery Unified (0x1004) or Battery Status (0x1000). DeviceManager auto-detects the variant at runtime via capability dispatch tables (see `src/core/hidpp/capabilities/`). Same applies to SmartShift V1 vs Enhanced.
+
 ## Step 2: Find the Device's PIDs and Features
 
 ### Using hidraw tools

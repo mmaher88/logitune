@@ -105,7 +105,7 @@ sequenceDiagram
     participant TR as Transport
     participant Dev as Device
 
-    Note over FD: Known features: 0x0005, 0x1004, 0x1814, 0x1b04, 0x2110, 0x2121, 0x2150, 0x2201
+    Note over FD: Known features: 0x0005, 0x1000, 0x1004, 0x1814, 0x1b04, 0x2110, 0x2111, 0x2121, 0x2150, 0x2201
 
     FD->>TR: Root.getFeatureID(0x0005)
     TR->>Dev: [0x11, devIdx, 0x00, 0x0A, 0x00, 0x05, ...]
@@ -145,6 +145,28 @@ The feature table is stored as `std::unordered_map<FeatureId, uint8_t>`. All sub
 ```
 
 **Notifications:** The device sends battery notifications when the level changes or charging state changes. Same format as GetStatus response.
+
+### Battery Status (0x1000)
+
+Legacy battery feature used by MX Master 2S and older devices. Nearly identical to Battery Unified but with a different middle byte.
+
+**Functions:**
+
+| FunctionId | Name | Params | Response |
+|-----------|------|--------|----------|
+| 0 | GetStatus | (none) | level (%), next threshold, charging status |
+
+**Response parsing:**
+
+```cpp
+// params[0] = battery level (0-100, 0 = unknown)
+// params[1] = next discharge threshold percentage (informational, ignored by Logitune)
+// params[2] = status: same enum as Battery Unified (0=discharging, 1=recharging, 2=almost full, 3=full)
+```
+
+The key difference from Battery Unified: `params[1]` is the next-threshold percentage (not a level bitmask). Logitune's `Battery::parseStatusLegacy()` handles this by skipping the bitmask fallback path.
+
+**Capability dispatch:** DeviceManager auto-detects which battery feature the device supports via `kBatteryVariants[]` table in `src/core/hidpp/capabilities/BatteryCapability.cpp`. Battery Unified is preferred when both are present.
 
 ### ReprogControlsV4 (0x1b04)
 
@@ -211,6 +233,22 @@ The release event sends CID=0 (all buttons released), not the CID of the release
 | 2 | Ratchet / SmartShift active (click-by-click scroll with auto-disengage) |
 
 **autoDisengage:** Threshold (1-255) at which the wheel switches from ratchet to freespin during fast scrolling. Higher = more force needed to trigger freespin.
+
+### SmartShift Enhanced (0x2111)
+
+Used by MX Master 4 and newer devices. Same protocol as SmartShift V1 but with shifted function IDs.
+
+**Functions:**
+
+| FunctionId | Name | Params | Response |
+|-----------|------|--------|----------|
+| 0 | GetCapabilities | (none) | capabilities |
+| 1 | GetStatus | (none) | mode, autoDisengage, default |
+| 2 | SetStatus | mode, autoDisengage | (none significant) |
+
+Same mode values and autoDisengage semantics as V1. The only difference is fn0 is GetCapabilities (not GetStatus), so read uses fn1 and write uses fn2.
+
+**Capability dispatch:** DeviceManager auto-detects V1 vs Enhanced via `kSmartShiftVariants[]` table in `src/core/hidpp/capabilities/SmartShiftCapability.cpp`. V1 is preferred when both are present.
 
 ### HiResWheel (0x2121)
 
