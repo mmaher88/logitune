@@ -13,10 +13,9 @@ TEST(DeviceDiscovery, IdentifyBoltReceiver) {
 
 TEST(DeviceDiscovery, IdentifyDirectDevice) {
     DeviceRegistry registry;
-    DeviceManager dm(&registry);
-    EXPECT_TRUE(dm.isDirectDevice(0xb034));
-    EXPECT_FALSE(dm.isDirectDevice(0xc548));
-    EXPECT_FALSE(dm.isDirectDevice(0x0000));
+    EXPECT_NE(registry.findByPid(0xb034), nullptr);
+    EXPECT_EQ(registry.findByPid(0xc548), nullptr);
+    EXPECT_EQ(registry.findByPid(0x0000), nullptr);
 }
 
 TEST(DeviceDiscovery, DeviceIndexForTransport) {

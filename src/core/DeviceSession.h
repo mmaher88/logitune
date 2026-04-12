@@ -138,7 +138,7 @@ private:
     uint8_t m_scrollModeByte = 0;
     QString m_thumbWheelMode = "scroll";
     bool m_thumbWheelInvert = false;
-    int m_thumbWheelDefaultDirection = -1;
+    int m_thumbWheelDefaultDirection = 1;
     int m_currentHost = -1;
     int m_hostCount = 0;
     QVector<bool> m_hostPaired;

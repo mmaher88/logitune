@@ -50,17 +50,13 @@ AppController::AppController(IDesktopIntegration *desktop, IInputInjector *injec
 
 void AppController::init()
 {
-    // Wire DeviceModel to DeviceManager
-    m_deviceModel.setDeviceManager(&m_deviceManager);
     m_deviceModel.setDesktopIntegration(m_desktop);
-    // Init uinput
     qCInfo(lcApp) << "creating UinputInjector...";
     qCInfo(lcApp) << "init uinput...";
     if (!m_injector->init()) {
         qCWarning(lcApp) << "UinputInjector: uinput init failed (no /dev/uinput access?). Keystrokes will not be injected.";
     }
 
-    // Gesture defaults (matches logid.cfg) — use programmatic path, not user path
     QMap<QString, QPair<QString, QString>> defaultGestures;
     defaultGestures["down"]  = qMakePair(QStringLiteral("Show desktop"),          QStringLiteral("Super+D"));
     defaultGestures["left"]  = qMakePair(QStringLiteral("Switch desktop left"),   QStringLiteral("Ctrl+Super+Left"));
@@ -82,61 +78,42 @@ void AppController::startMonitoring()
 
 void AppController::wireSignals()
 {
-    // 0. User-initiated button change -> save + divert/undivert
     connect(&m_buttonModel, &ButtonModel::userActionChanged,
             this, &AppController::onUserButtonChanged);
 
-    // 1. Window focus change -> apply profile to hardware + update UI
     connect(m_desktop, &IDesktopIntegration::activeWindowChanged,
             this, &AppController::onWindowFocusChanged);
 
-    // 2. Tab click -> show cached profile in UI (no hardware writes)
     connect(&m_profileModel, &ProfileModel::profileSwitched,
             this, &AppController::onTabSwitched);
 
-    // 3. Display profile changed -> update UI models
     connect(&m_profileEngine, &ProfileEngine::displayProfileChanged,
             this, &AppController::onDisplayProfileChanged);
 
-    // 4. Device setup complete -> configure per-device profile dir, load/create default profile
-    connect(&m_deviceManager, &DeviceManager::deviceSetupComplete,
-            this, &AppController::onDeviceSetupComplete);
+    // Session lifecycle
+    connect(&m_deviceManager, &DeviceManager::sessionAdded,
+            this, &AppController::onSessionAdded);
+    connect(&m_deviceManager, &DeviceManager::sessionRemoved,
+            this, &AppController::onSessionRemoved);
 
-    // 5. Save gestures to profile when changed in UI (user-initiated only)
     connect(&m_deviceModel, &DeviceModel::userGestureChanged,
         [this](const QString &, const QString &, const QString &) {
-            saveCurrentProfile();  // saves gesture assignments to displayed profile
+            saveCurrentProfile();
         });
 
-    // 6. Profile creation/removal from UI -> ProfileEngine (disk persistence)
     connect(&m_profileModel, &ProfileModel::profileAdded,
             &m_profileEngine, &ProfileEngine::createProfileForApp);
     connect(&m_profileModel, &ProfileModel::profileRemoved,
             &m_profileEngine, &ProfileEngine::removeAppProfile);
 
-    // 7. Raw XY deltas for gesture accumulation
-    connect(&m_deviceManager, &DeviceManager::gestureRawXY,
-            this, &AppController::onGestureRawXY);
-
-    // 8. Diverted button press -> gesture + action dispatch
-    connect(&m_deviceManager, &DeviceManager::divertedButtonPressed,
-            this, &AppController::onDivertedButtonPressed);
-
-    // 9. Thumb wheel rotation -> mode action
-    connect(&m_deviceManager, &DeviceManager::thumbWheelRotation,
-            this, &AppController::onThumbWheelRotation);
-
-    // 10. Community device fetch: reload registry when new descriptors arrive
     connect(&m_deviceFetcher, &DeviceFetcher::descriptorsUpdated,
             this, [this]() {
         m_registry.reloadAll();
     });
 
-    // 11. Unknown device -> trigger community fetch for that PID
     connect(&m_deviceManager, &DeviceManager::unknownDeviceDetected,
             &m_deviceFetcher, &DeviceFetcher::fetchForPid);
 
-    // 12. DeviceModel change requests -> update cache + save + conditionally write to hardware
     connect(&m_deviceModel, &DeviceModel::dpiChangeRequested,
             this, &AppController::onDpiChangeRequested);
     connect(&m_deviceModel, &DeviceModel::smartShiftChangeRequested,
@@ -149,27 +126,180 @@ void AppController::wireSignals()
             this, &AppController::onThumbWheelInvertChangeRequested);
 }
 
+// Session lifecycle ----------------------------------------------------------
+
+void AppController::onSessionAdded(const QString &deviceId)
+{
+    auto *session = m_deviceManager.sessionById(deviceId);
+    if (!session) return;
+
+    m_deviceModel.addSession(session);
+
+    connect(session, &DeviceSession::gestureRawXY, this,
+            [this, deviceId](int16_t dx, int16_t dy) {
+        auto &state = m_perDeviceState[deviceId];
+        if (state.gestureActive) {
+            state.gestureAccumX += dx;
+            state.gestureAccumY += dy;
+        }
+    });
+
+    connect(session, &DeviceSession::divertedButtonPressed, this,
+            [this, deviceId](uint16_t controlId, bool pressed) {
+        onDivertedButtonPressed(controlId, pressed);
+    });
+
+    connect(session, &DeviceSession::thumbWheelRotation, this,
+            [this, deviceId](int delta) {
+        onThumbWheelRotation(delta);
+    });
+
+    connect(session, &DeviceSession::batteryChanged, this,
+            [this, deviceId](int, bool) {
+        auto *sel = selectedSession();
+        if (sel && sel->deviceId() == deviceId)
+            emit m_deviceModel.selectedBatteryChanged();
+    });
+
+    connect(session, &DeviceSession::smartShiftChanged, this,
+            [this, deviceId](bool, int) {
+        auto *sel = selectedSession();
+        if (sel && sel->deviceId() == deviceId)
+            emit m_deviceModel.settingsReloaded();
+    });
+
+    connect(session, &DeviceSession::scrollConfigChanged, this,
+            [this, deviceId]() {
+        auto *sel = selectedSession();
+        if (sel && sel->deviceId() == deviceId)
+            emit m_deviceModel.settingsReloaded();
+    });
+
+    if (m_deviceModel.count() == 1)
+        m_deviceModel.setSelectedIndex(0);
+
+    setupProfileForSession(session);
+}
+
+void AppController::onSessionRemoved(const QString &deviceId)
+{
+    m_deviceModel.removeSession(deviceId);
+    m_perDeviceState.remove(deviceId);
+
+    if (m_deviceModel.count() > 0 && m_deviceModel.selectedIndex() < 0)
+        m_deviceModel.setSelectedIndex(0);
+}
+
+void AppController::setupProfileForSession(DeviceSession *session)
+{
+    m_currentDevice = session->descriptor();
+
+    const QString configBase =
+        QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    const QString profilesDir = configBase
+        + QStringLiteral("/devices/")
+        + session->deviceSerial()
+        + QStringLiteral("/profiles");
+
+    QDir().mkpath(profilesDir);
+    m_profileEngine.setDeviceConfigDir(profilesDir);
+    qCDebug(lcApp) << "profile dir:" << profilesDir;
+
+    const QString defaultConf = profilesDir + QStringLiteral("/default.conf");
+    if (!QFile::exists(defaultConf)) {
+        Profile seed;
+        seed.name                = QStringLiteral("Default");
+        seed.dpi                 = session->currentDPI();
+        seed.smartShiftEnabled   = session->smartShiftEnabled();
+        seed.smartShiftThreshold = session->smartShiftThreshold();
+        seed.hiResScroll         = session->scrollHiRes();
+        seed.scrollDirection     = session->scrollInvert()
+            ? QStringLiteral("natural") : QStringLiteral("standard");
+        seed.smoothScrolling     = !session->scrollRatchet();
+        if (m_currentDevice) {
+            const auto controls = m_currentDevice->controls();
+            for (int i = 0; i < static_cast<int>(controls.size()) && i < static_cast<int>(seed.buttons.size()); ++i) {
+                const auto &ctrl = controls[i];
+                if (ctrl.defaultActionType == "gesture-trigger")
+                    seed.buttons[i] = {ButtonAction::GestureTrigger, {}};
+                else if (ctrl.defaultActionType == "smartshift-toggle")
+                    seed.buttons[i] = {ButtonAction::SmartShiftToggle, {}};
+            }
+            const auto defaultGestures = m_currentDevice->defaultGestures();
+            for (auto it = defaultGestures.begin(); it != defaultGestures.end(); ++it) {
+                seed.gestures[it.key()] = it.value();
+            }
+        }
+        ProfileEngine::saveProfile(defaultConf, seed);
+        m_profileEngine.setDeviceConfigDir(profilesDir);
+        qCDebug(lcApp) << "created default profile at" << defaultConf;
+    }
+
+    const QString bindingsFile = profilesDir + QStringLiteral("/app-bindings.conf");
+    if (QFile::exists(bindingsFile)) {
+        const auto bindings = ProfileEngine::loadAppBindings(bindingsFile);
+
+        QMap<QString, QString> iconLookup;
+        const auto apps = m_desktop->runningApplications();
+        for (const auto &app : apps) {
+            auto map = app.toMap();
+            iconLookup[map[QStringLiteral("wmClass")].toString().toLower()]
+                = map[QStringLiteral("icon")].toString();
+        }
+
+        for (auto it = bindings.cbegin(); it != bindings.cend(); ++it) {
+            QString icon = iconLookup.value(it.key().toLower());
+            m_profileModel.restoreProfile(it.key(), it.value(), icon);
+        }
+    }
+
+    QString hwName = m_profileEngine.hardwareProfile();
+    bool isFirstConnect = hwName.isEmpty();
+
+    if (isFirstConnect) {
+        hwName = QStringLiteral("default");
+        m_profileModel.setHwActiveIndex(0);
+        m_profileEngine.setHardwareProfile(hwName);
+        m_profileEngine.setDisplayProfile(hwName);
+    }
+
+    Profile &p = m_profileEngine.cachedProfile(hwName);
+    qCDebug(lcApp) << "setupProfileForSession: applying profile" << hwName
+                    << "thumbWheelMode=" << p.thumbWheelMode;
+    applyProfileToHardware(p);
+}
+
+DeviceSession* AppController::selectedSession() const
+{
+    int idx = m_deviceModel.selectedIndex();
+    const auto &sessions = m_deviceModel.sessions();
+    if (idx >= 0 && idx < sessions.size())
+        return sessions[idx];
+    return nullptr;
+}
+
 // Slot implementations -------------------------------------------------------
 
 void AppController::onUserButtonChanged(int buttonId, const QString &actionName, const QString &actionType)
 {
     Q_UNUSED(actionName)
 
-    // Save to displayed profile cache
     saveCurrentProfile();
 
-    // Apply to hardware only if editing the active profile
     if (m_profileEngine.displayProfile() != m_profileEngine.hardwareProfile())
         return;
 
     if (!m_currentDevice) return;
+    auto *session = selectedSession();
+    if (!session) return;
+
     const auto controls = m_currentDevice->controls();
     for (const auto &ctrl : controls) {
         if (ctrl.buttonIndex == buttonId) {
-            if (ctrl.controlId == 0) return; // thumb wheel
+            if (ctrl.controlId == 0) return;
             bool needsDivert = (actionType != "default");
             bool needsRawXY = (actionType == "gesture-trigger");
-            m_deviceManager.divertButton(ctrl.controlId, needsDivert, needsRawXY);
+            session->divertButton(ctrl.controlId, needsDivert, needsRawXY);
             return;
         }
     }
@@ -184,29 +314,23 @@ void AppController::onDisplayProfileChanged(const Profile &profile)
 {
     m_deviceModel.setActiveProfileName(profile.name);
 
-    // Push all profile values to DeviceModel so QML reads from profile, not hardware
     m_deviceModel.setDisplayValues(
         profile.dpi, profile.smartShiftEnabled, profile.smartShiftThreshold,
         profile.hiResScroll, profile.scrollDirection == "natural", profile.thumbWheelMode,
         profile.thumbWheelInvert);
 
     restoreButtonModelFromProfile(profile);
-
 }
 
 void AppController::onWindowFocusChanged(const QString &wmClass, const QString & /*title*/)
 {
     qCDebug(lcFocus) << "focus:" << wmClass;
-    // Ignore desktop shell components — they steal focus transiently
-    // and shouldn't trigger profile switches
     static const QStringList kIgnored = {
-        // KDE
         QStringLiteral("org.kde.plasmashell"),
         QStringLiteral("kwin_wayland"),
         QStringLiteral("kwin_x11"),
         QStringLiteral("plasmashell"),
         QStringLiteral("org.kde.krunner"),
-        // GNOME
         QStringLiteral("gnome-shell"),
         QStringLiteral("org.gnome.Shell"),
         QStringLiteral("org.gnome.Shell.Extensions"),
@@ -228,93 +352,6 @@ void AppController::onWindowFocusChanged(const QString &wmClass, const QString &
     m_profileModel.setHwActiveByProfileName(profileName);
 }
 
-void AppController::onDeviceSetupComplete()
-{
-    m_currentDevice = m_deviceManager.activeDevice();
-
-    const QString configBase =
-        QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-    const QString profilesDir = configBase
-        + QStringLiteral("/devices/")
-        + m_deviceManager.deviceSerial()
-        + QStringLiteral("/profiles");
-
-    QDir().mkpath(profilesDir);
-    m_profileEngine.setDeviceConfigDir(profilesDir);
-    qCDebug(lcApp) << "profile dir:" << profilesDir;
-
-    const QString defaultConf = profilesDir + QStringLiteral("/default.conf");
-    if (!QFile::exists(defaultConf)) {
-        // First connect - seed default profile from current device state
-        Profile seed;
-        seed.name                = QStringLiteral("Default");
-        seed.dpi                 = m_deviceManager.currentDPI();
-        seed.smartShiftEnabled   = m_deviceManager.smartShiftEnabled();
-        seed.smartShiftThreshold = m_deviceManager.smartShiftThreshold();
-        seed.hiResScroll         = m_deviceManager.scrollHiRes();
-        seed.scrollDirection     = m_deviceManager.scrollInvert()
-            ? QStringLiteral("natural") : QStringLiteral("standard");
-        seed.smoothScrolling     = !m_deviceManager.scrollRatchet();
-        // Seed buttons from device descriptor defaults
-        if (m_currentDevice) {
-            const auto controls = m_currentDevice->controls();
-            for (int i = 0; i < static_cast<int>(controls.size()) && i < static_cast<int>(seed.buttons.size()); ++i) {
-                const auto &ctrl = controls[i];
-                if (ctrl.defaultActionType == "gesture-trigger")
-                    seed.buttons[i] = {ButtonAction::GestureTrigger, {}};
-                else if (ctrl.defaultActionType == "smartshift-toggle")
-                    seed.buttons[i] = {ButtonAction::SmartShiftToggle, {}};
-            }
-            // Seed gestures from device descriptor defaults
-            const auto defaultGestures = m_currentDevice->defaultGestures();
-            for (auto it = defaultGestures.begin(); it != defaultGestures.end(); ++it) {
-                seed.gestures[it.key()] = it.value();
-            }
-        }
-        ProfileEngine::saveProfile(defaultConf, seed);
-        // Reload cache so the seed is available
-        m_profileEngine.setDeviceConfigDir(profilesDir);
-        qCDebug(lcApp) << "created default profile at" << defaultConf;
-    }
-
-    // Populate ProfileModel from saved app bindings
-    const QString bindingsFile = profilesDir + QStringLiteral("/app-bindings.conf");
-    if (QFile::exists(bindingsFile)) {
-        const auto bindings = ProfileEngine::loadAppBindings(bindingsFile);
-
-        // Build wmClass -> icon lookup from installed apps
-        QMap<QString, QString> iconLookup;
-        const auto apps = m_desktop->runningApplications();
-        for (const auto &app : apps) {
-            auto map = app.toMap();
-            iconLookup[map[QStringLiteral("wmClass")].toString().toLower()]
-                = map[QStringLiteral("icon")].toString();
-        }
-
-        for (auto it = bindings.cbegin(); it != bindings.cend(); ++it) {
-            QString icon = iconLookup.value(it.key().toLower());
-            m_profileModel.restoreProfile(it.key(), it.value(), icon);
-        }
-    }
-
-    // On first connect, start with default profile.
-    // On wake/reconnect, re-apply whatever was active on hardware.
-    QString hwName = m_profileEngine.hardwareProfile();
-    bool isFirstConnect = hwName.isEmpty();
-
-    if (isFirstConnect) {
-        hwName = QStringLiteral("default");
-        m_profileModel.setHwActiveIndex(0);
-        m_profileEngine.setHardwareProfile(hwName);
-        m_profileEngine.setDisplayProfile(hwName);
-    }
-
-    Profile &p = m_profileEngine.cachedProfile(hwName);
-    qCDebug(lcApp) << "onDeviceSetupComplete: applying profile" << hwName
-                    << "thumbWheelMode=" << p.thumbWheelMode;
-    applyProfileToHardware(p);
-}
-
 void AppController::restoreButtonModelFromProfile(const Profile &p)
 {
     if (!m_currentDevice) return;
@@ -324,7 +361,6 @@ void AppController::restoreButtonModelFromProfile(const Profile &p)
     for (int i = 0; i < static_cast<int>(controls.size()); ++i) {
         const auto &ctrl = controls[i];
         if (ctrl.controlId == 0) {
-            // Thumb wheel virtual entry — label from profile mode
             static const QMap<QString, QString> kWheelNames = {
                 {"scroll", "Horizontal scroll"}, {"zoom", "Zoom in/out"},
                 {"volume", "Volume control"}, {"none", "No action"}
@@ -381,12 +417,10 @@ void AppController::restoreButtonModelFromProfile(const Profile &p)
 
     m_buttonModel.loadFromProfile(buttons);
 
-    // Restore gesture actions from profile (programmatic — no save trigger)
     QMap<QString, QPair<QString, QString>> gestureMap;
     for (auto it = p.gestures.begin(); it != p.gestures.end(); ++it) {
         if (it->second.type == ButtonAction::Keystroke && !it->second.payload.isEmpty()) {
             QString name = it->second.payload;
-            // Reverse lookup display name from ActionModel
             int count = m_actionModel.rowCount();
             for (int j = 0; j < count; ++j) {
                 QModelIndex mi = m_actionModel.index(j);
@@ -403,33 +437,29 @@ void AppController::restoreButtonModelFromProfile(const Profile &p)
 
 void AppController::applyProfileToHardware(const Profile &p)
 {
-    if (!m_currentDevice) return;
-    // Discard any pending commands from a previous profile switch so they
-    // don't interleave with (or delay) commands for the new profile.
-    m_deviceManager.flushCommandQueue();
-    // Reset thumb wheel accumulator to prevent stale rotation from the
-    // previous profile's mode from bleeding into the new mode's actions.
-    m_thumbAccum = 0;
-    // Refresh response timestamp so HID++ responses from these writes
-    // don't trigger a false sleep/wake re-enumeration.
-    m_deviceManager.touchResponseTime();
+    auto *session = selectedSession();
+    if (!session || !m_currentDevice) return;
+
+    session->flushCommandQueue();
+
+    // Reset per-device thumb accumulator
+    auto &state = m_perDeviceState[session->deviceId()];
+    state.thumbAccum = 0;
+
+    session->touchResponseTime();
     const auto controls = m_currentDevice->controls();
     const int buttonCount = controls.size();
 
-    // Apply DPI, SmartShift, scroll, thumb wheel FIRST — these are the most
-    // user-visible settings and must survive rapid focus switches.  Button
-    // diversions are queued after; they're less time-critical.
-    m_deviceManager.setDPI(p.dpi);
-    m_deviceManager.setSmartShift(p.smartShiftEnabled, p.smartShiftThreshold);
-    m_deviceManager.setScrollConfig(p.hiResScroll,
-                                    p.scrollDirection == QStringLiteral("natural"));
-    m_deviceManager.setThumbWheelMode(p.thumbWheelMode, p.thumbWheelInvert);
+    session->setDPI(p.dpi);
+    session->setSmartShift(p.smartShiftEnabled, p.smartShiftThreshold);
+    session->setScrollConfig(p.hiResScroll,
+                             p.scrollDirection == QStringLiteral("natural"));
+    session->setThumbWheelMode(p.thumbWheelMode, p.thumbWheelInvert);
 
-    // Apply button diversions to hardware via HID++
     for (int i = 0; i < buttonCount; ++i) {
         const auto &ctrl = controls[i];
-        if (ctrl.controlId == 0) continue; // virtual entry (thumb wheel) -- no ReprogControls divert
-        if (!ctrl.configurable) continue;  // non-divertable (e.g. left/right click)
+        if (ctrl.controlId == 0) continue;
+        if (!ctrl.configurable) continue;
         const auto &ba = (static_cast<std::size_t>(i) < p.buttons.size())
             ? p.buttons[static_cast<std::size_t>(i)]
             : ButtonAction{ButtonAction::Default, {}};
@@ -437,20 +467,18 @@ void AppController::applyProfileToHardware(const Profile &p)
         bool needsRawXY = (ba.type == ButtonAction::GestureTrigger);
         if (needsDivert)
             qCDebug(lcApp) << "diverting button" << i << "CID" << Qt::hex << ctrl.controlId;
-        m_deviceManager.divertButton(ctrl.controlId, needsDivert, needsRawXY);
+        session->divertButton(ctrl.controlId, needsDivert, needsRawXY);
     }
 }
 
 void AppController::saveCurrentProfile()
 {
-    // Save buttons + gestures from UI models to the displayed profile
     QString name = m_profileEngine.displayProfile();
     if (name.isEmpty()) return;
 
     Profile &p = m_profileEngine.cachedProfile(name);
     if (p.name.isEmpty()) p.name = name;
 
-    // Save buttons (skip thumb wheel virtual entry, stored as thumbWheelMode)
     if (m_currentDevice) {
         const auto controls = m_currentDevice->controls();
         for (int i = 0; i < static_cast<int>(controls.size()); ++i) {
@@ -462,7 +490,6 @@ void AppController::saveCurrentProfile()
         }
     }
 
-    // Save gestures
     for (const auto &dir : {"up", "down", "left", "right", "click"}) {
         QString ks = m_deviceModel.gestureKeystroke(dir);
         if (!ks.isEmpty())
@@ -488,8 +515,10 @@ void AppController::onDpiChangeRequested(int value)
     p.dpi = value;
     m_profileEngine.saveProfileToDisk(name);
     pushDisplayValues(p);
-    if (name == m_profileEngine.hardwareProfile())
-        m_deviceManager.setDPI(value);
+    if (name == m_profileEngine.hardwareProfile()) {
+        auto *session = selectedSession();
+        if (session) session->setDPI(value);
+    }
 }
 
 void AppController::onSmartShiftChangeRequested(bool enabled, int threshold)
@@ -501,8 +530,10 @@ void AppController::onSmartShiftChangeRequested(bool enabled, int threshold)
     p.smartShiftThreshold = threshold;
     m_profileEngine.saveProfileToDisk(name);
     pushDisplayValues(p);
-    if (name == m_profileEngine.hardwareProfile())
-        m_deviceManager.setSmartShift(enabled, threshold);
+    if (name == m_profileEngine.hardwareProfile()) {
+        auto *session = selectedSession();
+        if (session) session->setSmartShift(enabled, threshold);
+    }
 }
 
 void AppController::onScrollConfigChangeRequested(bool hiRes, bool invert)
@@ -514,13 +545,19 @@ void AppController::onScrollConfigChangeRequested(bool hiRes, bool invert)
     p.scrollDirection = invert ? QStringLiteral("natural") : QStringLiteral("standard");
     m_profileEngine.saveProfileToDisk(name);
     pushDisplayValues(p);
-    if (name == m_profileEngine.hardwareProfile())
-        m_deviceManager.setScrollConfig(hiRes, invert);
+    if (name == m_profileEngine.hardwareProfile()) {
+        auto *session = selectedSession();
+        if (session) session->setScrollConfig(hiRes, invert);
+    }
 }
 
 void AppController::onThumbWheelModeChangeRequested(const QString &mode)
 {
-    m_thumbAccum = 0;  // reset accumulator on mode change
+    auto *session = selectedSession();
+    if (session) {
+        auto &state = m_perDeviceState[session->deviceId()];
+        state.thumbAccum = 0;
+    }
     QString name = m_profileEngine.displayProfile();
     qCDebug(lcApp) << "thumbWheelMode requested:" << mode << "for profile:" << name;
     if (name.isEmpty()) return;
@@ -528,8 +565,8 @@ void AppController::onThumbWheelModeChangeRequested(const QString &mode)
     p.thumbWheelMode = mode;
     m_profileEngine.saveProfileToDisk(name);
     pushDisplayValues(p);
-    if (name == m_profileEngine.hardwareProfile())
-        m_deviceManager.setThumbWheelMode(mode, p.thumbWheelInvert);
+    if (name == m_profileEngine.hardwareProfile() && session)
+        session->setThumbWheelMode(mode, p.thumbWheelInvert);
 }
 
 void AppController::onThumbWheelInvertChangeRequested(bool invert)
@@ -540,30 +577,31 @@ void AppController::onThumbWheelInvertChangeRequested(bool invert)
     p.thumbWheelInvert = invert;
     m_profileEngine.saveProfileToDisk(name);
     pushDisplayValues(p);
-    if (name == m_profileEngine.hardwareProfile())
-        m_deviceManager.setThumbWheelMode(p.thumbWheelMode, invert);
+    if (name == m_profileEngine.hardwareProfile()) {
+        auto *session = selectedSession();
+        if (session) session->setThumbWheelMode(p.thumbWheelMode, invert);
+    }
 }
 
 void AppController::onGestureRawXY(int16_t dx, int16_t dy)
 {
-    if (m_gestureActive) {
-        m_gestureTotalDx += dx;
-        m_gestureTotalDy += dy;
-    }
+    Q_UNUSED(dx); Q_UNUSED(dy);
+    // Handled by per-session lambda in onSessionAdded
 }
 
 void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
 {
-    // Read actions from the hardware profile (not ButtonModel, which holds the displayed profile)
+    auto *session = selectedSession();
+    if (!session) return;
+    auto &state = m_perDeviceState[session->deviceId()];
+
     const Profile &hwProfile = m_profileEngine.cachedProfile(m_profileEngine.hardwareProfile());
 
-    // Resolve gesture on all-released (controlId=0) or on the gesture button's own CID.
-    // Don't resolve on other buttons being released while gesture is held.
-    if (!pressed && m_gestureActive
-        && (controlId == 0 || controlId == m_gestureControlId)) {
-        m_gestureActive = false;
-        int dx = m_gestureTotalDx;
-        int dy = m_gestureTotalDy;
+    if (!pressed && state.gestureActive
+        && (controlId == 0 || controlId == state.gestureControlId)) {
+        state.gestureActive = false;
+        int dx = state.gestureAccumX;
+        int dy = state.gestureAccumY;
 
         QString dir;
         if (std::abs(dx) > kGestureThreshold || std::abs(dy) > kGestureThreshold) {
@@ -583,9 +621,8 @@ void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
         return;
     }
 
-    if (!pressed) return; // ignore other release events
+    if (!pressed) return;
 
-    // Look up button index from device descriptor
     if (!m_currentDevice) return;
     int idx = -1;
     for (const auto &ctrl : m_currentDevice->controls()) {
@@ -596,7 +633,6 @@ void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
     }
     if (idx < 0) return;
 
-    // Read action from hardware profile cache
     const auto &ba = (static_cast<std::size_t>(idx) < hwProfile.buttons.size())
         ? hwProfile.buttons[static_cast<std::size_t>(idx)]
         : ButtonAction{ButtonAction::Default, {}};
@@ -606,16 +642,16 @@ void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
     if (ba.type == ButtonAction::Default) return;
 
     if (ba.type == ButtonAction::SmartShiftToggle) {
-        bool current = m_deviceManager.smartShiftEnabled();
-        m_deviceManager.setSmartShift(!current, m_deviceManager.smartShiftThreshold());
+        bool current = session->smartShiftEnabled();
+        session->setSmartShift(!current, session->smartShiftThreshold());
     } else if ((ba.type == ButtonAction::Keystroke || ba.type == ButtonAction::Media)
                && !ba.payload.isEmpty()) {
         m_actionExecutor.injectKeystroke(ba.payload);
     } else if (ba.type == ButtonAction::GestureTrigger) {
-        m_gestureTotalDx = 0;
-        m_gestureTotalDy = 0;
-        m_gestureActive = true;
-        m_gestureControlId = controlId;
+        state.gestureAccumX = 0;
+        state.gestureAccumY = 0;
+        state.gestureActive = true;
+        state.gestureControlId = controlId;
     } else if (ba.type == ButtonAction::AppLaunch && !ba.payload.isEmpty()) {
         m_actionExecutor.launchApp(ba.payload);
     }
@@ -623,22 +659,23 @@ void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
 
 void AppController::onThumbWheelRotation(int delta)
 {
-    const QString &mode = m_deviceManager.thumbWheelMode();
-    // Normalize: multiply by defaultDirection so clockwise = positive.
-    // defaultDirection is -1 on MX Master 3S (positive when left), so this
-    // flips the sign to make clockwise = positive.
-    int normalized = delta * m_deviceManager.thumbWheelDefaultDirection();
+    auto *session = selectedSession();
+    if (!session) return;
+    auto &state = m_perDeviceState[session->deviceId()];
+
+    const QString &mode = session->thumbWheelMode();
+    int normalized = delta * session->thumbWheelDefaultDirection();
     qCDebug(lcInput) << "thumbWheel raw=" << delta << "normalized=" << normalized
-                      << "mode=" << mode << "invert=" << m_deviceManager.thumbWheelInvert();
-    m_thumbAccum += normalized;
+                      << "mode=" << mode << "invert=" << session->thumbWheelInvert();
+    state.thumbAccum += normalized;
 
-    if (std::abs(m_thumbAccum) < kThumbThreshold)
-        return; // not enough rotation yet
+    if (std::abs(state.thumbAccum) < kThumbThreshold)
+        return;
 
-    int steps = m_thumbAccum / kThumbThreshold;
-    m_thumbAccum %= kThumbThreshold;
+    int steps = state.thumbAccum / kThumbThreshold;
+    state.thumbAccum %= kThumbThreshold;
 
-    qCDebug(lcInput) << "thumbWheel steps=" << steps << "accum=" << m_thumbAccum;
+    qCDebug(lcInput) << "thumbWheel steps=" << steps << "accum=" << state.thumbAccum;
     for (int i = 0; i < std::abs(steps); ++i) {
         if (mode == "scroll") {
             int dir = steps > 0 ? 1 : -1;
@@ -661,11 +698,10 @@ void AppController::onThumbWheelRotation(int delta)
 QString AppController::buttonActionToName(const ButtonAction &ba) const
 {
     if (ba.type == ButtonAction::Default)
-        return QString();  // caller uses buttonName default
+        return QString();
     if (ba.type == ButtonAction::GestureTrigger)
         return QStringLiteral("Gestures");
     if (ba.type == ButtonAction::Keystroke) {
-        // Reverse-map payload -> display name via ActionModel
         int count = m_actionModel.rowCount();
         for (int i = 0; i < count; ++i) {
             QModelIndex mi = m_actionModel.index(i);
@@ -674,7 +710,7 @@ QString AppController::buttonActionToName(const ButtonAction &ba) const
                 return m_actionModel.data(mi, ActionModel::NameRole).toString();
             }
         }
-        return ba.payload; // fallback: use payload directly
+        return ba.payload;
     }
     return ba.payload;
 }
@@ -688,7 +724,6 @@ ButtonAction AppController::buttonEntryToAction(const QString &actionType, const
     if (actionType == QStringLiteral("smartshift-toggle"))
         return {ButtonAction::SmartShiftToggle, {}};
     if (actionType == QStringLiteral("media-controls")) {
-        // actionName is the friendly name; map to media key code
         static const QHash<QString, QString> mediaKeys = {
             {"Play/Pause",     "Play"},
             {"Next track",     "Next"},
@@ -703,7 +738,7 @@ ButtonAction AppController::buttonEntryToAction(const QString &actionType, const
     if (actionType == QStringLiteral("keystroke")) {
         QString payload = m_actionModel.payloadForName(actionName);
         if (payload.isEmpty() && actionName != QStringLiteral("Keyboard shortcut"))
-            payload = actionName; // actionName might already be a keystroke
+            payload = actionName;
         return {ButtonAction::Keystroke, payload};
     }
     if (actionType == QStringLiteral("app-launch")) {
