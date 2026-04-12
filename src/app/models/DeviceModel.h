@@ -80,6 +80,7 @@ public:
     void addSession(DeviceSession *session);
     void removeSession(const QString &deviceId);
     const QList<DeviceSession*>& sessions() const;
+    Q_INVOKABLE void moveDevice(int from, int to);
 
     void setDesktopIntegration(IDesktopIntegration *desktop);
     Q_INVOKABLE void blockGlobalShortcuts(bool block);
@@ -165,6 +166,8 @@ signals:
 
 private:
     DeviceSession* selectedSession() const;
+    void saveDeviceOrder() const;
+    QStringList loadDeviceOrder() const;
 
     QList<DeviceSession*> m_sessions;
     int m_selectedIndex = -1;
