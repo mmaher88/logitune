@@ -145,7 +145,7 @@ def parse_metadata_hotspots(metadata_path, image_key='device_buttons_image'):
     return controls, img_w, img_h
 
 
-def build_descriptor(mouse_info, controls_data, has_side_image):
+def build_descriptor(mouse_info, controls_data, has_side_image, has_back_image):
     """Build a complete descriptor.json for a device."""
     all_controls = list(DEFAULT_CONTROLS)
     button_hotspots = []
@@ -157,6 +157,8 @@ def build_descriptor(mouse_info, controls_data, has_side_image):
     images = {"front": "front.png"}
     if has_side_image:
         images["side"] = "side.png"
+    if has_back_image:
+        images["back"] = "back.png"
 
     descriptor = {
         "name": mouse_info['name'],
@@ -226,17 +228,30 @@ def main():
             side_img = os.path.join(depot_dir, 'side_core.png')
         has_side = os.path.exists(side_img)
 
+        # Back/bottom image (shows Easy-Switch indicators on flip side)
+        back_img = os.path.join(depot_dir, 'back.png')
+        if not os.path.exists(back_img):
+            back_img = os.path.join(depot_dir, 'back_core.png')
+        if not os.path.exists(back_img):
+            back_img = os.path.join(depot_dir, 'bottom_core.png')
+        if not os.path.exists(back_img):
+            back_img = os.path.join(depot_dir, 'bottom.png')
+        has_back = os.path.exists(back_img)
+
         # Handle both metadata patterns: metadata.json (old) / core_metadata.json (new)
         metadata_path = os.path.join(depot_dir, 'metadata.json')
         if not os.path.exists(metadata_path):
             metadata_path = os.path.join(depot_dir, 'core_metadata.json')
         controls_data, _, _ = parse_metadata_hotspots(metadata_path)
 
-        descriptor = build_descriptor(mouse_info, controls_data, has_side)
+        descriptor = build_descriptor(mouse_info, controls_data, has_side, has_back)
 
         if args.dry_run:
             pids = ', '.join(mouse_info['pids'])
-            print(f"  {mouse_info['name']:40s} -> {slug}/ ({len(descriptor['controls'])} controls, PIDs: {pids})")
+            imgs = "front"
+            if has_side: imgs += "+side"
+            if has_back: imgs += "+back"
+            print(f"  {mouse_info['name']:40s} -> {slug}/ ({len(descriptor['controls'])} controls, imgs={imgs})")
             generated += 1
             continue
 
@@ -247,6 +262,8 @@ def main():
         shutil.copy2(front_img, os.path.join(out_dir, 'front.png'))
         if has_side:
             shutil.copy2(side_img, os.path.join(out_dir, 'side.png'))
+        if has_back:
+            shutil.copy2(back_img, os.path.join(out_dir, 'back.png'))
 
         print(f"  {slug}: {len(descriptor['controls'])} controls, {len(descriptor['hotspots']['buttons'])} hotspots")
         generated += 1
