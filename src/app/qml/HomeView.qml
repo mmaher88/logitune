@@ -87,16 +87,6 @@ Item {
             }
 
             delegate: DeviceCard {
-                required property int index
-                required property string deviceId
-                required property string deviceName
-                required property string frontImage
-                required property int batteryLevel
-                required property bool batteryCharging
-                required property string connectionType
-                required property string status
-                required property bool isSelected
-
                 scale: PathView.isCurrentItem ? 1.0 : 0.65
                 opacity: PathView.isCurrentItem ? 1.0 : 0.5
                 z: PathView.isCurrentItem ? 2 : 1
