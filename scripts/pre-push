@@ -4,6 +4,10 @@
 
 echo "🔍 Running tests before push..."
 
+# Set XDG_DATA_DIRS so DeviceRegistry finds JSON descriptors in the build tree
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+export XDG_DATA_DIRS="${REPO_ROOT}/build:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+
 # Build if needed
 cmake --build build -j$(nproc) > /dev/null 2>&1
 if [ $? -ne 0 ]; then
