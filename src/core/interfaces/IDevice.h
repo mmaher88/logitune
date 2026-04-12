@@ -32,6 +32,8 @@ struct FeatureSupport {
     bool thumbWheel = false;
     bool reprogControls = false;
     bool gestureV2 = false;
+    bool smoothScroll = true;
+    bool hapticFeedback = false;
 };
 
 struct EasySwitchSlotPosition {

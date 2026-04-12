@@ -214,6 +214,7 @@ Rectangle {
 
             // Smooth scrolling toggle
             Row {
+                visible: DeviceModel.smoothScrollSupported
                 width: parent.width
 
                 Text {
