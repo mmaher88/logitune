@@ -1,10 +1,12 @@
 #include "DeviceRegistry.h"
+#include "devices/MxMaster2sDescriptor.h"
 #include "devices/MxMaster3sDescriptor.h"
 #include "devices/MxMaster4Descriptor.h"
 
 namespace logitune {
 
 DeviceRegistry::DeviceRegistry() {
+    registerDevice(std::make_unique<MxMaster2sDescriptor>());
     registerDevice(std::make_unique<MxMaster3sDescriptor>());
     registerDevice(std::make_unique<MxMaster4Descriptor>());
 }

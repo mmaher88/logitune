@@ -67,6 +67,9 @@ qt_add_qml_module(logitune-app-lib
         qml/pages/EasySwitchPage.qml
         qml/pages/SettingsPage.qml
     RESOURCES
+        qml/assets/mx-master-2s.png
+        qml/assets/mx-master-2s-back.png
+        qml/assets/mx-master-2s-side.png
         qml/assets/mx-master-3s.png
         qml/assets/mx-master-3s-back.png
         qml/assets/mx-master-3s-side.png
