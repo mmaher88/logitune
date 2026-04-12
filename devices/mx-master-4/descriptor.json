@@ -1,0 +1,81 @@
+{
+  "name": "MX Master 4",
+  "status": "implemented",
+  "productIds": ["0xb042"],
+  "features": {
+    "battery": true,
+    "adjustableDpi": true,
+    "extendedDpi": false,
+    "smartShift": true,
+    "hiResWheel": true,
+    "hiResScrolling": false,
+    "lowResWheel": false,
+    "smoothScroll": false,
+    "thumbWheel": true,
+    "reprogControls": true,
+    "gestureV2": false,
+    "mouseGesture": false,
+    "hapticFeedback": false,
+    "forceSensingButton": false,
+    "crown": false,
+    "reportRate": false,
+    "extendedReportRate": false,
+    "pointerSpeed": false,
+    "leftRightSwap": false,
+    "surfaceTuning": false,
+    "angleSnapping": false,
+    "colorLedEffects": false,
+    "rgbEffects": false,
+    "onboardProfiles": false,
+    "gkey": false,
+    "mkeys": false,
+    "persistentRemappableAction": false
+  },
+  "dpi": {
+    "min": 200,
+    "max": 8000,
+    "step": 50
+  },
+  "controls": [
+    { "controlId": "0x0050", "buttonIndex": 0, "defaultName": "Left click",       "defaultActionType": "default",           "configurable": false },
+    { "controlId": "0x0051", "buttonIndex": 1, "defaultName": "Right click",      "defaultActionType": "default",           "configurable": false },
+    { "controlId": "0x0052", "buttonIndex": 2, "defaultName": "Middle click",     "defaultActionType": "default",           "configurable": true  },
+    { "controlId": "0x0053", "buttonIndex": 3, "defaultName": "Back",             "defaultActionType": "default",           "configurable": true  },
+    { "controlId": "0x0056", "buttonIndex": 4, "defaultName": "Forward",          "defaultActionType": "default",           "configurable": true  },
+    { "controlId": "0x00C3", "buttonIndex": 5, "defaultName": "Gesture button",   "defaultActionType": "gesture-trigger",   "configurable": true  },
+    { "controlId": "0x00C4", "buttonIndex": 6, "defaultName": "Shift wheel mode", "defaultActionType": "smartshift-toggle", "configurable": true  },
+    { "controlId": "0x0000", "buttonIndex": 7, "defaultName": "Thumb wheel",      "defaultActionType": "default",           "configurable": true  }
+  ],
+  "hotspots": {
+    "buttons": [
+      { "buttonIndex": 2,  "xPct": 0.75, "yPct": 0.23,  "side": "right", "labelOffsetYPct": 0.0   },
+      { "buttonIndex": 6,  "xPct": 0.81, "yPct": 0.43,  "side": "right", "labelOffsetYPct": 0.0   },
+      { "buttonIndex": 7,  "xPct": 0.55, "yPct": 0.515, "side": "right", "labelOffsetYPct": 0.20  },
+      { "buttonIndex": 4,  "xPct": 0.43, "yPct": 0.50,  "side": "left",  "labelOffsetYPct": 0.0   },
+      { "buttonIndex": 3,  "xPct": 0.47, "yPct": 0.60,  "side": "left",  "labelOffsetYPct": 0.20  },
+      { "buttonIndex": 5,  "xPct": 0.39, "yPct": 0.38,  "side": "left",  "labelOffsetYPct": -0.05 }
+    ],
+    "scroll": [
+      { "buttonIndex": -1, "xPct": 0.73, "yPct": 0.23, "side": "right", "labelOffsetYPct": 0.0 },
+      { "buttonIndex": -2, "xPct": 0.55, "yPct": 0.51, "side": "left",  "labelOffsetYPct": 0.0 },
+      { "buttonIndex": -3, "xPct": 0.82, "yPct": 0.43, "side": "right", "labelOffsetYPct": 0.0 }
+    ]
+  },
+  "images": {
+    "front": "front.png",
+    "side": "side.png",
+    "back": "back.png"
+  },
+  "easySwitchSlots": [
+    { "xPct": 0.335, "yPct": 0.688 },
+    { "xPct": 0.393, "yPct": 0.675 },
+    { "xPct": 0.453, "yPct": 0.689 }
+  ],
+  "defaultGestures": {
+    "up":    { "type": "Default",   "payload": "" },
+    "down":  { "type": "Keystroke", "payload": "Super+D" },
+    "left":  { "type": "Keystroke", "payload": "Ctrl+Super+Left" },
+    "right": { "type": "Keystroke", "payload": "Ctrl+Super+Right" },
+    "click": { "type": "Keystroke", "payload": "Super+W" }
+  }
+}

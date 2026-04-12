@@ -27,11 +27,31 @@ struct HotspotDescriptor {
 struct FeatureSupport {
     bool battery = false;
     bool adjustableDpi = false;
+    bool extendedDpi = false;
     bool smartShift = false;
     bool hiResWheel = false;
+    bool hiResScrolling = false;
+    bool lowResWheel = false;
+    bool smoothScroll = true;
     bool thumbWheel = false;
     bool reprogControls = false;
     bool gestureV2 = false;
+    bool mouseGesture = false;
+    bool hapticFeedback = false;
+    bool forceSensingButton = false;
+    bool crown = false;
+    bool reportRate = false;
+    bool extendedReportRate = false;
+    bool pointerSpeed = false;
+    bool leftRightSwap = false;
+    bool surfaceTuning = false;
+    bool angleSnapping = false;
+    bool colorLedEffects = false;
+    bool rgbEffects = false;
+    bool onboardProfiles = false;
+    bool gkey = false;
+    bool mkeys = false;
+    bool persistentRemappableAction = false;
 };
 
 struct EasySwitchSlotPosition {
