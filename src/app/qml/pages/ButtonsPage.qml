@@ -195,6 +195,6 @@ Item {
         actionsPanel.buttonName        = label
         actionsPanel.currentAction     = actionName
         actionsPanel.currentActionType = ButtonModel.actionTypeForButton(buttonId)
-        actionsPanel.isWheel           = (buttonId === 7) // thumb wheel
+        actionsPanel.isWheel           = ButtonModel.isThumbWheel(buttonId)
     }
 }
