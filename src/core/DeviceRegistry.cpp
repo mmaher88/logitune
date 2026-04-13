@@ -47,6 +47,15 @@ const std::vector<std::unique_ptr<IDevice>>& DeviceRegistry::devices() const {
     return m_devices;
 }
 
+void DeviceRegistry::reloadAll()
+{
+    m_devices.clear();
+    loadDirectory(systemDevicesDir());
+    loadDirectory(cacheDevicesDir());
+    loadDirectory(userDevicesDir());
+    qCInfo(lcDevice) << "DeviceRegistry: reloaded" << m_devices.size() << "devices";
+}
+
 QString DeviceRegistry::systemDevicesDir() {
     QStringList paths = QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation);
     for (const auto &p : paths) {
