@@ -203,3 +203,78 @@ def test_canonicalize_easyswitch_keeps_first_three():
     ]
     sorted_ = canonicalize.sort_easyswitch(raw)
     assert [s.index for s in sorted_] == [1, 2, 3]
+
+
+from optionsplus_extractor import descriptor as descbuilder
+
+
+def test_build_descriptor_uses_parser_compatible_field_names():
+    depot = sources.load_depot(FIXTURE_ROOT / "devices" / "mx_master_3s")
+    mice = sources.load_device_db(FIXTURE_ROOT / "main" / "logioptionsplus")
+    entry = mice["mx_master_3s"]
+    d = descbuilder.build(entry, depot)
+
+    # Top-level fields the parser reads
+    assert d["name"] == "MX Master 3S"
+    assert d["version"] == 1
+    assert d["status"] in ("community-verified", "placeholder")
+    assert isinstance(d["productIds"], list)
+    assert all(pid.startswith("0x") for pid in d["productIds"])
+
+    # Controls use controlId / buttonIndex / defaultName / defaultActionType
+    assert len(d["controls"]) == 8
+    for c in d["controls"]:
+        assert set(c.keys()) == {
+            "controlId", "buttonIndex", "defaultName",
+            "defaultActionType", "configurable",
+        }
+        assert c["controlId"].startswith("0x")
+    # Canonical ordering: thumb wheel at index 7
+    assert d["controls"][7]["controlId"] == "0x0000"
+    assert d["controls"][7]["defaultName"] == "Thumb wheel"
+    # buttonIndex sequence is 0..7
+    assert [c["buttonIndex"] for c in d["controls"]] == list(range(8))
+
+
+def test_build_descriptor_hotspot_fields():
+    depot = sources.load_depot(FIXTURE_ROOT / "devices" / "mx_master_3s")
+    mice = sources.load_device_db(FIXTURE_ROOT / "main" / "logioptionsplus")
+    d = descbuilder.build(mice["mx_master_3s"], depot)
+
+    assert len(d["hotspots"]["buttons"]) == 6
+    for h in d["hotspots"]["buttons"]:
+        assert set(h.keys()) >= {"buttonIndex", "xPct", "yPct", "side", "labelOffsetYPct"}
+        assert 0.0 <= h["xPct"] <= 1.0
+        assert 0.0 <= h["yPct"] <= 1.0
+
+    assert len(d["hotspots"]["scroll"]) == 3
+    assert [s["kind"] for s in d["hotspots"]["scroll"]] == \
+        ["scrollwheel", "thumbwheel", "pointer"]
+    assert [s["buttonIndex"] for s in d["hotspots"]["scroll"]] == [-1, -2, -3]
+
+
+def test_build_descriptor_easyswitch():
+    depot = sources.load_depot(FIXTURE_ROOT / "devices" / "mx_master_3s")
+    mice = sources.load_device_db(FIXTURE_ROOT / "main" / "logioptionsplus")
+    d = descbuilder.build(mice["mx_master_3s"], depot)
+    assert len(d["easySwitchSlots"]) == 3
+    for s in d["easySwitchSlots"]:
+        assert set(s.keys()) == {"xPct", "yPct"}
+
+
+def test_build_descriptor_status_downgrades_on_empty_controls():
+    empty_depot = sources.Depot(
+        path=FIXTURE_ROOT,   # anything
+        metadata={"images": []},  # no assignments → no buttons → no hotspots
+        front_image=None,
+        side_image=None,
+        back_image=None,
+    )
+    entry = sources.DeviceDbEntry(
+        depot="bogus",
+        name="Bogus",
+        product_ids=["0x1234"],
+        capabilities={},
+    )
+    d = descbuilder.build(entry, empty_depot)
+    assert d["status"] == "placeholder"
