@@ -1,6 +1,8 @@
 #pragma once
 #include "DeviceFetcher.h"
 #include "DeviceManager.h"
+#include "DeviceSession.h"
+#include "PhysicalDevice.h"
 #include "DeviceRegistry.h"
 #include "interfaces/IDevice.h"
 #include "interfaces/IDesktopIntegration.h"
@@ -28,17 +30,11 @@ public:
     explicit AppController(QObject *parent = nullptr);
     AppController(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent = nullptr);
 
-    /// Create all subsystems, wire signals, set gesture defaults.
-    /// Call this once after construction but before QML loads.
     void init();
-
-    /// Start device monitoring and window tracking.
-    /// Call after QML is loaded.
     void startMonitoring();
 
     friend class test::AppControllerFixture;
 
-    // Accessors for QML singleton registration
     DeviceModel    *deviceModel()    { return &m_deviceModel; }
     ButtonModel    *buttonModel()    { return &m_buttonModel; }
     ActionModel    *actionModel()    { return &m_actionModel; }
@@ -50,7 +46,8 @@ private slots:
     void onWindowFocusChanged(const QString &wmClass, const QString &title);
     void onTabSwitched(const QString &profileName);
     void onDisplayProfileChanged(const Profile &profile);
-    void onDeviceSetupComplete();
+    void onPhysicalDeviceAdded(PhysicalDevice *device);
+    void onPhysicalDeviceRemoved(PhysicalDevice *device);
     void onGestureRawXY(int16_t dx, int16_t dy);
     void onDivertedButtonPressed(uint16_t controlId, bool pressed);
     void onThumbWheelRotation(int delta);
@@ -66,6 +63,9 @@ private:
     void pushDisplayValues(const Profile &p);
     void restoreButtonModelFromProfile(const Profile &p);
     void applyProfileToHardware(const Profile &p);
+    void setupProfileForDevice(PhysicalDevice *device);
+    PhysicalDevice *selectedDevice() const;
+    DeviceSession *selectedSession() const;  // convenience — selectedDevice()->primary()
     QString buttonActionToName(const ButtonAction &ba) const;
     ButtonAction buttonEntryToAction(const QString &actionType, const QString &actionName) const;
 
@@ -81,7 +81,6 @@ private:
     ProfileEngine  m_profileEngine;
     ActionExecutor m_actionExecutor;
 
-    // Injected dependencies (owned when created internally)
     std::unique_ptr<IDesktopIntegration> m_ownedDesktop;
     std::unique_ptr<IInputInjector>      m_ownedInjector;
     IDesktopIntegration *m_desktop  = nullptr;
@@ -90,17 +89,18 @@ private:
     // Active device descriptor (set on connect)
     const IDevice *m_currentDevice = nullptr;
 
-    // Gesture state
-    int      m_gestureTotalDx = 0;
-    int      m_gestureTotalDy = 0;
-    bool     m_gestureActive  = false;
-    uint16_t m_gestureControlId = 0;
+    // Per-device gesture/thumb state
+    struct PerDeviceState {
+        int gestureAccumX = 0;
+        int gestureAccumY = 0;
+        int thumbAccum = 0;
+        bool gestureActive = false;
+        uint16_t gestureControlId = 0;
+    };
+    QMap<QString, PerDeviceState> m_perDeviceState;
+
     static constexpr int kGestureThreshold = 50;
-
-    // Thumb wheel accumulator
-    int m_thumbAccum = 0;
     static constexpr int kThumbThreshold = 15;
-
 };
 
 } // namespace logitune

@@ -159,22 +159,17 @@ Item {
         }
     }
 
-    // Disconnect handling
+    // Disconnect handling — pop back to home immediately. The old
+    // 3-second delay meant quick transport switches (Bolt <-> BT) could
+    // reconnect before the timer fired but still kick the user out of
+    // the device page. Going back on the first disconnect edge is
+    // snappier and also correct: if the device reconnects, the user
+    // can re-enter from the home carousel.
     Connections {
         target: DeviceModel
         function onDeviceConnectedChanged() {
-            if (!DeviceModel.deviceConnected) {
-                toast.show("MX Master 3S disconnected", 3000)
-                disconnectTimer.start()
-            }
+            if (!DeviceModel.deviceConnected)
+                root.StackView.view.pop()
         }
     }
-
-    Timer {
-        id: disconnectTimer
-        interval: 3000
-        onTriggered: root.StackView.view.pop()
-    }
-
-    Toast { id: toast }
 }

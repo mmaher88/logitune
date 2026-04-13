@@ -6,33 +6,30 @@
 #include <memory>
 
 #include "AppController.h"
+#include "DeviceSession.h"
+#include "PhysicalDevice.h"
 #include "ProfileEngine.h"
 #include "ButtonAction.h"
 #include "helpers/TestFixtures.h"
 #include "mocks/MockDesktop.h"
 #include "mocks/MockInjector.h"
 #include "mocks/MockDevice.h"
+#include "hidpp/HidrawDevice.h"
 
 namespace logitune::test {
 
-/// Integration-test fixture with friend access to AppController internals.
-/// Provides mock desktop, mock injector, a temp profile directory, and helper
-/// methods for creating profiles, simulating focus, pressing buttons, etc.
 class AppControllerFixture : public ::testing::Test {
 protected:
     void SetUp() override {
         ensureApp();
         ASSERT_TRUE(m_tmpDir.isValid());
 
-        // Create mock dependencies (raw pointers — AppController does NOT own injected deps)
         m_desktop  = new MockDesktop();
         m_injector = new MockInjector();
 
-        // Construct controller with DI
         m_ctrl = std::make_unique<AppController>(m_desktop, m_injector);
         m_ctrl->init();
 
-        // Set up a temp profile directory with a default.conf
         m_profilesDir = m_tmpDir.path() + QStringLiteral("/profiles");
         QDir().mkpath(m_profilesDir);
 
@@ -47,24 +44,35 @@ protected:
         defaultProfile.thumbWheelMode      = QStringLiteral("scroll");
         ProfileEngine::saveProfile(m_profilesDir + QStringLiteral("/default.conf"), defaultProfile);
 
-        // Point ProfileEngine at the temp dir (loads default.conf into cache)
         m_ctrl->m_profileEngine.setDeviceConfigDir(m_profilesDir);
 
-        // Set display + hardware profile to "default"
-        m_ctrl->m_profileEngine.setDisplayProfile(QStringLiteral("default"));
-        m_ctrl->m_profileEngine.setHardwareProfile(QStringLiteral("default"));
-
-        // Create a MockDevice with MX Master 3S controls and install it
         m_device.setupMxControls();
         m_ctrl->m_currentDevice = &m_device;
 
-        // Test environment: no real device, so defaultDirection=1 (neutral).
-        // On real hardware, enumerateAndSetup reads this from ThumbWheel GetInfo.
-        m_ctrl->m_deviceManager.m_thumbWheelDefaultDirection = 1;
+        // Create a mock DeviceSession wrapped in a PhysicalDevice and add it
+        // to the model so selectedSession()/selectedDevice() work.
+        auto mockHidraw = std::make_unique<hidpp::HidrawDevice>("/dev/null");
+        m_session = new DeviceSession(std::move(mockHidraw), 0xFF, "Bluetooth",
+                                       nullptr, m_ctrl.get());
+        // Mark the mock session connected so DeviceModel shows its row.
+        // The real enumerateAndSetup would do this after reading state
+        // from the device; tests don't talk to real hardware.
+        m_session->m_connected = true;
+        m_session->m_deviceName = QStringLiteral("Mock Device");
+
+        m_physicalDevice = new PhysicalDevice(QStringLiteral("mock-serial"), m_ctrl.get());
+        m_physicalDevice->attachTransport(m_session);
+        m_ctrl->m_deviceModel.addPhysicalDevice(m_physicalDevice);
+        m_ctrl->m_deviceModel.setSelectedIndex(0);
+
+        // Set profiles AFTER session selection (setSelectedIndex resets display values)
+        m_ctrl->m_profileEngine.setDisplayProfile(QStringLiteral("default"));
+        m_ctrl->m_profileEngine.setHardwareProfile(QStringLiteral("default"));
     }
 
     void TearDown() override {
         m_ctrl.reset();
+        m_session = nullptr; // owned by m_ctrl via QObject parent
         delete m_desktop;
         m_desktop = nullptr;
         delete m_injector;
@@ -75,26 +83,18 @@ protected:
     // Helper methods
     // -----------------------------------------------------------------------
 
-    /// Creates an app profile in the cache and on disk, registers the
-    /// wmClass -> profileName binding, and adds it to ProfileModel.
     void createAppProfile(const QString &wmClass,
                           const QString &profileName,
                           int dpi = 1000,
                           const QString &thumbMode = QStringLiteral("scroll"))
     {
-        // Build a profile based on default, with overrides
         Profile p = m_ctrl->m_profileEngine.cachedProfile(QStringLiteral("default"));
         p.name           = profileName;
         p.dpi            = dpi;
         p.thumbWheelMode = thumbMode;
 
-        // Save to disk
         ProfileEngine::saveProfile(m_profilesDir + "/" + profileName + ".conf", p);
-
-        // Register binding via ProfileEngine (creates cache entry + app-bindings)
         m_ctrl->m_profileEngine.createProfileForApp(wmClass, profileName);
-
-        // Add to ProfileModel (mirrors startup restore path)
         m_ctrl->m_profileModel.restoreProfile(wmClass, profileName);
     }
 
@@ -118,17 +118,13 @@ protected:
         p.scrollDirection     = scrollDirection;
         p.hiResScroll         = hiResScroll;
 
-        // Create the cache entry and app binding first (copies from default)
         m_ctrl->m_profileEngine.createProfileForApp(wmClass, profileName);
-        // Now overwrite the cache with our custom values
         Profile &cached = m_ctrl->m_profileEngine.cachedProfile(profileName);
         cached = p;
-        // Save to disk with the correct values
         ProfileEngine::saveProfile(m_profilesDir + "/" + profileName + ".conf", p);
         m_ctrl->m_profileModel.restoreProfile(wmClass, profileName);
     }
 
-    /// Modifies a button action in a cached profile and saves to disk.
     void setProfileButton(const QString &profileName, int buttonIdx, const ButtonAction &action) {
         Profile &p = m_ctrl->m_profileEngine.cachedProfile(profileName);
         if (buttonIdx >= 0 && buttonIdx < static_cast<int>(p.buttons.size()))
@@ -136,7 +132,6 @@ protected:
         m_ctrl->m_profileEngine.saveProfileToDisk(profileName);
     }
 
-    /// Sets a gesture keystroke on a cached profile and saves to disk.
     void setProfileGesture(const QString &profileName,
                            const QString &direction,
                            const QString &keystroke)
@@ -146,18 +141,10 @@ protected:
         m_ctrl->m_profileEngine.saveProfileToDisk(profileName);
     }
 
-    /// Simulates a window focus change through MockDesktop and syncs the
-    /// display profile to match the resulting hardware profile, so that
-    /// DeviceModel display values reflect the active profile's settings.
     void focusApp(const QString &wmClass) {
         m_desktop->simulateFocus(wmClass, wmClass);
-        // Sync display to hardware via the ProfileModel tab mechanism so that
-        // both ProfileEngine and ProfileModel agree on the active display profile,
-        // and DeviceModel getters (currentDPI, smartShiftEnabled, etc.) return
-        // the focused profile's values.
         const QString hwProfile = m_ctrl->m_profileEngine.hardwareProfile();
-        // Find the tab index in ProfileModel that corresponds to the hardware profile
-        int hwIndex = 0; // default
+        int hwIndex = 0;
         const int count = m_ctrl->m_profileModel.rowCount();
         for (int i = 0; i < count; ++i) {
             QModelIndex mi = m_ctrl->m_profileModel.index(i);
@@ -172,28 +159,31 @@ protected:
         m_ctrl->m_profileModel.selectTab(hwIndex);
     }
 
-    /// Simulates a diverted button press.
     void pressButton(uint16_t controlId) {
         m_ctrl->onDivertedButtonPressed(controlId, true);
     }
 
-    /// Simulates a diverted button release.
     void releaseButton(uint16_t controlId) {
         m_ctrl->onDivertedButtonPressed(controlId, false);
     }
 
-    /// Feeds raw gesture XY deltas into the controller.
     void gestureXY(int16_t dx, int16_t dy) {
-        m_ctrl->onGestureRawXY(dx, dy);
+        // Feed directly into per-device state (onGestureRawXY is handled per-session now)
+        if (m_session) {
+            auto &state = m_ctrl->m_perDeviceState[m_session->deviceId()];
+            if (state.gestureActive) {
+                state.gestureAccumX += dx;
+                state.gestureAccumY += dy;
+            }
+        }
     }
 
-    /// Feeds a thumb wheel rotation delta into the controller.
     void thumbWheel(int delta) {
         m_ctrl->onThumbWheelRotation(delta);
     }
 
     // -----------------------------------------------------------------------
-    // Accessors for private members (friend doesn't extend to TEST_F subclasses)
+    // Accessors
     // -----------------------------------------------------------------------
 
     ProfileEngine &profileEngine() { return m_ctrl->m_profileEngine; }
@@ -205,19 +195,35 @@ protected:
 
     const IDevice *currentDevice() const { return m_ctrl->m_currentDevice; }
 
-    // Gesture state
-    int  gestureTotalDx() const { return m_ctrl->m_gestureTotalDx; }
-    int  gestureTotalDy() const { return m_ctrl->m_gestureTotalDy; }
-    bool gestureActive()  const { return m_ctrl->m_gestureActive; }
+    int gestureTotalDx() const {
+        if (!m_session) return 0;
+        auto it = m_ctrl->m_perDeviceState.find(m_session->deviceId());
+        return it != m_ctrl->m_perDeviceState.end() ? it->gestureAccumX : 0;
+    }
+    int gestureTotalDy() const {
+        if (!m_session) return 0;
+        auto it = m_ctrl->m_perDeviceState.find(m_session->deviceId());
+        return it != m_ctrl->m_perDeviceState.end() ? it->gestureAccumY : 0;
+    }
+    bool gestureActive() const {
+        if (!m_session) return false;
+        auto it = m_ctrl->m_perDeviceState.find(m_session->deviceId());
+        return it != m_ctrl->m_perDeviceState.end() ? it->gestureActive : false;
+    }
 
-    // Thumb wheel state
-    int thumbAccum() const { return m_ctrl->m_thumbAccum; }
+    int thumbAccum() const {
+        if (!m_session) return 0;
+        auto it = m_ctrl->m_perDeviceState.find(m_session->deviceId());
+        return it != m_ctrl->m_perDeviceState.end() ? it->thumbAccum : 0;
+    }
 
-    /// Directly set the DeviceManager's thumb wheel mode (bypasses hardware guards).
-    void setThumbWheelMode(const QString &mode) { m_ctrl->m_deviceManager.m_thumbWheelMode = mode; }
+    void setThumbWheelMode(const QString &mode) {
+        if (m_session) m_session->setThumbWheelMode(mode);
+    }
 
-    /// Directly set the DeviceManager's thumb wheel invert flag (bypasses hardware guards).
-    void setThumbWheelInvert(bool invert) { m_ctrl->m_deviceManager.m_thumbWheelInvert = invert; }
+    void setThumbWheelInvert(bool invert) {
+        if (m_session) m_session->setThumbWheelMode(m_session->thumbWheelMode(), invert);
+    }
 
     // -----------------------------------------------------------------------
     // Members
@@ -225,6 +231,8 @@ protected:
     MockDesktop  *m_desktop  = nullptr;
     MockInjector *m_injector = nullptr;
     MockDevice    m_device;
+    DeviceSession *m_session = nullptr;
+    PhysicalDevice *m_physicalDevice = nullptr;
     std::unique_ptr<AppController> m_ctrl;
     QString       m_profilesDir;
     QTemporaryDir m_tmpDir;
