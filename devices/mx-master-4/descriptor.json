@@ -56,9 +56,9 @@
       { "buttonIndex": 5,  "xPct": 0.39, "yPct": 0.38,  "side": "left",  "labelOffsetYPct": -0.05 }
     ],
     "scroll": [
-      { "buttonIndex": -1, "xPct": 0.73, "yPct": 0.23, "side": "right", "labelOffsetYPct": 0.0 },
-      { "buttonIndex": -2, "xPct": 0.55, "yPct": 0.51, "side": "left",  "labelOffsetYPct": 0.0 },
-      { "buttonIndex": -3, "xPct": 0.82, "yPct": 0.43, "side": "right", "labelOffsetYPct": 0.0 }
+      { "buttonIndex": -1, "xPct": 0.73, "yPct": 0.23, "side": "right", "labelOffsetYPct": 0.0, "kind": "scrollwheel" },
+      { "buttonIndex": -2, "xPct": 0.55, "yPct": 0.51, "side": "left",  "labelOffsetYPct": 0.0, "kind": "thumbwheel" },
+      { "buttonIndex": -3, "xPct": 0.82, "yPct": 0.43, "side": "right", "labelOffsetYPct": 0.0, "kind": "pointer" }
     ]
   },
   "images": {
