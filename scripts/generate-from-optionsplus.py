@@ -85,9 +85,58 @@ def load_options_device_db(main_dir):
                         'name': d.get('displayName', depot),
                         'pids': set(),
                         'depot': depot,
+                        'capabilities': d.get('capabilities', {}),
                     }
                 mice[depot]['pids'].update(pids)
+                # Prefer the first non-empty capabilities object we see
+                if not mice[depot]['capabilities'] and d.get('capabilities'):
+                    mice[depot]['capabilities'] = d.get('capabilities', {})
     return mice
+
+
+def features_from_capabilities(caps):
+    """Map Options+ capabilities object to our FeatureSupport bool dict."""
+    swc = caps.get('scroll_wheel_capabilities', {})
+    smooth = swc.get('smooth_scroll', {})
+    if isinstance(smooth, bool):
+        smooth_on = smooth
+    else:
+        smooth_on = bool(smooth.get('win') or smooth.get('mac'))
+
+    has_adjustable_dpi = (
+        bool(caps.get('hasHighResolutionSensor'))
+        or 'highResolutionSensorInfo' in caps
+        or bool(caps.get('pointerSpeed'))
+    )
+    has_programmable = bool(caps.get('specialKeys', {}).get('programmable'))
+
+    return {
+        "battery": bool(caps.get('hasBatteryStatus') or caps.get('unified_battery')),
+        "adjustableDpi": has_adjustable_dpi,
+        "smartShift": bool(swc.get('smartshift')),
+        "hiResWheel": bool(swc.get('high_resolution')),
+        # mouseThumbWheelOverride only appears on devices with a physical
+        # thumb wheel (the MX Master line). virtual_thumbwheel is a different
+        # software-emulated concept that doesn't map to our feature flag.
+        "thumbWheel": 'mouseThumbWheelOverride' in caps,
+        "reprogControls": has_programmable,
+        "gestureV2": False,  # not represented in Options+ device db
+        "smoothScroll": smooth_on,
+        "hapticFeedback": False,  # not represented in Options+ device db
+    }
+
+
+def dpi_from_capabilities(caps):
+    """Read DPI range from Options+ highResolutionSensorInfo, else defaults."""
+    info = caps.get('highResolutionSensorInfo')
+    if info:
+        # Use SensorOn range (high-res sensor mode) for max possible DPI
+        return {
+            "min": info.get('minDpiValueSensorOn', 200),
+            "max": info.get('maxDpiValueSensorOn', 4000),
+            "step": info.get('stepsSensorOn', 50),
+        }
+    return {"min": 200, "max": 4000, "step": 50}
 
 
 def parse_metadata_hotspots(metadata_path, image_key='device_buttons_image'):
@@ -131,12 +180,15 @@ def parse_metadata_hotspots(metadata_path, image_key='device_buttons_image'):
                     "defaultAction": name_info[1],
                     "configurable": name_info[2],
                 },
+                # Field names must match JsonDevice::parseHotspots() in
+                # src/core/devices/JsonDevice.cpp (buttonIndex / xPct / yPct
+                # / labelOffsetYPct). Mismatches are silently dropped as 0.
                 'hotspot': {
-                    "index": idx,
-                    "x": max(0, min(1, x_pct)),
-                    "y": max(0, min(1, y_pct)),
+                    "buttonIndex": idx,
+                    "xPct": max(0, min(1, x_pct)),
+                    "yPct": max(0, min(1, y_pct)),
                     "side": "right" if x_pct > 0.5 else "left",
-                    "labelOffset": 0.0,
+                    "labelOffsetYPct": 0.0,
                 },
             })
             idx += 1
@@ -160,23 +212,20 @@ def build_descriptor(mouse_info, controls_data, has_side_image, has_back_image):
     if has_back_image:
         images["back"] = "back.png"
 
+    caps = mouse_info.get('capabilities', {})
+
+    # Descriptors with real hotspots and a front image meet strict validation
+    # requirements, so promote them out of "placeholder" status — they're
+    # community-verified by virtue of coming from Logitech's own database.
+    status = "community-verified" if button_hotspots else "placeholder"
+
     descriptor = {
         "name": mouse_info['name'],
-        "status": "placeholder",
+        "status": status,
         "version": 1,
         "productIds": sorted(mouse_info['pids']),
-        "features": {
-            "battery": True,
-            "adjustableDpi": True,
-            "smartShift": False,
-            "hiResWheel": True,
-            "thumbWheel": False,
-            "reprogControls": True,
-            "gestureV2": False,
-            "smoothScroll": True,
-            "hapticFeedback": False,
-        },
-        "dpi": {"min": 200, "max": 4000, "step": 50},
+        "features": features_from_capabilities(caps),
+        "dpi": dpi_from_capabilities(caps),
         "controls": all_controls,
         "hotspots": {
             "buttons": button_hotspots,
