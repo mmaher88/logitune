@@ -64,12 +64,19 @@ jobs:
         run: ./build/tests/logitune-tests
         env:
           QT_QPA_PLATFORM: offscreen
+          # DeviceRegistry loads JSON descriptors from
+          # $XDG_DATA_DIRS/logitune/devices. CMake creates a symlink at
+          # ${CMAKE_BINARY_DIR}/logitune/devices pointing at the source
+          # devices/ dir, so exposing the build root here lets the tests
+          # find the shipped descriptors.
+          XDG_DATA_DIRS: ${{ github.workspace }}/build
 
       - name: Tray tests
         if: matrix.run_tests
         run: ./build/tests/logitune-tray-tests
         env:
           QT_QPA_PLATFORM: offscreen
+          XDG_DATA_DIRS: ${{ github.workspace }}/build
 
       - name: Install to staging directory
         run: DESTDIR=${{ github.workspace }}/staging cmake --install build
