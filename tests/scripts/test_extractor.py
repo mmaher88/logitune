@@ -149,6 +149,42 @@ def test_parse_easyswitch_for_3s():
     assert [s.index for s in parsed.easyswitch] == [1, 2, 3]
 
 
+def test_easyswitch_transform_matches_shipped_3s_positions():
+    """The Options+ device_easyswitch_image canvas is rotated relative to
+    the back-of-mouse image: its horizontal extent maps to the back
+    image's vertical extent. Without applying that transform, x_pct
+    values are off by ~0.11 from the shipped 3S descriptor. With the
+    transform (passing back_image_aspect = back_height/back_width),
+    they match within ~0.007 — Jelco's eyeballing tolerance."""
+    depot = sources.load_depot(FIXTURE_ROOT / "devices" / "mx_master_3s")
+    # Real 3S back_core.png is 692x1024; the fixture ships a 1x1
+    # placeholder, so we pass the real aspect explicitly.
+    parsed = slots.parse(depot.metadata, back_image_aspect=1024 / 692)
+    # Shipped 3S easySwitchSlots positions Jelco hand-placed:
+    expected = [
+        (1, 0.325, 0.658),
+        (2, 0.384, 0.642),
+        (3, 0.443, 0.643),
+    ]
+    for (idx, ex_x, ex_y), slot in zip(expected, parsed.easyswitch):
+        assert slot.index == idx
+        assert abs(slot.x_pct - ex_x) < 0.01, \
+            f"slot {idx} xPct {slot.x_pct} drifts from shipped {ex_x}"
+        assert abs(slot.y_pct - ex_y) < 0.02, \
+            f"slot {idx} yPct {slot.y_pct} drifts from shipped {ex_y}"
+
+
+def test_easyswitch_no_transform_falls_back_to_naive():
+    """When back_image_aspect is None, the transform is bypassed and
+    coordinates are emitted as raw marker/100 percentages. This is the
+    pre-fix behaviour — kept as a fallback so callers without back
+    image dimensions still get something."""
+    depot = sources.load_depot(FIXTURE_ROOT / "devices" / "mx_master_3s")
+    parsed = slots.parse(depot.metadata)  # default: back_image_aspect=None
+    # Slot 1 marker is x=21.5, so naive xPct = 0.215
+    assert abs(parsed.easyswitch[0].x_pct - 0.215) < 0.001
+
+
 def test_marker_coords_are_percentages_not_pixels():
     depot = sources.load_depot(FIXTURE_ROOT / "devices" / "mx_master_3s")
     parsed = slots.parse(depot.metadata)
@@ -453,25 +489,28 @@ def test_golden_file_equivalence(tmp_path, slug):
     assert extracted["dpi"] == shipped["dpi"]
 
     # --- tolerance on coordinates ---
-    # Tolerance is ±0.05 rather than ±0.02 because the shipped descriptors have
-    # been hand-tuned by Jelco after extraction; Options+ marker values and the
-    # hand-placed hotspot coordinates differ by up to 0.04 in x/y for most
-    # buttons on the 2S. ±0.05 covers that range and still catches regressions
-    # where a coordinate goes completely wrong (>5% of image dimension).
+    # Tolerance is ±0.05 rather than ±0.02 because the shipped 2S
+    # descriptor has hand-tuned/eyeballed coordinates that drift up to
+    # 0.04 from raw Options+ marker values. The 3S extractor is
+    # pixel-perfect (drifts of 0.000 against the shipped 3S) — a
+    # tighter per-device tolerance would catch 3S regressions while
+    # still passing the 2S, but blanket 0.05 is what we have today.
     #
     # Known gaps excluded from the comparison:
     #   - buttonIndex 5 (Gesture button) yPct on the 2S: shipped=0.50,
-    #     extracted=0.69 (Options+ marker at y=69 out of 100); the shipped
-    #     descriptor placed the hotspot label at a visually cleaner position.
-    #     The y-coordinate is skipped for that button only.
-    #   - easySwitchSlots xPct on the 3S: shipped coords (~0.325-0.443) differ
-    #     from Options+ easyswitch image markers (~0.215-0.295) by ~0.11.
-    #     The easyswitch image has a different aspect ratio (1872x728 vs
-    #     636x1024) and Jelco normalised against the main device image width
-    #     when writing the shipped descriptor. ±0.05 does not cover this;
-    #     easyswitch xPct is excluded from the tolerance assertion.
-    #   - easySwitchSlots on the 2S: fixture has no device_easyswitch_image;
-    #     extractor produces []; no coordinate comparison is possible.
+    #     extracted=0.69 (Options+ marker at y=69 out of 100). The
+    #     shipped descriptor placed the hotspot label at a visually
+    #     cleaner position than the raw marker. The y-coordinate is
+    #     skipped for that button only.
+    #   - easySwitchSlots on the 2S: fixture has no
+    #     device_easyswitch_image entry → extractor produces 0 slots.
+    #     No coordinate comparison is possible.
+    #
+    # Easy-switch xPct IS now checked: the slots.parse() function
+    # applies a back-image-aspect rescale that maps the Options+
+    # easyswitch canvas (origin 1872x728) onto the back image's
+    # vertical extent. After the rescale, 3S easyswitch xPct values
+    # land within ~0.007 of Jelco's hand-placed shipped values.
 
     TOL = 0.05
 
@@ -495,15 +534,14 @@ def test_golden_file_equivalence(tmp_path, slug):
         assert abs(eh["yPct"] - sh["yPct"]) < TOL, f"{slug} scroll yPct drift at {eh['buttonIndex']}"
 
     # easySwitchSlots: only assert when the fixture provided slots.
-    # xPct excluded from 3S: easyswitch image has a different normalization
-    # origin (1872x728) than the main device image (636x1024); the shipped
-    # descriptor used the main-image width as the reference, producing ~0.11
-    # drift that ±0.05 does not cover. yPct is within tolerance and IS checked.
+    # Both axes are checked — the back-image-aspect rescale in
+    # slots._parse_easyswitch brings xPct within tolerance of the
+    # shipped values.
     for i, (es, ss) in enumerate(zip(extracted["easySwitchSlots"], shipped["easySwitchSlots"])):
-        assert abs(es["yPct"] - ss["yPct"]) < TOL, f"{slug} easyswitch[{i}] yPct drift"
+        assert abs(es["xPct"] - ss["xPct"]) < TOL, f"{slug} easyswitch[{i}] xPct drift: {es['xPct']} vs {ss['xPct']}"
+        assert abs(es["yPct"] - ss["yPct"]) < TOL, f"{slug} easyswitch[{i}] yPct drift: {es['yPct']} vs {ss['yPct']}"
 
     # --- gaps not asserted (documented) ---
     # labelOffsetYPct — shipped is hand-tuned, extracted is 0.0
     # defaultGestures — shipped has values, extracted is {}
-    # easySwitchSlots xPct — normalization origin mismatch (see above)
     # Gesture button (idx=5) yPct for 2S — hand-tuned placement in shipped

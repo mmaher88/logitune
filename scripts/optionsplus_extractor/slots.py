@@ -67,12 +67,20 @@ class ParsedMetadata:
     easyswitch: list[EasySwitchSlot] = field(default_factory=list)
 
 
-def parse(metadata: Optional[dict]) -> ParsedMetadata:
+def parse(
+    metadata: Optional[dict],
+    back_image_aspect: Optional[float] = None,
+) -> ParsedMetadata:
     """Parse a core_metadata.json dict into typed slot records.
 
     Unknown slot names raise UnknownSlotName. Assignments with no
     recognizable CID or slot kind are silently skipped (not all
     slots in every image are ones we care about).
+
+    `back_image_aspect` is `back_image_height / back_image_width`, used
+    to rescale easyswitch marker X coordinates (see `_parse_easyswitch`
+    for the rationale). Pass None to fall back to naive `x/100`
+    behaviour — tests that don't exercise easyswitch don't need it.
     """
     out = ParsedMetadata()
     if not metadata:
@@ -87,7 +95,9 @@ def parse(metadata: Optional[dict]) -> ParsedMetadata:
         elif key == "device_point_scroll_image":
             out.scroll.extend(_parse_scroll(assignments))
         elif key == "device_easyswitch_image":
-            out.easyswitch.extend(_parse_easyswitch(assignments))
+            out.easyswitch.extend(
+                _parse_easyswitch(assignments, back_image_aspect)
+            )
         # device_gesture_buttons_image is intentionally skipped
         # (default gestures come from AppController hardcoded defaults)
 
@@ -176,7 +186,27 @@ def _parse_scroll(assignments: list[dict]) -> list[ScrollSlot]:
 _EASYSWITCH_RE = re.compile(r"_easy_switch_(\d+)$")
 
 
-def _parse_easyswitch(assignments: list[dict]) -> list[EasySwitchSlot]:
+def _parse_easyswitch(
+    assignments: list[dict],
+    back_image_aspect: Optional[float] = None,
+) -> list[EasySwitchSlot]:
+    """Parse easy-switch slot markers, applying the coordinate-system fix.
+
+    Options+ stores `device_easyswitch_image` markers in a canvas whose
+    horizontal extent maps to the back image's VERTICAL extent when
+    composited onto the actual mouse photo (origin 1872x728 on the 3S
+    vs back_core.png 692x1024). Empirically the transform is:
+
+        x_out_fraction = (marker_x / 100) * (back_height / back_width)
+        y_out_fraction = marker_y / 100
+
+    This was validated by deriving the formula from the 3S shipped
+    descriptor (Jelco's hand-placed values) and confirming it
+    reproduces all three slot positions to within 0.007 — i.e., within
+    eyeballing tolerance of a hand-placed reference. Pass
+    `back_image_aspect` (height/width) to apply the transform; pass
+    None to fall back to naive marker/100 behaviour.
+    """
     out: list[EasySwitchSlot] = []
     for a in assignments:
         slot_id = a.get("slotId", "") or ""
@@ -184,7 +214,15 @@ def _parse_easyswitch(assignments: list[dict]) -> list[EasySwitchSlot]:
         if not m:
             continue
         idx = int(m.group(1))
-        x, y = _marker_to_pct(a.get("marker", {}) or {})
-        out.append(EasySwitchSlot(index=idx, x_pct=x, y_pct=y))
+        marker = a.get("marker", {}) or {}
+        x_raw = float(marker.get("x", 0)) / 100.0
+        y_raw = float(marker.get("y", 0)) / 100.0
+        if back_image_aspect is not None:
+            x_pct = x_raw * back_image_aspect
+        else:
+            x_pct = x_raw
+        x_pct = round(max(0.0, min(1.0, x_pct)), 3)
+        y_pct = round(max(0.0, min(1.0, y_raw)), 3)
+        out.append(EasySwitchSlot(index=idx, x_pct=x_pct, y_pct=y_pct))
     out.sort(key=lambda s: s.index)
     return out

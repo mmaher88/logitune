@@ -5,6 +5,7 @@ from __future__ import annotations
 import glob
 import json
 import os
+import struct
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -119,3 +120,25 @@ def _find_first(base: Path, names: list[str]) -> Optional[Path]:
         if p.exists():
             return p
     return None
+
+
+def read_png_dimensions(path: Path) -> Optional[tuple[int, int]]:
+    """Read (width, height) from a PNG file's IHDR chunk.
+
+    Uses only the stdlib (no Pillow) by reading the first 24 bytes of the
+    file. Returns None on any parse failure — callers should treat the
+    result as optional.
+    """
+    try:
+        with open(path, "rb") as f:
+            sig = f.read(8)
+            if sig != b"\x89PNG\r\n\x1a\n":
+                return None
+            f.read(4)  # IHDR chunk length
+            chunk_type = f.read(4)
+            if chunk_type != b"IHDR":
+                return None
+            w, h = struct.unpack(">II", f.read(8))
+            return (w, h)
+    except (OSError, struct.error):
+        return None

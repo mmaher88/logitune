@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from . import sources
 from .sources import DeviceDbEntry, Depot
 from .capabilities import features_from_capabilities, dpi_from_capabilities
 from . import slots as slots_mod
@@ -32,7 +33,13 @@ def build(entry: DeviceDbEntry, depot: Depot) -> dict:
     Raises `slots.UnknownSlotName` if the metadata contains a slot name
     not in the mapping table.
     """
-    parsed = slots_mod.parse(depot.metadata)
+    back_image_aspect = None
+    if depot.back_image is not None:
+        dims = sources.read_png_dimensions(depot.back_image)
+        if dims is not None and dims[0] > 0:
+            back_image_aspect = dims[1] / dims[0]  # height / width
+
+    parsed = slots_mod.parse(depot.metadata, back_image_aspect=back_image_aspect)
 
     ordered_buttons = canonicalize.sort_buttons(parsed.buttons)
     ordered_scroll = canonicalize.sort_scroll(parsed.scroll)
