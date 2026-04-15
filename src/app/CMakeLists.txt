@@ -6,6 +6,7 @@ add_library(logitune-app-lib STATIC
     models/ButtonModel.cpp
     models/ActionModel.cpp
     models/ProfileModel.cpp
+    models/EditorModel.cpp
     dialogs/GitHubIssueBuilder.cpp
     dialogs/CrashReportDialog.cpp
     TrayManager.cpp
