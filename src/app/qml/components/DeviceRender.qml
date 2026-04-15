@@ -95,8 +95,16 @@ Item {
 
             // 24x24 hit area — follows drag in editor mode, otherwise snaps to target.
             width: 24; height: 24
-            x: drag.active ? x : targetX - width / 2
-            y: drag.active ? y : targetY - height / 2
+            // Conditional binding: active except while DragHandler is mutating x/y.
+            // A self-referencing ternary here would sever the binding after first drag.
+            Binding on x {
+                value: markerItem.targetX - markerItem.width / 2
+                when: !drag.active
+            }
+            Binding on y {
+                value: markerItem.targetY - markerItem.height / 2
+                when: !drag.active
+            }
 
             // Invisible click hit zone centred on dot (for button selection, non-edit mode)
             MouseArea {

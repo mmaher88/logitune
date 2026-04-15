@@ -105,8 +105,16 @@ Item {
                         readonly property real targetX: imageContainer.imgX + imageContainer.imgW * pos.xPct
                         readonly property real targetY: imageContainer.imgY + imageContainer.imgH * pos.yPct
 
-                        x: drag.active ? x : targetX - width / 2
-                        y: drag.active ? y : targetY - height / 2
+                        // Conditional binding: active except while DragHandler is mutating x/y.
+                        // A self-referencing ternary here would sever the binding after first drag.
+                        Binding on x {
+                            value: slotItem.targetX - slotItem.width / 2
+                            when: !drag.active
+                        }
+                        Binding on y {
+                            value: slotItem.targetY - slotItem.height / 2
+                            when: !drag.active
+                        }
 
                         Rectangle {
                             anchors.centerIn: parent

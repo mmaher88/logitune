@@ -104,8 +104,16 @@ Item {
                     readonly property real targetY: mouseRender.y + mouseRender.paintedY + modelData.yPct * mouseRender.paintedH
 
                     width: 24; height: 24
-                    x: scrollMarkerDrag.active ? x : targetX - width / 2
-                    y: scrollMarkerDrag.active ? y : targetY - height / 2
+                    // Conditional binding: active except while DragHandler is mutating x/y.
+                    // A self-referencing ternary here would sever the binding after first drag.
+                    Binding on x {
+                        value: scrollMarker.targetX - scrollMarker.width / 2
+                        when: !scrollMarkerDrag.active
+                    }
+                    Binding on y {
+                        value: scrollMarker.targetY - scrollMarker.height / 2
+                        when: !scrollMarkerDrag.active
+                    }
 
                     Rectangle {
                         anchors.centerIn: parent
@@ -146,12 +154,14 @@ Item {
                 readonly property real hsX: hs ? hs.xPct : 0.73
                 readonly property real hsY: hs ? hs.yPct : 0.16
                 readonly property real hsOffY: hs ? hs.labelOffsetYPct : 0
-                x: scrollCallout.dragging
-                    ? x
-                    : mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * hsX + 16
-                y: scrollCallout.dragging
-                    ? y
-                    : mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * hsY - height / 2
+                Binding on x {
+                    value: mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * scrollCallout.hsX + 16
+                    when: !scrollCallout.dragging
+                }
+                Binding on y {
+                    value: mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * scrollCallout.hsY - scrollCallout.height / 2
+                    when: !scrollCallout.dragging
+                }
 
                 hotspotIndex: hsIdx
                 hsXPct: hsX
@@ -185,12 +195,14 @@ Item {
                 readonly property real hsX: hs ? hs.xPct : 0.55
                 readonly property real hsY: hs ? hs.yPct : 0.51
                 readonly property real hsOffY: hs ? hs.labelOffsetYPct : 0
-                x: thumbCallout.dragging
-                    ? x
-                    : mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * hsX - width - 16
-                y: thumbCallout.dragging
-                    ? y
-                    : mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * hsY - height / 2
+                Binding on x {
+                    value: mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * thumbCallout.hsX - thumbCallout.width - 16
+                    when: !thumbCallout.dragging
+                }
+                Binding on y {
+                    value: mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * thumbCallout.hsY - thumbCallout.height / 2
+                    when: !thumbCallout.dragging
+                }
 
                 hotspotIndex: hsIdx
                 hsXPct: hsX
@@ -219,12 +231,14 @@ Item {
                 readonly property real hsX: hs ? hs.xPct : 0.83
                 readonly property real hsY: hs ? hs.yPct : 0.54
                 readonly property real hsOffY: hs ? hs.labelOffsetYPct : 0
-                x: pointerCallout.dragging
-                    ? x
-                    : mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * hsX + 16
-                y: pointerCallout.dragging
-                    ? y
-                    : mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * hsY - height / 2
+                Binding on x {
+                    value: mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * pointerCallout.hsX + 16
+                    when: !pointerCallout.dragging
+                }
+                Binding on y {
+                    value: mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * pointerCallout.hsY - pointerCallout.height / 2
+                    when: !pointerCallout.dragging
+                }
 
                 hotspotIndex: hsIdx
                 hsXPct: hsX
