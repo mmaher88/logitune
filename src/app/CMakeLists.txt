@@ -30,7 +30,7 @@ else()
     foreach(_file
         SideNav BatteryChip LogituneSlider LogituneToggle InfoCallout
         DetailPanel KeystrokeCapture ButtonCallout ActionsPanel
-        DeviceCard DeviceRender AppProfileBar Toast)
+        DeviceCard DeviceRender AppProfileBar Toast EditorToolbar)
         set_source_files_properties(qml/components/${_file}.qml
             PROPERTIES QT_RESOURCE_ALIAS qml/${_file}.qml)
     endforeach()
@@ -64,6 +64,7 @@ qt_add_qml_module(logitune-app-lib
         qml/components/DeviceRender.qml
         qml/components/AppProfileBar.qml
         qml/components/Toast.qml
+        qml/components/EditorToolbar.qml
         qml/pages/PointScrollPage.qml
         qml/pages/ButtonsPage.qml
         qml/pages/EasySwitchPage.qml
