@@ -35,7 +35,7 @@ QString writeMinimalDescriptor(const QString &dir) {
 
 TEST(EditorModel, EditingFlagAndInitialState) {
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, /*editing=*/true);
+    logitune::EditorModel m(&reg, nullptr, /*editing=*/true);
     EXPECT_TRUE(m.editing());
     EXPECT_FALSE(m.hasUnsavedChanges());
     EXPECT_FALSE(m.canUndo());
@@ -45,7 +45,7 @@ TEST(EditorModel, EditingFlagAndInitialState) {
 
 TEST(EditorModel, ActiveDevicePathSetterEmitsSignals) {
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     QSignalSpy pathSpy(&m, &logitune::EditorModel::activeDevicePathChanged);
     QSignalSpy dirtySpy(&m, &logitune::EditorModel::dirtyChanged);
     m.setActiveDevicePath(QStringLiteral("/tmp/foo"));
@@ -60,7 +60,7 @@ TEST(EditorModel, UpdateSlotPositionMutatesPendingAndPushesUndo) {
     const QString path = writeMinimalDescriptor(tmp.path() + QStringLiteral("/dev"));
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
 
     QSignalSpy dirtySpy(&m, &logitune::EditorModel::dirtyChanged);
@@ -96,7 +96,7 @@ TEST(EditorModel, UpdateHotspotMutatesPendingAndPushesUndo) {
     const QString path = QFileInfo(tmp.path() + QStringLiteral("/dev")).canonicalFilePath();
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
 
     m.updateHotspot(0, 0.55, 0.66, QStringLiteral("right"), 0.10);
@@ -125,7 +125,7 @@ TEST(EditorModel, UpdateScrollHotspotMutatesScrollArray) {
     const QString path = QFileInfo(tmp.path() + QStringLiteral("/dev")).canonicalFilePath();
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
 
     m.updateScrollHotspot(0, 0.55, 0.66, QStringLiteral("right"), 0.10);
@@ -142,7 +142,7 @@ TEST(EditorModel, UndoRestoresSlotPosition) {
     QTemporaryDir tmp; ASSERT_TRUE(tmp.isValid());
     const QString path = writeMinimalDescriptor(tmp.path() + QStringLiteral("/dev"));
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
 
     m.updateSlotPosition(0, 0.99, 0.99);
@@ -177,7 +177,7 @@ TEST(EditorModel, UpdateTextEditsAllThreeKindsAndUndoes) {
     const QString path = QFileInfo(tmp.path() + QStringLiteral("/dev")).canonicalFilePath();
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
 
     m.updateText(QStringLiteral("deviceName"), -1, QStringLiteral("New Name"));
@@ -196,7 +196,7 @@ TEST(EditorModel, PerDeviceStacksAreIsolated) {
     const QString pathB = writeMinimalDescriptor(tmp.path() + QStringLiteral("/devB"));
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
 
     m.setActiveDevicePath(pathA);
     m.updateSlotPosition(0, 0.5, 0.5);
@@ -220,7 +220,7 @@ TEST(EditorModel, SaveWritesPendingAndClearsState) {
     const QString path = writeMinimalDescriptor(tmp.path() + QStringLiteral("/dev"));
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
 
     QSignalSpy savedSpy(&m, &logitune::EditorModel::saved);
@@ -243,7 +243,7 @@ TEST(EditorModel, SaveFailurePreservesState) {
     const QString path = writeMinimalDescriptor(tmp.path() + QStringLiteral("/dev"));
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
     m.updateSlotPosition(0, 0.55, 0.66);
 
@@ -266,7 +266,7 @@ TEST(EditorModel, ResetDiscardsPendingAndClearsStacks) {
     const QString path = writeMinimalDescriptor(tmp.path() + QStringLiteral("/dev"));
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
 
     m.updateSlotPosition(0, 0.99, 0.99);
@@ -295,7 +295,7 @@ TEST(EditorModel, ReplaceImageCopiesFileAndUpdatesPending) {
     sf.close();
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
 
     m.replaceImage(QStringLiteral("back"), src);
@@ -310,7 +310,7 @@ TEST(EditorModel, ExternalChangeSilentReloadWhenNotDirty) {
     const QString path = writeMinimalDescriptor(tmp.path() + QStringLiteral("/dev"));
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
 
     QSignalSpy externalSpy(&m, &logitune::EditorModel::externalChangeDetected);
@@ -324,7 +324,7 @@ TEST(EditorModel, ExternalChangeWhileDirtyEmitsConflictSignal) {
     const QString path = writeMinimalDescriptor(tmp.path() + QStringLiteral("/dev"));
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
     m.updateSlotPosition(0, 0.99, 0.99);
 
@@ -341,7 +341,7 @@ TEST(EditorModel, SaveSuppressesOwnWatcherFire) {
     const QString path = writeMinimalDescriptor(tmp.path() + QStringLiteral("/dev"));
 
     logitune::DeviceRegistry reg;
-    logitune::EditorModel m(&reg, true);
+    logitune::EditorModel m(&reg, nullptr, true);
     m.setActiveDevicePath(path);
     m.updateSlotPosition(0, 0.55, 0.66);
 

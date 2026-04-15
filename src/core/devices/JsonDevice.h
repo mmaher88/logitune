@@ -2,6 +2,7 @@
 #include "interfaces/IDevice.h"
 #include <memory>
 #include <QString>
+#include <QJsonObject>
 
 namespace logitune {
 
@@ -12,6 +13,7 @@ public:
     static std::unique_ptr<JsonDevice> load(const QString& dirPath);
 
     bool refresh();
+    bool refreshFromObject(const QJsonObject &root);
 
     Status status() const { return m_status; }
     QString sourcePath() const { return m_sourcePath; }
@@ -36,6 +38,7 @@ public:
 private:
     JsonDevice() = default;
     bool parseFromDir(const QString& dirPath);
+    bool parseFromObject(const QJsonObject& root, const QString& dirPath, bool strict = true);
 
     Status m_status = Status::Placeholder;
     QString m_name;

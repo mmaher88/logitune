@@ -154,7 +154,17 @@ bool JsonDevice::parseFromDir(const QString& dirPath)
         return false;
     }
 
-    const QJsonObject root = doc.object();
+    if (!parseFromObject(doc.object(), dirPath, /*strict=*/true))
+        return false;
+
+    m_loadedMtime = QFileInfo(filePath).lastModified().toSecsSinceEpoch();
+    return true;
+}
+
+bool JsonDevice::parseFromObject(const QJsonObject& root, const QString& dirPath, bool strict)
+{
+    const QDir dir(dirPath);
+    const QString filePath = dir.absoluteFilePath(QStringLiteral("descriptor.json"));
 
     m_status = parseStatus(root.value(QStringLiteral("status")).toString());
     m_name = root.value(QStringLiteral("name")).toString();
@@ -209,20 +219,20 @@ bool JsonDevice::parseFromDir(const QString& dirPath)
     m_defaultGestures = parseDefaultGestures(
         root.value(QStringLiteral("defaultGestures")).toObject());
 
-    const bool strict = (m_status == Status::Implemented
-                         || m_status == Status::CommunityVerified);
+    const bool strictGate = strict && (m_status == Status::Implemented
+                                       || m_status == Status::CommunityVerified);
 
-    if (m_name.isEmpty()) {
+    if (strict && m_name.isEmpty()) {
         qCWarning(lcDevice) << "JsonDevice: missing name in" << filePath;
         return false;
     }
 
-    if (m_pids.empty()) {
+    if (strict && m_pids.empty()) {
         qCWarning(lcDevice) << "JsonDevice: no productIds in" << filePath;
         return false;
     }
 
-    if (strict) {
+    if (strictGate) {
         if (m_controls.isEmpty()) {
             qCWarning(lcDevice) << "JsonDevice: implemented device has no controls in" << filePath;
             return false;
@@ -238,9 +248,9 @@ bool JsonDevice::parseFromDir(const QString& dirPath)
     }
 
     m_sourcePath = QFileInfo(dirPath).canonicalFilePath();
-    m_loadedMtime = QFileInfo(filePath).lastModified().toSecsSinceEpoch();
 
-    qCDebug(lcDevice) << "JsonDevice: loaded" << m_name << "from" << dirPath;
+    qCDebug(lcDevice) << "JsonDevice: parsed" << m_name << "from" << dirPath
+                      << (strict ? "(strict)" : "(relaxed)");
     return true;
 }
 
@@ -273,6 +283,30 @@ bool JsonDevice::refresh()
     m_maxDpi = 8000;
     m_dpiStep = 50;
     return parseFromDir(src);
+}
+
+bool JsonDevice::refreshFromObject(const QJsonObject &root)
+{
+    if (m_sourcePath.isEmpty())
+        return false;
+    const QString src = m_sourcePath;
+    // Clear mutable parsed state (mirrors refresh())
+    m_pids.clear();
+    m_controls.clear();
+    m_buttonHotspots.clear();
+    m_scrollHotspots.clear();
+    m_easySwitchSlots.clear();
+    m_defaultGestures.clear();
+    m_frontImage.clear();
+    m_sideImage.clear();
+    m_backImage.clear();
+    m_features = FeatureSupport{};
+    m_name.clear();
+    m_status = Status::Placeholder;
+    m_minDpi = 200;
+    m_maxDpi = 8000;
+    m_dpiStep = 50;
+    return parseFromObject(root, src, /*strict=*/false);
 }
 
 } // namespace logitune

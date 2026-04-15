@@ -74,7 +74,7 @@ void AppController::init()
 void AppController::startMonitoring(bool simulateAll, bool editMode)
 {
     if (editMode) {
-        m_editorModel = std::make_unique<EditorModel>(&m_registry, true, this);
+        m_editorModel = std::make_unique<EditorModel>(&m_registry, &m_deviceModel, true, this);
         qCInfo(lcApp) << "--edit: editor mode active";
 
         auto syncActive = [this]() {

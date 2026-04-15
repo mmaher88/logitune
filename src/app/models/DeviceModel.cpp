@@ -631,6 +631,16 @@ bool DeviceModel::isSlotPaired(int slot) const
     return s->isHostPaired(slot - 1);
 }
 
+void DeviceModel::refreshFromActiveDevice()
+{
+    // The selected IDevice* (a JsonDevice owned by DeviceRegistry) has been
+    // mutated in place by EditorModel. Re-emit selectedChanged so every QML
+    // binding that reads through activeDevice()->descriptor() re-fetches the
+    // updated values (slot positions, button hotspots, scroll hotspots,
+    // control display names, images, etc).
+    emit selectedChanged();
+}
+
 void DeviceModel::setDisplayValues(int dpi, bool smartShiftEnabled, int smartShiftThreshold,
                                     bool scrollHiRes, bool scrollInvert, const QString &thumbWheelMode,
                                     bool thumbWheelInvert)

@@ -12,6 +12,7 @@
 namespace logitune {
 
 class DeviceRegistry;
+class DeviceModel;
 
 class EditorModel : public QObject {
     Q_OBJECT
@@ -21,7 +22,8 @@ class EditorModel : public QObject {
     Q_PROPERTY(bool canRedo READ canRedo NOTIFY undoStateChanged)
     Q_PROPERTY(QString activeDevicePath READ activeDevicePath WRITE setActiveDevicePath NOTIFY activeDevicePathChanged)
 public:
-    explicit EditorModel(DeviceRegistry *registry, bool editing, QObject *parent = nullptr);
+    explicit EditorModel(DeviceRegistry *registry, DeviceModel *deviceModel,
+                         bool editing, QObject *parent = nullptr);
 
     bool editing() const { return m_editing; }
     bool hasUnsavedChanges() const { return m_dirty.contains(m_activeDevicePath); }
@@ -58,8 +60,13 @@ private:
     void ensurePending(const QString &path);
     void pushCommand(EditCommand cmd);
     void applyCommand(const EditCommand &cmd, bool reverse);
+    // Push the current pending JSON into the live JsonDevice owned by the
+    // registry and ask DeviceModel to re-emit its property signals so QML
+    // bindings re-fetch. No-op if DeviceModel is null (tests).
+    void pushStateToActiveDevice();
 
     DeviceRegistry *m_registry;
+    DeviceModel *m_deviceModel;
     bool m_editing;
     QString m_activeDevicePath;
     QHash<QString, QJsonObject> m_pendingEdits;

@@ -145,6 +145,12 @@ public:
                           bool scrollHiRes, bool scrollInvert, const QString &thumbWheelMode,
                           bool thumbWheelInvert = false);
 
+public slots:
+    // Re-emit selectedChanged so QML bindings that read from the active
+    // IDevice* (controls, hotspots, slots, images) re-fetch. Used by
+    // EditorModel after it mutates the underlying JsonDevice in place.
+    void refreshFromActiveDevice();
+
 signals:
     void countChanged();
     void selectedChanged();

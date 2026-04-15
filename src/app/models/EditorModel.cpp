@@ -1,4 +1,5 @@
 #include "EditorModel.h"
+#include "DeviceModel.h"
 #include "DeviceRegistry.h"
 #include "devices/JsonDevice.h"
 #include <QFile>
@@ -8,8 +9,9 @@
 
 namespace logitune {
 
-EditorModel::EditorModel(DeviceRegistry *registry, bool editing, QObject *parent)
-    : QObject(parent), m_registry(registry), m_editing(editing) {
+EditorModel::EditorModel(DeviceRegistry *registry, DeviceModel *deviceModel,
+                         bool editing, QObject *parent)
+    : QObject(parent), m_registry(registry), m_deviceModel(deviceModel), m_editing(editing) {
     m_watcher = new QFileSystemWatcher(this);
     connect(m_watcher, &QFileSystemWatcher::fileChanged,
             this, &EditorModel::onExternalFileChanged);
@@ -78,6 +80,26 @@ void EditorModel::pushCommand(EditCommand cmd) {
     emit undoStateChanged();
 }
 
+void EditorModel::pushStateToActiveDevice() {
+    if (!m_registry) return;
+    if (m_activeDevicePath.isEmpty()) return;
+    if (!m_pendingEdits.contains(m_activeDevicePath)) return;
+
+    // findBySourcePath returns const IDevice* because the public registry
+    // contract is read-only, but editor mode owns the mutation lifecycle and
+    // we know the concrete type is a JsonDevice that can be refreshed in
+    // place. Const-cast is safe here.
+    const IDevice *constDev = m_registry->findBySourcePath(m_activeDevicePath);
+    if (!constDev) return;
+    auto *jd = const_cast<JsonDevice*>(dynamic_cast<const JsonDevice*>(constDev));
+    if (!jd) return;
+
+    jd->refreshFromObject(m_pendingEdits.value(m_activeDevicePath));
+
+    if (m_deviceModel)
+        m_deviceModel->refreshFromActiveDevice();
+}
+
 void EditorModel::updateSlotPosition(int idx, double xPct, double yPct) {
     if (m_activeDevicePath.isEmpty()) return;
     ensurePending(m_activeDevicePath);
@@ -98,6 +120,7 @@ void EditorModel::updateSlotPosition(int idx, double xPct, double yPct) {
     cmd.after = slotsArr[idx];
 
     pushCommand(std::move(cmd));
+    pushStateToActiveDevice();
 }
 
 void EditorModel::updateHotspot(int idx, double xPct, double yPct,
@@ -126,6 +149,7 @@ void EditorModel::updateHotspot(int idx, double xPct, double yPct,
     cmd.after = buttons[idx];
 
     pushCommand(std::move(cmd));
+    pushStateToActiveDevice();
 }
 
 void EditorModel::updateScrollHotspot(int idx, double xPct, double yPct,
@@ -154,6 +178,7 @@ void EditorModel::updateScrollHotspot(int idx, double xPct, double yPct,
     cmd.after = scroll[idx];
 
     pushCommand(std::move(cmd));
+    pushStateToActiveDevice();
 }
 
 void EditorModel::updateText(const QString &field, int index, const QString &value) {
@@ -192,6 +217,7 @@ void EditorModel::updateText(const QString &field, int index, const QString &val
         return;
     }
     pushCommand(std::move(cmd));
+    pushStateToActiveDevice();
 }
 
 void EditorModel::applyCommand(const EditCommand &cmd, bool reverse) {
@@ -243,6 +269,7 @@ void EditorModel::undo() {
     if (stack.isEmpty()) m_dirty.remove(m_activeDevicePath);
     emit dirtyChanged();
     emit undoStateChanged();
+    pushStateToActiveDevice();
 }
 
 void EditorModel::redo() {
@@ -254,6 +281,7 @@ void EditorModel::redo() {
     m_dirty.insert(m_activeDevicePath);
     emit dirtyChanged();
     emit undoStateChanged();
+    pushStateToActiveDevice();
 }
 
 void EditorModel::save() {
@@ -278,6 +306,10 @@ void EditorModel::save() {
     m_undoStacks.remove(m_activeDevicePath);
     m_redoStacks.remove(m_activeDevicePath);
     m_dirty.remove(m_activeDevicePath);
+
+    // The JsonDevice now reflects the on-disk state; bump QML bindings.
+    if (m_deviceModel)
+        m_deviceModel->refreshFromActiveDevice();
 
     emit dirtyChanged();
     emit undoStateChanged();
@@ -314,6 +346,7 @@ void EditorModel::replaceImage(const QString &role, const QString &sourcePath) {
     images[role] = newName;
     obj[QStringLiteral("images")] = images;
     pushCommand(std::move(cmd));
+    pushStateToActiveDevice();
 }
 
 void EditorModel::reset() {
@@ -322,6 +355,12 @@ void EditorModel::reset() {
     m_undoStacks.remove(m_activeDevicePath);
     m_redoStacks.remove(m_activeDevicePath);
     m_dirty.remove(m_activeDevicePath);
+    // Any mutations we pushed into the live JsonDevice now need to be
+    // reverted to match the on-disk state.
+    if (m_registry)
+        m_registry->reload(m_activeDevicePath);
+    if (m_deviceModel)
+        m_deviceModel->refreshFromActiveDevice();
     emit dirtyChanged();
     emit undoStateChanged();
 }
