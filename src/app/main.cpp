@@ -19,6 +19,7 @@
 #include <QDBusVariant>
 
 #include "AppController.h"
+#include "models/EditorModel.h"
 #include "logging/LogManager.h"
 #include "logging/CrashHandler.h"
 #include "dialogs/CrashReportDialog.h"
@@ -69,8 +70,15 @@ int main(int argc, char *argv[])
             "visually inspecting every community descriptor without needing "
             "the physical mice."));
     parser.addOption(simulateAllOption);
+    QCommandLineOption editOption(
+        QStringLiteral("edit"),
+        QStringLiteral("Enable in-app descriptor editor mode. Drag elements on "
+                       "device pages to edit slot positions, hotspots, and images. "
+                       "Save writes back to the source descriptor JSON."));
+    parser.addOption(editOption);
     parser.process(app);
     const bool simulateAll = parser.isSet(simulateAllOption);
+    const bool editMode = parser.isSet(editOption);
 
     // Single-instance guard — prevent two instances fighting over the device
     QLockFile lockFile(QStandardPaths::writableLocation(QStandardPaths::TempLocation)
@@ -194,6 +202,16 @@ int main(int argc, char *argv[])
                              "Logitune", 1, 0, "Theme");
 #endif
 
+    controller.startMonitoring(simulateAll, editMode);
+
+    if (editMode && controller.editorModel()) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+        qmlRegisterSingletonInstance("Logitune", 1, 0, "EditorModel", controller.editorModel());
+#else
+        engine.rootContext()->setContextProperty("EditorModel", controller.editorModel());
+#endif
+    }
+
     qCInfo(lcApp) << "Loading QML...";
     engine.load(QUrl(QStringLiteral("qrc:/Logitune/qml/Main.qml")));
     qCInfo(lcApp) << "QML loaded, root objects:" << engine.rootObjects().size();
@@ -216,8 +234,6 @@ int main(int argc, char *argv[])
         else
             qCInfo(lcApp) << "Theme.dark applied:" << isDark;
     }
-
-    controller.startMonitoring(simulateAll);
 
     // System tray
     logitune::TrayManager tray(controller.deviceModel());

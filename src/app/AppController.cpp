@@ -1,4 +1,5 @@
 #include "AppController.h"
+#include "models/EditorModel.h"
 #include "desktop/KDeDesktop.h"
 #include "desktop/GnomeDesktop.h"
 #include "desktop/GenericDesktop.h"
@@ -48,6 +49,8 @@ AppController::AppController(IDesktopIntegration *desktop, IInputInjector *injec
     m_actionExecutor.setInjector(m_injector);
 }
 
+AppController::~AppController() = default;
+
 void AppController::init()
 {
     m_deviceModel.setDesktopIntegration(m_desktop);
@@ -67,8 +70,12 @@ void AppController::init()
     wireSignals();
 }
 
-void AppController::startMonitoring(bool simulateAll)
+void AppController::startMonitoring(bool simulateAll, bool editMode)
 {
+    if (editMode) {
+        m_editorModel = std::make_unique<EditorModel>(&m_registry, true, this);
+        qCInfo(lcApp) << "--edit: editor mode active";
+    }
     if (simulateAll) {
         // --simulate-all: populate the carousel with one fake session per
         // descriptor currently loaded in DeviceRegistry instead of scanning
