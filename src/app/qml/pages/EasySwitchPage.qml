@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import Logitune
 
 Item {
@@ -44,6 +45,43 @@ Item {
                     fillMode: Image.PreserveAspectFit
                     smooth: true
                     mipmap: true
+                }
+
+                DropArea {
+                    id: backImageDrop
+                    anchors.fill: deviceImage
+                    enabled: typeof EditorModel !== 'undefined' && EditorModel.editing
+                    onDropped: function(drop) {
+                        if (drop.hasUrls && drop.urls.length > 0) {
+                            var url = drop.urls[0].toString()
+                            if (url.toLowerCase().endsWith(".png")) {
+                                var path = url.replace(/^file:\/\//, "")
+                                EditorModel.replaceImage("back", path)
+                            }
+                        }
+                    }
+                }
+
+                Button {
+                    id: replaceBackButton
+                    visible: typeof EditorModel !== 'undefined' && EditorModel.editing
+                    anchors {
+                        top: deviceImage.top
+                        right: deviceImage.right
+                        margins: 4
+                    }
+                    text: "Replace image"
+                    onClicked: backImageDialog.open()
+                }
+
+                FileDialog {
+                    id: backImageDialog
+                    nameFilters: ["PNG (*.png)"]
+                    onAccepted: {
+                        var url = selectedFile.toString()
+                        var path = url.replace(/^file:\/\//, "")
+                        EditorModel.replaceImage("back", path)
+                    }
                 }
 
                 readonly property real imgX: (width - deviceImage.paintedWidth) / 2
