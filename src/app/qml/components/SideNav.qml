@@ -10,13 +10,24 @@ Rectangle {
     signal pageSelected(string pageName)
     property string currentPage: "buttons"
 
-    // Nav items model
-    readonly property var navItems: [
-        { name: "buttons",     label: "BUTTONS",         icon: "\uD83D\uDDB1", enabled: true  },
-        { name: "pointscroll", label: "POINT & SCROLL",  icon: "\u25CE",       enabled: true  },
-        { name: "easyswitch",  label: "EASY-SWITCH",     icon: "\u21C4",       enabled: true  },
-        { name: "settings",    label: "SETTINGS",         icon: "\u2261",       enabled: true  }
-    ]
+    // Nav items model — easy-switch is hidden for devices that don't
+    // expose any slot positions or don't have a back image to render
+    // them on. Both come from the loaded descriptor, so the binding
+    // re-evaluates when DeviceModel switches devices.
+    readonly property bool easySwitchSupported:
+        DeviceModel.easySwitchSlotPositions.length > 0
+        && DeviceModel.backImage.length > 0
+
+    readonly property var navItems: {
+        var items = [
+            { name: "buttons",     label: "BUTTONS",         icon: "\uD83D\uDDB1", enabled: true  },
+            { name: "pointscroll", label: "POINT & SCROLL",  icon: "\u25CE",       enabled: true  }
+        ];
+        if (easySwitchSupported)
+            items.push({ name: "easyswitch", label: "EASY-SWITCH", icon: "\u21C4", enabled: true });
+        items.push({ name: "settings", label: "SETTINGS", icon: "\u2261", enabled: true });
+        return items;
+    }
 
     ColumnLayout {
         anchors.fill: parent
