@@ -33,3 +33,25 @@ TEST(DescriptorWriter, ReturnsIoErrorOnUnwritableDir) {
               logitune::DescriptorWriter::IoError);
     EXPECT_FALSE(err.isEmpty());
 }
+
+TEST(DescriptorWriter, PreservesUnknownFieldsOnRoundTrip) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    QJsonObject obj;
+    obj[QStringLiteral("name")] = QStringLiteral("Test");
+    obj[QStringLiteral("__future_field")] = QStringLiteral("will it survive?");
+    QJsonObject nested;
+    nested[QStringLiteral("__nested_future")] = 42;
+    obj[QStringLiteral("nested")] = nested;
+
+    logitune::DescriptorWriter w;
+    ASSERT_EQ(w.write(tmp.path(), obj, nullptr), logitune::DescriptorWriter::Ok);
+
+    QFile f(tmp.path() + QStringLiteral("/descriptor.json"));
+    ASSERT_TRUE(f.open(QIODevice::ReadOnly));
+    auto roundTripped = QJsonDocument::fromJson(f.readAll()).object();
+
+    EXPECT_EQ(roundTripped[QStringLiteral("__future_field")].toString(),
+              QStringLiteral("will it survive?"));
+    EXPECT_EQ(roundTripped[QStringLiteral("nested")].toObject()[QStringLiteral("__nested_future")].toInt(), 42);
+}
