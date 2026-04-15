@@ -99,6 +99,7 @@ Item {
                 model: root.calloutData.length
 
                 ButtonCallout {
+                    id: callout
                     required property int modelData
 
                     readonly property var cdata: root.calloutData[modelData]
@@ -111,16 +112,29 @@ Item {
                     // Label offset (some labels need to shift to avoid overlap)
                     readonly property real labelOffY: (cdata.labelOffsetYPct || 0) * deviceRender.paintedH
 
-                    // Position: left-side labels to the left, right-side to the right
-                    x: cdata.side === "left"
-                       ? hotX - width - 24
-                       : hotX + 24
-                    y: hotY - height / 2 + labelOffY
+                    // Position: left-side labels to the left, right-side to the right.
+                    // During editor drag, freeze the binding so DragHandler assignments stick.
+                    x: callout.dragging
+                       ? callout.x
+                       : (cdata.side === "left"
+                          ? hotX - width - 24
+                          : hotX + 24)
+                    y: callout.dragging
+                       ? callout.y
+                       : hotY - height / 2 + labelOffY
 
                     // Connector line endpoint (the hotspot dot)
                     lineToX: hotX
                     lineToY: hotY
                     lineSide: cdata.side
+
+                    // Editor drag wiring
+                    hotspotIndex: modelData
+                    hsXPct: cdata.hotspotXPct
+                    hsYPct: cdata.hotspotYPct
+                    hsLabelOffsetYPct: cdata.labelOffsetYPct || 0
+                    pageWidth: mouseContainer.width
+                    pageHeight: mouseContainer.height
 
                     actionName: {
                         var an = ButtonModel.actionNameForButton(btnId)
