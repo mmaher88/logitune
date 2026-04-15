@@ -302,3 +302,20 @@ TEST(EditorModel, ExternalChangeWhileDirtyEmitsConflictSignal) {
     EXPECT_EQ(externalSpy.first().first().toString(), path);
     EXPECT_TRUE(m.hasUnsavedChanges());
 }
+
+TEST(EditorModel, SaveSuppressesOwnWatcherFire) {
+    QTemporaryDir tmp; ASSERT_TRUE(tmp.isValid());
+    const QString path = writeMinimalDescriptor(tmp.path() + QStringLiteral("/dev"));
+
+    logitune::DeviceRegistry reg;
+    logitune::EditorModel m(&reg, true);
+    m.setActiveDevicePath(path);
+    m.updateSlotPosition(0, 0.55, 0.66);
+
+    QSignalSpy externalSpy(&m, &logitune::EditorModel::externalChangeDetected);
+    m.save();
+
+    m.onExternalFileChanged(path + QStringLiteral("/descriptor.json"));
+
+    EXPECT_EQ(externalSpy.count(), 0);
+}
