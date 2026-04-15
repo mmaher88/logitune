@@ -132,6 +132,22 @@ sudo cmake --install build
 logitune
 ```
 
+<details>
+
+<summary> Or, if you're using nix: </summary>
+
+You can build it with:
+```nix
+nix build .\#default
+```
+
+And if you want to build it using `cmake` like above, you can run:
+```nix
+nix develop .
+```
+
+</details>
+
 ## 📚 Documentation
 
 | Guide | Description |
