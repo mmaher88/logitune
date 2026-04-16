@@ -38,7 +38,7 @@ logitune --edit --simulate-all
 
 ## The editor toolbar
 
-![Editor toolbar](../images/editor-toolbar.png) <!-- pending: Task 9 -->
+![Editor toolbar](../images/editor-toolbar.png)
 
 When `--edit` is active, a toolbar appears at the top of the device view area. It contains four action buttons on the left:
 
@@ -57,7 +57,7 @@ Along the left edge of the sidebar, a 4 px amber stripe (`#F5A623`) is visible w
 
 ## Buttons page
 
-![Buttons page in Editor Mode](../images/editor-buttons-page.png) <!-- pending: Task 9 -->
+![Buttons page in Editor Mode](../images/editor-buttons-page.png)
 
 The Buttons page shows the device side image with one `HotspotControl` per configurable button. Each control consists of a circular marker pinned to the device image, a connector line, and a callout card showing the button name and current action.
 
@@ -75,7 +75,7 @@ The connector line redraws live as either the marker or the card moves.
 
 ## Point and Scroll page
 
-![Point and Scroll page in Editor Mode](../images/editor-point-scroll-page.png) <!-- pending: Task 9 -->
+![Point and Scroll page in Editor Mode](../images/editor-point-scroll-page.png)
 
 The Point and Scroll page shows the device side image with one draggable marker per scroll hotspot. The descriptor supports three hotspot kinds: `scrollwheel`, `thumbwheel`, and `pointer`.
 
@@ -85,7 +85,7 @@ In Editor Mode, each scroll marker has a `DragHandler` enabled. Drag a marker to
 
 ## Easy-Switch page
 
-![Easy-Switch page in Editor Mode](../images/editor-easy-switch-page.png) <!-- pending: Task 9 -->
+![Easy-Switch page in Editor Mode](../images/editor-easy-switch-page.png)
 
 The Easy-Switch page shows the device back image with numbered slot circles. In production mode the circles are static. In Editor Mode each slot circle gains a `DragHandler`.
 
@@ -97,7 +97,7 @@ Slot labels (the text that appears in the channel list below the image) can also
 
 ## Uploading device images
 
-![Image drop zone](../images/editor-image-drop-zone.png) <!-- pending: Task 9 -->
+![Image drop zone](../images/editor-image-drop-zone.png)
 
 Each device page that shows a device image (Buttons, Point and Scroll, Easy-Switch) supports image replacement in Editor Mode.
 
@@ -114,7 +114,7 @@ The copied file lands in your working tree under `devices/<slug>/`, so it will a
 
 ## Renaming labels
 
-![In-place rename](../images/editor-rename.png) <!-- pending: Task 9 -->
+![In-place rename](../images/editor-rename.png)
 
 Any text rendered through the `EditableText` component supports in-place rename in Editor Mode:
 
@@ -129,7 +129,7 @@ Each rename is a discrete edit command, so it is undoable and redoable like any 
 
 ## Resolving file conflicts
 
-![Conflict banner](../images/editor-conflict-banner.png) <!-- pending: Task 9 -->
+![Conflict banner](../images/editor-conflict-banner.png)
 
 `EditorModel` watches `descriptor.json` with `QFileSystemWatcher`. If an external process modifies the file while you have unsaved edits in memory, a yellow conflict banner appears at the top of the view:
 
@@ -149,7 +149,7 @@ If the file changes on disk but you have no unsaved edits, the app reloads the d
 
 ## Viewing the diff
 
-![Diff modal](../images/editor-diff-modal.png) <!-- pending: Task 9 -->
+![Diff modal](../images/editor-diff-modal.png)
 
 Clicking "View diff" from the conflict banner opens a side-by-side modal ("External change diff") with two scrollable monospace panels:
 
@@ -162,7 +162,7 @@ The modal is read-only. Close it with the Close button, then choose "Keep my edi
 
 ## Save, reset, and unsaved changes
 
-![Unsaved changes indicator](../images/editor-unsaved-indicator.png) <!-- pending: Task 9 -->
+![Unsaved changes indicator](../images/editor-unsaved-indicator.png)
 
 **Unsaved changes indicator:** whenever the in-memory descriptor differs from the on-disk file, the toolbar shows an amber dot and "Unsaved" label. The Save and Reset buttons become active.
 
