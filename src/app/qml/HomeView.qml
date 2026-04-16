@@ -105,6 +105,31 @@ Item {
                         carousel.currentIndex = index
                 }
             }
+
+            // Debounce wheel events: step once per event, ignore further
+            // events until the card-swap animation settles. Without this a
+            // fast spin dispatches many events in rapid succession and the
+            // carousel jitters or wraps through the list.
+            property double wheelLastTick: 0
+
+            WheelHandler {
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: function(event) {
+                    if (DeviceModel.count <= 1)
+                        return
+                    var now = Date.now()
+                    if (now - carousel.wheelLastTick < carousel.highlightMoveDuration)
+                        return
+                    var delta = event.angleDelta.y + event.angleDelta.x
+                    if (Math.abs(delta) < 20)
+                        return
+                    if (delta > 0)
+                        carousel.decrementCurrentIndex()
+                    else
+                        carousel.incrementCurrentIndex()
+                    carousel.wheelLastTick = now
+                }
+            }
         }
 
         // Counter text
