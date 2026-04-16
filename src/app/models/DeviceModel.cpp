@@ -341,6 +341,12 @@ PhysicalDevice *DeviceModel::selectedDevice() const
     return nullptr;
 }
 
+const IDevice *DeviceModel::activeDevice() const
+{
+    auto *s = selectedDevice();
+    return s ? s->descriptor() : nullptr;
+}
+
 // ---------------------------------------------------------------------------
 // Desktop integration
 // ---------------------------------------------------------------------------
@@ -513,7 +519,7 @@ QVariantList DeviceModel::buttonHotspots() const
 
         auto it = controlMap.find(hs.buttonIndex);
         if (it != controlMap.end()) {
-            entry[QStringLiteral("buttonLabel")]    = it->defaultName;
+            entry[QStringLiteral("buttonLabel")]    = it->displayName.isEmpty() ? it->defaultName : it->displayName;
             entry[QStringLiteral("actionDefault")]  = it->defaultName;
             entry[QStringLiteral("configurable")]   = it->configurable;
         } else {
@@ -559,6 +565,7 @@ QVariantList DeviceModel::controlDescriptors() const
         QVariantMap entry;
         entry[QStringLiteral("buttonId")]      = ctrl.buttonIndex;
         entry[QStringLiteral("buttonName")]    = ctrl.defaultName;
+        entry[QStringLiteral("displayName")]   = ctrl.displayName;
         entry[QStringLiteral("actionDefault")] = ctrl.defaultActionType;
         entry[QStringLiteral("configurable")]  = ctrl.configurable;
         result.append(entry);
@@ -578,6 +585,7 @@ QVariantList DeviceModel::easySwitchSlotPositions() const
         QVariantMap entry;
         entry[QStringLiteral("xPct")] = pos.xPct;
         entry[QStringLiteral("yPct")] = pos.yPct;
+        entry[QStringLiteral("label")] = pos.label;
         result.append(entry);
     }
     return result;
@@ -621,6 +629,11 @@ bool DeviceModel::isSlotPaired(int slot) const
     auto *s = selectedDevice();
     if (!s) return false;
     return s->isHostPaired(slot - 1);
+}
+
+void DeviceModel::refreshFromActiveDevice()
+{
+    emit selectedChanged();
 }
 
 void DeviceModel::setDisplayValues(int dpi, bool smartShiftEnabled, int smartShiftThreshold,

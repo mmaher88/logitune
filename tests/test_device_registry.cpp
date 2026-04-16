@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 #include "DeviceRegistry.h"
+#include "devices/JsonDevice.h"
+#include <QTemporaryDir>
+#include <QFile>
+#include <QFileInfo>
 using namespace logitune;
 
 struct DeviceSpec {
@@ -145,4 +149,42 @@ TEST(DeviceRegistry, ReturnsNullForUnknownPid) {
     DeviceRegistry reg;
     EXPECT_EQ(reg.findByPid(0x0000), nullptr);
     EXPECT_EQ(reg.findByPid(0xFFFF), nullptr);
+}
+
+TEST(DeviceRegistry, ReloadByPathRefreshesSingleDevice) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    qputenv("XDG_DATA_HOME", tmp.path().toUtf8());
+    QDir().mkpath(tmp.path() + QStringLiteral("/logitune/devices/test"));
+    const QString descPath = tmp.path() + QStringLiteral("/logitune/devices/test/descriptor.json");
+
+    auto write = [&](const QString &name) {
+        QFile f(descPath);
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+            return false;
+        f.write(QStringLiteral(R"({"name":"%1","status":"community-local","productIds":["0xffff"],"features":{},"controls":[],"hotspots":{"buttons":[],"scroll":[]},"images":{},"easySwitchSlots":[]})").arg(name).toUtf8());
+        f.close();
+        return true;
+    };
+    ASSERT_TRUE(write(QStringLiteral("Original")));
+
+    logitune::DeviceRegistry reg;
+    const auto *dev = reg.findByName(QStringLiteral("Original"));
+    ASSERT_NE(dev, nullptr);
+    const auto *jdev = dynamic_cast<const logitune::JsonDevice*>(dev);
+    ASSERT_NE(jdev, nullptr);
+    const QString srcPath = jdev->sourcePath();
+
+    ASSERT_TRUE(write(QStringLiteral("Mutated")));
+    ASSERT_TRUE(reg.reload(srcPath));
+
+    EXPECT_EQ(jdev->deviceName(), QStringLiteral("Mutated"));
+    EXPECT_EQ(reg.findBySourcePath(srcPath), dev);
+
+    qunsetenv("XDG_DATA_HOME");
+}
+
+TEST(DeviceRegistry, ReloadUnknownPathReturnsFalse) {
+    logitune::DeviceRegistry reg;
+    EXPECT_FALSE(reg.reload(QStringLiteral("/nonexistent/path/that/does/not/exist")));
 }

@@ -23,6 +23,7 @@ target_sources(logitune-core PRIVATE
     ProfileEngine.cpp
     ActionExecutor.cpp
     DeviceRegistry.cpp
+    devices/DescriptorWriter.cpp
     devices/JsonDevice.cpp
     interfaces/IDesktopIntegration.cpp
     interfaces/IInputInjector.cpp

@@ -173,9 +173,27 @@ ApplicationWindow {
     }
 
     // ── Content below title bar ─────────────────────────────────────────
+    EditorToolbar {
+        id: editorToolbar
+        anchors { top: titleBar.bottom; left: parent.left; right: parent.right }
+        onDevicePage: mainStack.depth > 1
+    }
+
+    ConflictBanner {
+        id: conflictBanner
+        anchors { top: editorToolbar.bottom; left: parent.left; right: parent.right }
+        onViewDiffRequested: function(path) {
+            diffModal.open(path)
+        }
+    }
+
+    DiffModal {
+        id: diffModal
+    }
+
     StackView {
         id: mainStack
-        anchors { top: titleBar.bottom; left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { top: conflictBanner.bottom; left: parent.left; right: parent.right; bottom: parent.bottom }
         initialItem: homeViewComponent
     }
 

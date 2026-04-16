@@ -1,4 +1,6 @@
 #include "AppController.h"
+#include "devices/JsonDevice.h"
+#include "models/EditorModel.h"
 #include "desktop/KDeDesktop.h"
 #include "desktop/GnomeDesktop.h"
 #include "desktop/GenericDesktop.h"
@@ -48,6 +50,8 @@ AppController::AppController(IDesktopIntegration *desktop, IInputInjector *injec
     m_actionExecutor.setInjector(m_injector);
 }
 
+AppController::~AppController() = default;
+
 void AppController::init()
 {
     m_deviceModel.setDesktopIntegration(m_desktop);
@@ -67,8 +71,35 @@ void AppController::init()
     wireSignals();
 }
 
-void AppController::startMonitoring()
+void AppController::startMonitoring(bool simulateAll, bool editMode)
 {
+    if (editMode) {
+        m_editorModel = std::make_unique<EditorModel>(&m_registry, &m_deviceModel, true, this);
+        qCInfo(lcApp) << "--edit: editor mode active";
+
+        auto syncActive = [this]() {
+            if (!m_editorModel)
+                return;
+            const IDevice *dev = m_deviceModel.activeDevice();
+            if (auto *jd = dynamic_cast<const JsonDevice *>(dev))
+                m_editorModel->setActiveDevicePath(jd->sourcePath());
+            else
+                m_editorModel->setActiveDevicePath(QString());
+        };
+        connect(&m_deviceModel, &DeviceModel::selectedChanged, this, syncActive);
+        syncActive();
+    }
+    if (simulateAll) {
+        // --simulate-all: populate the carousel with one fake session per
+        // descriptor currently loaded in DeviceRegistry instead of scanning
+        // udev for real hardware. Useful for visually walking through every
+        // community descriptor at once without owning the physical mice.
+        qCInfo(lcApp) << "--simulate-all: seeding carousel from registry";
+        m_deviceManager.simulateAllFromRegistry();
+        m_desktop->start();
+        return;
+    }
+
     m_deviceManager.start();
     m_desktop->start();
     m_deviceFetcher.fetchManifest();

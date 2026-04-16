@@ -418,6 +418,29 @@ void DeviceSession::enumerateAndSetup()
 }
 
 // ---------------------------------------------------------------------------
+// applySimulation() — --simulate-all entry point
+// ---------------------------------------------------------------------------
+
+void DeviceSession::applySimulation(const IDevice *dev, const QString &fakeSerial)
+{
+    m_activeDevice = dev;
+    m_deviceName = dev ? dev->deviceName() : QStringLiteral("Simulated");
+    m_deviceSerial = fakeSerial;
+    m_connected = true;
+
+    // Populate a few visible-in-UI fields with plausible stubs so the
+    // cards render without empty regions. These never hit real hardware.
+    m_batteryLevel = 85;
+    m_batteryCharging = false;
+    if (dev) {
+        m_minDPI = dev->minDpi();
+        m_maxDPI = dev->maxDpi();
+        m_dpiStep = dev->dpiStep();
+        m_currentDPI = (m_minDPI + m_maxDPI) / 2;
+    }
+}
+
+// ---------------------------------------------------------------------------
 // disconnectCleanup()
 // ---------------------------------------------------------------------------
 

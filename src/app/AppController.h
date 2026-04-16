@@ -24,14 +24,25 @@ namespace logitune::test { class AppControllerFixture; }
 
 namespace logitune {
 
+class EditorModel;
+
 class AppController : public QObject {
     Q_OBJECT
 public:
     explicit AppController(QObject *parent = nullptr);
     AppController(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent = nullptr);
+    ~AppController() override;
 
     void init();
-    void startMonitoring();
+
+    /// Start the device monitor.
+    ///
+    /// When @p simulateAll is true, the app skips udev + HID++ entirely
+    /// and instead seeds the carousel with one fake session per descriptor
+    /// currently loaded in DeviceRegistry. Used by the `--simulate-all`
+    /// CLI flag for visually inspecting every community descriptor
+    /// without needing physical hardware.
+    void startMonitoring(bool simulateAll = false, bool editMode = false);
 
     friend class test::AppControllerFixture;
 
@@ -40,6 +51,7 @@ public:
     ActionModel    *actionModel()    { return &m_actionModel; }
     ProfileModel   *profileModel()   { return &m_profileModel; }
     SettingsModel  *settingsModel()  { return &m_settingsModel; }
+    EditorModel    *editorModel() const { return m_editorModel.get(); }
 
 private slots:
     void onUserButtonChanged(int buttonId, const QString &actionName, const QString &actionType);
@@ -81,6 +93,7 @@ private:
     ProfileEngine  m_profileEngine;
     ActionExecutor m_actionExecutor;
 
+    std::unique_ptr<EditorModel>         m_editorModel;
     std::unique_ptr<IDesktopIntegration> m_ownedDesktop;
     std::unique_ptr<IInputInjector>      m_ownedInjector;
     IDesktopIntegration *m_desktop  = nullptr;

@@ -88,6 +88,12 @@ public:
     void setConnectedForTest(bool v) { m_connected = v; }
     void setDeviceNameForTest(const QString &n) { m_deviceName = n; }
 
+    // --simulate-all CLI flag entry point — wires a DeviceSession
+    // into a "fake connected" state against a registry descriptor so
+    // the UI renders its card without real hardware. Bypasses all
+    // HID++ probing. Never called from production code paths.
+    void applySimulation(const IDevice *dev, const QString &fakeSerial);
+
 signals:
     void setupComplete();
     void disconnected();

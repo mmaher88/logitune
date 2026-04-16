@@ -3,6 +3,7 @@
 #include "logging/LogManager.h"
 #include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QStandardPaths>
 
 namespace logitune {
@@ -85,6 +86,27 @@ QString DeviceRegistry::cacheDevicesDir() {
 QString DeviceRegistry::userDevicesDir() {
     return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
            + "/logitune/devices";
+}
+
+const IDevice* DeviceRegistry::findBySourcePath(const QString &dirPath) const {
+    const QString canonical = QFileInfo(dirPath).canonicalFilePath();
+    for (const auto &dev : m_devices) {
+        if (auto *jd = dynamic_cast<const JsonDevice*>(dev.get()))
+            if (jd->sourcePath() == canonical)
+                return dev.get();
+    }
+    return nullptr;
+}
+
+bool DeviceRegistry::reload(const QString &dirPath) {
+    const QString canonical = QFileInfo(dirPath).canonicalFilePath();
+    for (auto &dev : m_devices) {
+        if (auto *jd = dynamic_cast<JsonDevice*>(dev.get())) {
+            if (jd->sourcePath() == canonical)
+                return jd->refresh();
+        }
+    }
+    return false;
 }
 
 } // namespace logitune

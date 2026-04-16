@@ -25,6 +25,13 @@ public:
 
     void start();
 
+    // --simulate-all CLI flag entry point — synthesizes a
+    // PhysicalDevice + DeviceSession for every descriptor currently
+    // loaded in DeviceRegistry. Bypasses udev, HID++ probing, and
+    // hardware I/O. Emits physicalDeviceAdded for each so the UI
+    // populates its carousel. Never called from production code.
+    void simulateAllFromRegistry();
+
     // Static helpers
     static bool isReceiver(uint16_t pid);
     static uint8_t deviceIndexForDirect();

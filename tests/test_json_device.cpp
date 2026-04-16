@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QFile>
+#include <QFileInfo>
 
 using namespace logitune;
 
@@ -401,4 +402,132 @@ TEST(JsonDevice, FeatureFlagDefaults)
     EXPECT_FALSE(f.reprogControls);
     EXPECT_FALSE(f.gestureV2);
     EXPECT_FALSE(f.persistentRemappableAction);
+}
+
+TEST(JsonDevice, TracksSourcePathAndLoadMtime) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    QFile f(tmp.path() + QStringLiteral("/descriptor.json"));
+    ASSERT_TRUE(f.open(QIODevice::WriteOnly));
+    f.write(R"({
+  "name": "Tester",
+  "status": "community-local",
+  "productIds": ["0xffff"],
+  "features": {},
+  "controls": [],
+  "hotspots": {"buttons": [], "scroll": []},
+  "images": {},
+  "easySwitchSlots": []
+})");
+    f.close();
+
+    auto dev = logitune::JsonDevice::load(tmp.path());
+    ASSERT_NE(dev, nullptr);
+
+    EXPECT_EQ(dev->sourcePath(), QFileInfo(tmp.path()).canonicalFilePath());
+
+    const qint64 expected = QFileInfo(tmp.path() + "/descriptor.json")
+        .lastModified().toSecsSinceEpoch();
+    EXPECT_EQ(dev->loadedMtime(), expected);
+}
+
+TEST(JsonDevice, ParsesOptionalEditorFields) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    QFile f(tmp.path() + QStringLiteral("/descriptor.json"));
+    ASSERT_TRUE(f.open(QIODevice::WriteOnly));
+    f.write(R"({
+  "name": "Tester",
+  "status": "community-local",
+  "productIds": ["0xffff"],
+  "features": {},
+  "controls": [
+    {
+      "controlId": "0x0050",
+      "buttonIndex": 0,
+      "defaultName": "Left click",
+      "defaultActionType": "default",
+      "configurable": false,
+      "displayName": "Primary Button"
+    }
+  ],
+  "hotspots": {"buttons": [], "scroll": []},
+  "images": {},
+  "easySwitchSlots": [
+    {"xPct": 0.42, "yPct": 0.78, "label": "Mac"},
+    {"xPct": 0.50, "yPct": 0.78}
+  ]
+})");
+    f.close();
+
+    auto dev = logitune::JsonDevice::load(tmp.path());
+    ASSERT_NE(dev, nullptr);
+
+    const auto controls = dev->controls();
+    ASSERT_EQ(controls.size(), 1);
+    EXPECT_EQ(controls[0].displayName, QStringLiteral("Primary Button"));
+
+    const auto slotPositions = dev->easySwitchSlotPositions();
+    ASSERT_EQ(slotPositions.size(), 2);
+    EXPECT_EQ(slotPositions[0].label, QStringLiteral("Mac"));
+    EXPECT_TRUE(slotPositions[1].label.isEmpty());
+}
+
+TEST(JsonDevice, OptionalEditorFieldsDefaultEmptyWhenAbsent) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    QFile f(tmp.path() + QStringLiteral("/descriptor.json"));
+    ASSERT_TRUE(f.open(QIODevice::WriteOnly));
+    f.write(R"({
+  "name": "Tester",
+  "status": "community-local",
+  "productIds": ["0xffff"],
+  "features": {},
+  "controls": [
+    {"controlId": "0x0050", "buttonIndex": 0, "defaultName": "Left click",
+     "defaultActionType": "default", "configurable": false}
+  ],
+  "hotspots": {"buttons": [], "scroll": []},
+  "images": {},
+  "easySwitchSlots": [{"xPct": 0.1, "yPct": 0.2}]
+})");
+    f.close();
+
+    auto dev = logitune::JsonDevice::load(tmp.path());
+    ASSERT_NE(dev, nullptr);
+    for (const auto &c : dev->controls())
+        EXPECT_TRUE(c.displayName.isEmpty());
+    for (const auto &s : dev->easySwitchSlotPositions())
+        EXPECT_TRUE(s.label.isEmpty());
+}
+
+TEST(JsonDevice, RefreshRereadsDescriptorInPlace) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+
+    auto write = [&](const QString &name) {
+        QFile f(tmp.path() + QStringLiteral("/descriptor.json"));
+        ASSERT_TRUE(f.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        f.write(QStringLiteral(R"({
+  "name": "%1",
+  "status": "community-local",
+  "productIds": ["0xffff"],
+  "features": {},
+  "controls": [],
+  "hotspots": {"buttons": [], "scroll": []},
+  "images": {},
+  "easySwitchSlots": []
+})").arg(name).toUtf8());
+    };
+
+    write(QStringLiteral("Original Name"));
+    auto dev = logitune::JsonDevice::load(tmp.path());
+    ASSERT_NE(dev, nullptr);
+    const auto *raw = dev.get();
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("Original Name"));
+
+    write(QStringLiteral("Mutated Name"));
+    ASSERT_TRUE(dev->refresh());
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("Mutated Name"));
+    EXPECT_EQ(dev.get(), raw);
 }

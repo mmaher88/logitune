@@ -60,6 +60,23 @@ Item {
             compare(nav.currentPage, "pointscroll", "clicking point & scroll should update currentPage")
         }
 
+        function findByObjectName(root, name) {
+            if (root.objectName === name)
+                return root
+            for (var i = 0; i < root.children.length; i++) {
+                var found = findByObjectName(root.children[i], name)
+                if (found !== null)
+                    return found
+            }
+            return null
+        }
+
+        function test_amberStripeInvisibleByDefault() {
+            var stripe = findByObjectName(nav, "editStripe")
+            verify(stripe !== null, "editStripe should exist")
+            compare(stripe.visible, false, "editStripe should be hidden when EditorModel is undefined")
+        }
+
         // Flow section removed — no longer part of the app
     }
 }

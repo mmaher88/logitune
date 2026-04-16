@@ -123,6 +123,54 @@ const IDevice* DeviceManager::activeDevice() const
 }
 
 // ---------------------------------------------------------------------------
+// simulateAllFromRegistry() — --simulate-all CLI flag
+// ---------------------------------------------------------------------------
+
+void DeviceManager::simulateAllFromRegistry()
+{
+    if (!m_registry) {
+        qCWarning(lcDevice) << "simulateAllFromRegistry: no registry";
+        return;
+    }
+
+    const auto &descriptors = m_registry->devices();
+    qCInfo(lcDevice) << "simulateAllFromRegistry: seeding"
+                     << descriptors.size() << "devices from registry";
+
+    int idx = 0;
+    for (const auto &dev : descriptors) {
+        const IDevice *descriptor = dev.get();
+        if (!descriptor)
+            continue;
+
+        // Stable fake serial so duplicate calls would coalesce the same way
+        // real hardware does. Use the slot index so each descriptor gets a
+        // unique row in m_physicalDevices.
+        const QString fakeSerial = QStringLiteral("sim-%1-%2")
+            .arg(idx++, 3, 10, QLatin1Char('0'))
+            .arg(descriptor->deviceName());
+
+        auto hidraw = std::make_unique<hidpp::HidrawDevice>(QStringLiteral("/dev/null"));
+        auto session = std::make_unique<DeviceSession>(
+            std::move(hidraw),
+            DeviceManager::deviceIndexForDirect(),
+            QStringLiteral("Simulated"),
+            m_registry,
+            this);
+        session->applySimulation(descriptor, fakeSerial);
+
+        DeviceSession *sessionPtr = session.get();
+        m_sessions.push_back(std::move(session));
+
+        auto pd = std::make_unique<PhysicalDevice>(fakeSerial, this);
+        pd->attachTransport(sessionPtr);
+        PhysicalDevice *pdPtr = pd.get();
+        m_physicalDevices.emplace(fakeSerial, std::move(pd));
+        emit physicalDeviceAdded(pdPtr);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // start()
 // ---------------------------------------------------------------------------
 

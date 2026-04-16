@@ -14,6 +14,7 @@ struct ControlDescriptor {
     QString defaultName;
     QString defaultActionType;
     bool configurable;
+    QString displayName;
 };
 
 struct HotspotDescriptor {
@@ -58,6 +59,7 @@ struct FeatureSupport {
 struct EasySwitchSlotPosition {
     double xPct;
     double yPct;
+    QString label;
 };
 
 class IDevice {

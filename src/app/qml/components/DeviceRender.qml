@@ -1,29 +1,26 @@
 import QtQuick
+import QtQuick.Controls
+import QtQuick.Dialogs
 import Logitune
 
-// Mouse device render — MX Master 3S PNG with invisible clickable button zones overlaid.
-// White hotspot circles on configurable buttons (no left/right click zones shown).
+// Mouse device render — MX Master 3S PNG with image-replacement support.
+// Hotspot markers are now owned by HotspotControl (ButtonsPage) or inline (PointScrollPage).
 Item {
     id: root
 
     implicitWidth:  280
     implicitHeight: 414
 
-    signal buttonClicked(int buttonId)
-
     // Allow parent to override the image source per page
     property string imageSource: "qrc:/Logitune/qml/assets/mx-master-3s.png"
-    property bool showHotspots: true  // set false on Point & Scroll page
+    // Role used for EditorModel.replaceImage — matches the "images" key in the descriptor JSON
+    property string imageRole: "side"
 
     // Painted-rect properties — actual rendered area after PreserveAspectFit
-    readonly property real paintedX: (width - mouseImage.paintedWidth) / 2
-    readonly property real paintedY: (height - mouseImage.paintedHeight) / 2
-    readonly property real paintedW: mouseImage.paintedWidth
-    readonly property real paintedH: mouseImage.paintedHeight
-
-    // ── Half-extents for the invisible hit zone around each hotspot dot ──────
-    readonly property real zoneHalfW: 0.11   // fraction of paintedW
-    readonly property real zoneHalfH: 0.07   // fraction of paintedH
+    readonly property real paintedX: mouseImage.paintedWidth > 0 ? (width - mouseImage.paintedWidth) / 2 : 0
+    readonly property real paintedY: mouseImage.paintedHeight > 0 ? (height - mouseImage.paintedHeight) / 2 : 0
+    readonly property real paintedW: mouseImage.paintedWidth > 0 ? mouseImage.paintedWidth : width
+    readonly property real paintedH: mouseImage.paintedHeight > 0 ? mouseImage.paintedHeight : height
 
     Image {
         id: mouseImage
@@ -36,53 +33,61 @@ Item {
         mipmap: true
     }
 
-    Repeater {
-        model: root.showHotspots ? DeviceModel.buttonHotspots.length : 0
-
-        Item {
-            required property int modelData
-
-            readonly property var hp: DeviceModel.buttonHotspots[modelData]
-
-            // Skip non-configurable buttons
-            visible: hp.configurable
-
-            // Dot centre in item coordinates
-            readonly property real dotCX: root.paintedX + hp.hotspotXPct * root.paintedW
-            readonly property real dotCY: root.paintedY + hp.hotspotYPct * root.paintedH
-
-            // Invisible hit zone centred on dot
-            MouseArea {
-                x: dotCX - root.zoneHalfW * root.paintedW
-                y: dotCY - root.zoneHalfH * root.paintedH
-                width: root.zoneHalfW * root.paintedW * 2
-                height: root.zoneHalfH * root.paintedH * 2
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.buttonClicked(hp.buttonId)
-            }
-
-            // 18x18 hotspot circle — white for dark background
-            Rectangle {
-                x: dotCX - 9
-                y: dotCY - 9
-                width: 18; height: 18
-                radius: 9
-                color: "transparent"
-                border.color: Theme.accent
-                border.width: 2
-                opacity: 0.7
-
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-
-                // Inner dot
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 6; height: 6
-                    radius: 3
-                    color: Theme.accent
-                    opacity: 0.6
+    DropArea {
+        id: deviceImageDrop
+        anchors.fill: mouseImage
+        enabled: typeof EditorModel !== 'undefined' && EditorModel.editing
+        onDropped: function(drop) {
+            if (drop.hasUrls && drop.urls.length > 0) {
+                var url = drop.urls[0].toString()
+                if (url.toLowerCase().endsWith(".png")) {
+                    var path = url.replace(/^file:\/\//, "")
+                    EditorModel.replaceImage(root.imageRole, path)
                 }
             }
         }
     }
+
+    Rectangle {
+        id: replaceDeviceImageButton
+        visible: typeof EditorModel !== 'undefined' && EditorModel.editing
+        anchors {
+            top: mouseImage.top
+            right: mouseImage.right
+            margins: 4
+        }
+        width: 32; height: 28
+        radius: 4
+        color: replaceHover.hovered ? Theme.hoverBg : Theme.inputBg
+        Behavior on color { ColorAnimation { duration: 150 } }
+
+        Text {
+            anchors.centerIn: parent
+            text: "\uD83D\uDDBC"
+            font.pixelSize: 16
+            color: Theme.text
+        }
+
+        HoverHandler { id: replaceHover }
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: deviceImageDialog.open()
+            hoverEnabled: true
+            ToolTip.visible: replaceHover.hovered
+            ToolTip.text: "Replace image"
+            ToolTip.delay: 500
+        }
+    }
+
+    FileDialog {
+        id: deviceImageDialog
+        nameFilters: ["PNG (*.png)"]
+        onAccepted: {
+            var url = selectedFile.toString()
+            var path = url.replace(/^file:\/\//, "")
+            EditorModel.replaceImage(root.imageRole, path)
+        }
+    }
+
 }
