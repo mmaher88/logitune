@@ -93,14 +93,15 @@ Item {
 
             // ── Point & Scroll hotspot circles — driven by descriptor ────────
             Repeater {
-                model: renderGroup.scrollHotspotsData
+                model: renderGroup.scrollHotspotsData.length
                 Item {
                     id: scrollMarker
                     required property int index
-                    required property var modelData
 
-                    readonly property real targetX: mouseRender.x + mouseRender.paintedX + modelData.xPct * mouseRender.paintedW
-                    readonly property real targetY: mouseRender.y + mouseRender.paintedY + modelData.yPct * mouseRender.paintedH
+                    // Read hotspot data from the live array by index — not stale modelData.
+                    readonly property var hsData: DeviceModel.scrollHotspots[scrollMarker.index]
+                    readonly property real targetX: mouseRender.x + mouseRender.paintedX + (hsData ? hsData.xPct : 0) * mouseRender.paintedW
+                    readonly property real targetY: mouseRender.y + mouseRender.paintedY + (hsData ? hsData.yPct : 0) * mouseRender.paintedH
 
                     width: 24; height: 24
                     x: targetX - width / 2
@@ -139,8 +140,8 @@ Item {
                                 yPct = Math.max(0, Math.min(1, yPct))
                                 EditorModel.updateScrollHotspot(scrollMarker.index,
                                                                  xPct, yPct,
-                                                                 scrollMarker.modelData.side,
-                                                                 scrollMarker.modelData.labelOffsetYPct)
+                                                                 scrollMarker.hsData ? scrollMarker.hsData.side : "right",
+                                                                 scrollMarker.hsData ? scrollMarker.hsData.labelOffsetYPct : 0)
                             }
                         }
                     }

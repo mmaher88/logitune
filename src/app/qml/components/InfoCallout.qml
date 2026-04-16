@@ -20,12 +20,28 @@ Item {
     property real pageWidth: 0
     property real pageHeight: 0
 
-    // Target position set by the parent page — survives DragHandler severing x/y.
+    // Target position set by the parent page.
+    // No x/y binding — DragHandler severs bindings on first drag.
+    // Connections below imperatively sync position when target changes.
     property real targetX: 0
     property real targetY: 0
 
-    x: targetX
-    y: targetY
+    Connections {
+        target: root
+        function onTargetXChanged() {
+            if (!cardDrag.active)
+                root.x = root.targetX
+        }
+        function onTargetYChanged() {
+            if (!cardDrag.active)
+                root.y = root.targetY
+        }
+    }
+
+    Component.onCompleted: {
+        root.x = root.targetX
+        root.y = root.targetY
+    }
 
     signal calloutClicked(string type)
 
@@ -114,6 +130,10 @@ Item {
                     EditorModel.updateScrollHotspot(root.hotspotIndex,
                                                      root.hsXPct, root.hsYPct,
                                                      newSide, newOffsetY)
+                    Qt.callLater(function() {
+                        root.x = root.targetX
+                        root.y = root.targetY
+                    })
                 }
             }
         }
