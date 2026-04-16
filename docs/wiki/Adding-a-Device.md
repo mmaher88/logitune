@@ -287,6 +287,10 @@ See [Architecture: Device Registry](Architecture#device-registry) for details on
 
 ---
 
+> **Note on Easy-Switch buttons.** Some mice (MX Anywhere family, Logi Wave, etc.) have a physical connection-switch button on top of the device. This button is handled by firmware through the multi-host switching mechanism; it is **not** a reprog-controls CID. Do not add an entry like `{ "controlId": "0x00d7" }` to `controls`. The visual 3-dot indicator on the device bottom is represented by the `easySwitchSlots` array instead.
+
+---
+
 ## Reference: MX Master 3S descriptor
 
 The complete descriptor for the MX Master 3S. Copy the JSON block as-is; the field guide below explains the notable choices.
