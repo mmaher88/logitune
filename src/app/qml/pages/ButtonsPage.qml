@@ -6,7 +6,7 @@ import Logitune
 // ButtonsPage — main button-remapping screen (Options+ dark style).
 //
 // Layout:
-//   Centre: mouseContainer (DeviceRender + ButtonCallout cards, move together)
+//   Centre: mouseContainer (DeviceRender + HotspotControl cards, move together)
 //   Right:  ActionsPanel (slides in when a button is selected)
 // ─────────────────────────────────────────────────────────────────────────────
 Item {
@@ -88,56 +88,46 @@ Item {
                 implicitWidth:  280
                 implicitHeight: 414
                 imageSource: DeviceModel.sideImage
-
-                onButtonClicked: function(buttonId) {
-                    selectButton(buttonId)
-                }
             }
 
-            // ── Callout cards (children of mouseContainer) ───────────────────
+            // ── Unified hotspot controls (marker + line + card) ─────────────
             Repeater {
                 model: root.calloutData.length
 
-                ButtonCallout {
-                    id: callout
+                HotspotControl {
                     required property int modelData
 
                     readonly property var cdata: root.calloutData[modelData]
                     readonly property int btnId: cdata.buttonId
 
-                    // Hotspot position in mouseContainer coordinates (using painted rect)
-                    readonly property real hotX: deviceRender.x + deviceRender.paintedX + cdata.hotspotXPct * deviceRender.paintedW
-                    readonly property real hotY: deviceRender.y + deviceRender.paintedY + cdata.hotspotYPct * deviceRender.paintedH
+                    // Fill mouseContainer so marker + card can position freely
+                    anchors.fill: parent
 
-                    // Label offset (some labels need to shift to avoid overlap)
-                    readonly property real labelOffY: (cdata.labelOffsetYPct || 0) * deviceRender.paintedH
+                    // Device image bounds
+                    imageX: deviceRender.x + deviceRender.paintedX
+                    imageY: deviceRender.y + deviceRender.paintedY
+                    imageW: deviceRender.paintedW
+                    imageH: deviceRender.paintedH
 
-                    // Target position: left-side labels to the left, right-side to the right.
-                    targetX: cdata.side === "left"
-                             ? callout.hotX - callout.width - 24
-                             : callout.hotX + 24
-                    targetY: callout.hotY - callout.height / 2 + callout.labelOffY
+                    // Hotspot data
+                    hotspotXPct: cdata.hotspotXPct
+                    hotspotYPct: cdata.hotspotYPct
+                    side: cdata.side
+                    labelOffsetYPct: cdata.labelOffsetYPct || 0
+                    configurable: cdata.configurable
 
-                    // Connector line endpoint (the hotspot dot)
-                    lineToX: hotX
-                    lineToY: hotY
-                    lineSide: cdata.side
-
-                    // Editor drag wiring
-                    hotspotIndex: modelData
-                    buttonId: btnId
-                    hsXPct: cdata.hotspotXPct
-                    hsYPct: cdata.hotspotYPct
-                    hsLabelOffsetYPct: cdata.labelOffsetYPct || 0
-                    pageWidth: mouseContainer.width
-                    pageHeight: mouseContainer.height
-
+                    // Card data
+                    buttonName: cdata.buttonLabel
                     actionName: {
                         var an = ButtonModel.actionNameForButton(btnId)
                         return an.length > 0 ? an : cdata.actionDefault
                     }
-                    buttonName: cdata.buttonLabel
-                    selected:   root.selectedButton === btnId
+                    selected: root.selectedButton === btnId
+                    buttonId: btnId
+                    hotspotIndex: modelData
+
+                    pageWidth: mouseContainer.width
+                    pageHeight: mouseContainer.height
 
                     onClicked: selectButton(btnId)
 

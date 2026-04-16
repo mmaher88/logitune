@@ -65,7 +65,6 @@ Item {
             DeviceRender {
                 id: mouseRender
                 imageSource: DeviceModel.sideImage
-                showHotspots: false
                 implicitWidth: 280
                 implicitHeight: 414
                 anchors.centerIn: parent
@@ -114,6 +113,16 @@ Item {
                         border.color: Theme.accent
                         border.width: 2
                         opacity: 0.7
+                    }
+
+                    Connections {
+                        target: DeviceModel
+                        function onSelectedChanged() {
+                            if (!scrollMarkerDrag.active) {
+                                scrollMarker.x = scrollMarker.targetX - scrollMarker.width / 2
+                                scrollMarker.y = scrollMarker.targetY - scrollMarker.height / 2
+                            }
+                        }
                     }
 
                     DragHandler {
