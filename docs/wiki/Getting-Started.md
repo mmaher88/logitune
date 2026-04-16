@@ -41,6 +41,24 @@ make build
 make install
 ```
 
+## Device support status
+
+Every device descriptor carries a `status` field with one of two values:
+
+- **`verified`** (green check badge): the maintainer or a trusted
+  contributor owns the device and has confirmed it works end-to-end
+  on real hardware. All ship-bundled descriptors currently ship as
+  verified.
+- **`beta`** (amber badge): community-submitted or shipped without
+  hardware verification. Core HID++ functionality almost always
+  works, but hotspot positions, slot-circle positions, and device
+  images may need polish. Report issues or open a PR via the
+  [editor mode](Editor-Mode) workflow.
+
+When you contribute a new descriptor, set `"status": "beta"` in
+`descriptor.json` unless you have hardware-verified it and a
+maintainer agrees to promote it to `verified`.
+
 ## First Run
 
 ### udev Rules
