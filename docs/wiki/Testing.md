@@ -181,9 +181,7 @@ Implements `ITransport` with:
 
 ### MockDevice
 
-Implements `IDevice` with all fields as public member variables for direct manipulation:
-
-- `setupMxControls()` — populates the 8 standard MX Master 3S control descriptors
+Implements `IDevice` with all fields as public member variables for direct manipulation. Used by `AppControllerFixture` to supply a synthetic device to the controller under test; it is not used for device-descriptor tests (those load real JSON fixtures via `DeviceRegistry`).
 
 ### ProfileFixture
 
@@ -261,6 +259,32 @@ add_executable(logitune-tests
 cmake --build build
 QT_QPA_PLATFORM=offscreen ./build/tests/logitune-tests --gtest_filter="DpiShift*"
 ```
+
+### Adding a device test
+
+Device tests load a JSON fixture through `DeviceRegistry`; there is no
+per-device mock class to extend.
+
+1. Drop a fixture at `tests/fixtures/<slug>/descriptor.json` (plus
+   placeholder images if the test exercises image paths).
+2. In your test, point `XDG_DATA_HOME` at the directory containing your
+   fixture tree and construct a `DeviceRegistry` -- the constructor loads
+   all devices it finds under the XDG paths automatically:
+
+    ```cpp
+    QTemporaryDir tmp;
+    qputenv("XDG_DATA_HOME", tmp.path().toUtf8());
+    // copy your fixture into tmp.path() + "/logitune/devices/<slug>/"
+    DeviceRegistry registry;
+    const IDevice *dev = registry.findBySourcePath(
+        tmp.path() + "/logitune/devices/<slug>");
+    ASSERT_NE(dev, nullptr);
+    ```
+
+3. Use the parameterized `DeviceSpec` pattern in
+   `tests/test_device_registry.cpp` for smoke-testing every bundled
+   descriptor. Add your device to the `kDevices` array with its
+   expected field values.
 
 ## Hardware Tests
 
@@ -421,3 +445,15 @@ All tests run with `QT_QPA_PLATFORM=offscreen` (no display server required).
 | `test_notification_filtering.cpp` | softwareId filtering, notification dispatch |
 | `test_settings_change_behavior.cpp` | DPI/SmartShift/scroll change flow |
 | `test_tray_manager.cpp` | TrayManager menu, actions, battery display |
+
+### Crash dialog behavior
+
+Catchable crashes (SIGSEGV, SIGABRT, SIGFPE, SIGBUS, and uncaught C++
+exceptions) show the Crash Report dialog at the moment they happen,
+via `CrashHandler` installed during startup. The app does not show a
+recovery dialog on the next launch: uncatchable exits (SIGKILL, OOM,
+power loss, reboot) leave a lock file behind, but the user already
+knows those happened, so the lock is silently cleaned up.
+
+When testing crash paths, expect the dialog to appear in the same
+session; do not test for a recovery-on-startup dialog.
