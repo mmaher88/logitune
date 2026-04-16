@@ -24,15 +24,19 @@ jobs:
         include:
           - distro: archlinux
             container: archlinux:latest
-            install: pacman -Syu --noconfirm cmake ninja gcc git pkgconf qt6-base qt6-declarative qt6-svg systemd-libs gtest
+            pkg_cache_path: /var/cache/pacman/pkg
+            install: pacman -Syu --noconfirm --needed cmake ninja gcc git pkgconf qt6-base qt6-declarative qt6-svg systemd-libs gtest
             run_tests: false
           - distro: fedora-42
             container: fedora:42
-            install: dnf install -y cmake ninja-build gcc-c++ git pkgconf-pkg-config qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtsvg-devel qt6-qtshadertools systemd-devel gtest-devel
+            pkg_cache_path: /var/cache/dnf
+            install: dnf install -y --setopt=keepcache=1 cmake ninja-build gcc-c++ git pkgconf-pkg-config qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtsvg-devel qt6-qtshadertools systemd-devel gtest-devel
             run_tests: false
           - distro: ubuntu-24.04
             container: ubuntu:24.04
+            pkg_cache_path: /var/cache/apt/archives
             install: >-
+              echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/01keep-debs &&
               apt-get update -qq && apt-get install -y cmake ninja-build g++ git pkg-config
               qt6-base-dev qt6-declarative-dev qt6-svg-dev
               qt6-base-dev-tools qt6-declarative-dev-tools
@@ -43,15 +47,45 @@ jobs:
               qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev
               libxkbcommon-dev qml6-module-qttest
               libudev-dev libgtest-dev
-              && cd /usr/src/googletest && cmake -B build && cmake --build build && cmake --install build
             run_tests: true
 
     steps:
+      # Restore cached package downloads. Cache key is versioned: bump the
+      # v{N} suffix whenever the install lines above change to force a
+      # refresh. Cache misses fall back to a normal fresh install.
+      - name: Cache package downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.pkg_cache_path }}
+          key: ${{ matrix.distro }}-pkgs-v1
+
       - name: Install dependencies
         run: ${{ matrix.install }}
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Ubuntu ships gtest as source-only (libgtest-dev); we compile and
+      # install it ourselves. Cache the installed artifacts so subsequent
+      # runs skip the cmake build entirely.
+      - name: Cache gtest install
+        if: matrix.run_tests
+        id: gtest-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/lib/libgtest*
+            /usr/local/lib/libgmock*
+            /usr/local/include/gtest
+            /usr/local/include/gmock
+            /usr/local/lib/cmake/GTest
+            /usr/local/lib/pkgconfig/gtest.pc
+            /usr/local/lib/pkgconfig/gmock.pc
+          key: gtest-${{ matrix.distro }}-v1
+
+      - name: Build gtest
+        if: matrix.run_tests && steps.gtest-cache.outputs.cache-hit != 'true'
+        run: cd /usr/src/googletest && cmake -B build && cmake --build build && cmake --install build
 
       - name: Configure
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=${{ matrix.run_tests && 'ON' || 'OFF' }} -Wno-dev
@@ -116,8 +150,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache apt archives
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: deb-pkg-apt-v1
+
       - name: Install dependencies
         run: |
+          echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' | \
+            sudo tee /etc/apt/apt.conf.d/01keep-debs >/dev/null
           sudo apt-get update
           sudo apt-get install -y \
             build-essential cmake ninja-build pkg-config dpkg-dev \
@@ -129,6 +171,8 @@ jobs:
             qml6-module-qtquick-dialogs qml6-module-qt5compat-graphicaleffects \
             qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev \
             libxkbcommon-dev libudev-dev
+          # Make the archive readable so actions/cache can tar it on save.
+          sudo chmod -R a+rX /var/cache/apt/archives
 
       - name: Build .deb
         run: bash scripts/package-deb.sh
