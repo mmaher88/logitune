@@ -1,4 +1,5 @@
 {
+  "$schema": "../schema.json",
   "name": "MX Master 4",
   "status": "verified",
   "productIds": ["0xb042"],

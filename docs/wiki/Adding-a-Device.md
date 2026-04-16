@@ -37,6 +37,16 @@ The folder must contain at least `descriptor.json`. Image placeholders let the a
 
 The editor cannot set PIDs, CIDs, features flags, or DPI range; those must be correct before Editor Mode can open the device. Create `devices/<slug>/descriptor.json` using the schema below.
 
+A machine-readable [JSON Schema](https://json-schema.org) for this format lives at `devices/schema.json`. Reference it from the top of your `descriptor.json` so editors like VS Code provide inline validation and autocomplete:
+
+```json
+{
+  "$schema": "../schema.json",
+  "name": "MX Master 3S",
+  ...
+}
+```
+
 ### Schema
 
 | Field | Type | Required | Meaning |

@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/mmaher88/logitune/blob/master/devices/schema.json",
+  "title": "Logitune device descriptor",
+  "description": "Schema for a Logitune device descriptor. Matches the fields parsed by JsonDevice::parseFromObject in src/core/devices/JsonDevice.cpp.",
+  "type": "object",
+  "required": ["name", "status", "productIds"],
+  "additionalProperties": true,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional JSON Schema reference used by IDEs for validation and autocomplete."
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name, e.g. \"MX Master 3S\"."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["verified", "beta", "implemented"],
+      "description": "Support status. \"verified\" = maintainer hardware-tested. \"beta\" = community-submitted or not yet hardware-verified. \"implemented\" is a legacy alias for \"verified\"."
+    },
+    "productIds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^0x[0-9a-fA-F]{4}$",
+        "description": "Hex product ID as a string, e.g. \"0xb034\"."
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Which HID++ features the device supports. DeviceManager auto-detects the exact feature variant (e.g. Battery 0x1004 vs 0x1000).",
+      "properties": {
+        "battery":                    { "type": "boolean", "default": false },
+        "adjustableDpi":              { "type": "boolean", "default": false },
+        "extendedDpi":                { "type": "boolean", "default": false },
+        "smartShift":                 { "type": "boolean", "default": false },
+        "hiResWheel":                 { "type": "boolean", "default": false },
+        "hiResScrolling":             { "type": "boolean", "default": false },
+        "lowResWheel":                { "type": "boolean", "default": false },
+        "smoothScroll":               { "type": "boolean", "default": true },
+        "thumbWheel":                 { "type": "boolean", "default": false },
+        "reprogControls":             { "type": "boolean", "default": false },
+        "gestureV2":                  { "type": "boolean", "default": false },
+        "mouseGesture":               { "type": "boolean", "default": false },
+        "hapticFeedback":             { "type": "boolean", "default": false },
+        "forceSensingButton":         { "type": "boolean", "default": false },
+        "crown":                      { "type": "boolean", "default": false },
+        "reportRate":                 { "type": "boolean", "default": false },
+        "extendedReportRate":         { "type": "boolean", "default": false },
+        "pointerSpeed":               { "type": "boolean", "default": false },
+        "leftRightSwap":              { "type": "boolean", "default": false },
+        "surfaceTuning":              { "type": "boolean", "default": false },
+        "angleSnapping":              { "type": "boolean", "default": false },
+        "colorLedEffects":            { "type": "boolean", "default": false },
+        "rgbEffects":                 { "type": "boolean", "default": false },
+        "onboardProfiles":            { "type": "boolean", "default": false },
+        "gkey":                       { "type": "boolean", "default": false },
+        "mkeys":                      { "type": "boolean", "default": false },
+        "persistentRemappableAction": { "type": "boolean", "default": false }
+      }
+    },
+    "dpi": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min":  { "type": "integer", "default": 200,  "minimum": 1 },
+        "max":  { "type": "integer", "default": 8000, "minimum": 1 },
+        "step": { "type": "integer", "default": 50,   "minimum": 1 }
+      }
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["controlId", "buttonIndex", "defaultName", "defaultActionType"],
+        "additionalProperties": false,
+        "properties": {
+          "controlId": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{1,4}$",
+            "description": "Hex CID, e.g. \"0x0050\". Use \"0x0000\" for virtual entries not backed by a real ReprogControlsV4 CID."
+          },
+          "buttonIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0-based index into Profile::buttons. Every control needs a unique index."
+          },
+          "defaultName": {
+            "type": "string",
+            "description": "Factory-reset label shown in the UI and used as the fallback display name."
+          },
+          "defaultActionType": {
+            "type": "string",
+            "enum": [
+              "default",
+              "keystroke",
+              "gesture-trigger",
+              "smartshift-toggle",
+              "app-launch",
+              "dbus",
+              "media"
+            ],
+            "description": "Action type used when the user has not overridden it."
+          },
+          "configurable": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the user can remap this button in the UI."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Optional editor-set override for the label. When blank, the UI falls back to defaultName."
+          }
+        }
+      }
+    },
+    "hotspots": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "buttons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/hotspot" }
+        },
+        "scroll": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/hotspot" }
+        }
+      }
+    },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "front": { "type": "string", "description": "Path to the front image, relative to the descriptor directory." },
+        "side":  { "type": "string", "description": "Path to the side image, relative to the descriptor directory." },
+        "back":  { "type": "string", "description": "Path to the back image, relative to the descriptor directory." }
+      }
+    },
+    "easySwitchSlots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["xPct", "yPct"],
+        "additionalProperties": false,
+        "properties": {
+          "xPct":  { "type": "number", "minimum": 0, "maximum": 1 },
+          "yPct":  { "type": "number", "minimum": 0, "maximum": 1 },
+          "label": { "type": "string", "description": "Optional editor-set label for the slot." }
+        }
+      }
+    },
+    "defaultGestures": {
+      "type": "object",
+      "description": "Factory-default action per gesture direction. Keys are typically \"up\", \"down\", \"left\", \"right\", \"click\".",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["type"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Default",
+              "Keystroke",
+              "gesture-trigger",
+              "smartshift-toggle",
+              "app-launch",
+              "dbus",
+              "media"
+            ]
+          },
+          "payload": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hotspot": {
+      "type": "object",
+      "required": ["buttonIndex", "xPct", "yPct", "side"],
+      "additionalProperties": false,
+      "properties": {
+        "buttonIndex": {
+          "type": "integer",
+          "description": "For button hotspots, matches a ControlDescriptor buttonIndex. For scroll-zone hotspots, use a negative sentinel: -1 = main scroll wheel, -2 = thumb wheel, -3 = pointer / sensor area."
+        },
+        "xPct": { "type": "number", "minimum": 0, "maximum": 1, "description": "X position as a fraction of image width." },
+        "yPct": { "type": "number", "minimum": 0, "maximum": 1, "description": "Y position as a fraction of image height." },
+        "side": {
+          "type": "string",
+          "enum": ["left", "right"],
+          "description": "Which side of the dot the callout line extends toward."
+        },
+        "labelOffsetYPct": {
+          "type": "number",
+          "default": 0,
+          "description": "Vertical offset for the label to prevent overlap with neighbors. Fraction of image height."
+        },
+        "kind": {
+          "type": "string",
+          "description": "Optional tag for scroll hotspots: \"scrollwheel\", \"thumbwheel\", or \"pointer\". Ignored on button hotspots."
+        }
+      }
+    }
+  }
+}
