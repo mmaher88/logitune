@@ -149,11 +149,13 @@ Placeholder coordinates are fine for the bootstrap commit. Editor Mode is the ri
 
 ## Step 3: Register with DeviceRegistry
 
-DeviceRegistry scans three directories in order on startup, with later entries overriding earlier ones of the same PID:
+DeviceRegistry scans three directories in order on startup and appends each successfully loaded descriptor to an internal list. `findByPid` returns the **first** match, so earlier-scanned directories take precedence over later ones for the same PID:
 
 1. **System directory:** `$XDG_DATA_DIRS/logitune/devices` (typically `/usr/share/logitune/devices`). This is where `cmake --install` places the `devices/` folder from the repo.
 2. **Cache directory:** `$XDG_CACHE_HOME/logitune/devices` (typically `~/.cache/logitune/devices`). Not normally used directly.
 3. **User directory:** `$XDG_DATA_HOME/logitune/devices` (typically `~/.local/share/logitune/devices`). Drop a folder here to test a descriptor without rebuilding.
+
+Because system descriptors are scanned first, a user-local descriptor for a PID that already exists in the system directory will not be picked up. To test a local descriptor for a device that has a system descriptor, either use a PID that is absent from the system directory or remove the system descriptor temporarily.
 
 ### Path A: Contribute to the repo (built-in descriptor)
 
@@ -277,7 +279,7 @@ See [Architecture: Device Registry](Architecture#device-registry) for details on
 
 ## Reference: MX Master 3S descriptor
 
-The complete descriptor for the MX Master 3S, annotated with comments explaining each section:
+The complete descriptor for the MX Master 3S. Copy the JSON block as-is; the field guide below explains the notable choices.
 
 ```json
 {
@@ -286,16 +288,16 @@ The complete descriptor for the MX Master 3S, annotated with comments explaining
   "productIds": ["0xb034"],
 
   "features": {
-    "battery": true,            // Level + charging status via HID++ 0x1004
-    "adjustableDpi": true,      // DPI slider via HID++ 0x2201
+    "battery": true,
+    "adjustableDpi": true,
     "extendedDpi": false,
-    "smartShift": true,         // Ratchet/freespin toggle via HID++ 0x2110/0x2111
-    "hiResWheel": true,         // Hi-res scroll wheel via HID++ 0x2120
+    "smartShift": true,
+    "hiResWheel": true,
     "hiResScrolling": false,
     "lowResWheel": false,
     "smoothScroll": true,
-    "thumbWheel": true,         // Horizontal thumb wheel via HID++ 0x2150
-    "reprogControls": true,     // Button remapping via HID++ 0x1B04
+    "thumbWheel": true,
+    "reprogControls": true,
     "gestureV2": false,
     "mouseGesture": false,
     "hapticFeedback": false,
@@ -322,7 +324,6 @@ The complete descriptor for the MX Master 3S, annotated with comments explaining
   },
 
   "controls": [
-    // Non-configurable buttons still need entries so the profile array is indexed correctly.
     { "controlId": "0x0050", "buttonIndex": 0, "defaultName": "Left click",       "defaultActionType": "default",           "configurable": false },
     { "controlId": "0x0051", "buttonIndex": 1, "defaultName": "Right click",      "defaultActionType": "default",           "configurable": false },
     { "controlId": "0x0052", "buttonIndex": 2, "defaultName": "Middle click",     "defaultActionType": "default",           "configurable": true  },
@@ -330,13 +331,10 @@ The complete descriptor for the MX Master 3S, annotated with comments explaining
     { "controlId": "0x0056", "buttonIndex": 4, "defaultName": "Forward",          "defaultActionType": "default",           "configurable": true  },
     { "controlId": "0x00C3", "buttonIndex": 5, "defaultName": "Gesture button",   "defaultActionType": "gesture-trigger",   "configurable": true  },
     { "controlId": "0x00C4", "buttonIndex": 6, "defaultName": "Shift wheel mode", "defaultActionType": "smartshift-toggle", "configurable": true  },
-    // CID 0x0000: virtual entry for the thumb wheel (driven by HID++ 0x2150, not ReprogControlsV4).
     { "controlId": "0x0000", "buttonIndex": 7, "defaultName": "Thumb wheel",      "defaultActionType": "default",           "configurable": true  }
   ],
 
   "hotspots": {
-    // Positions are fractions of image dimensions (0.0 to 1.0).
-    // "side" controls which side of the dot the callout line extends toward.
     "buttons": [
       { "buttonIndex": 2,  "xPct": 0.71, "yPct": 0.15,  "side": "right", "labelOffsetYPct": 0.0  },
       { "buttonIndex": 6,  "xPct": 0.81, "yPct": 0.34,  "side": "right", "labelOffsetYPct": 0.0  },
@@ -345,8 +343,6 @@ The complete descriptor for the MX Master 3S, annotated with comments explaining
       { "buttonIndex": 3,  "xPct": 0.45, "yPct": 0.60,  "side": "left",  "labelOffsetYPct": 0.20 },
       { "buttonIndex": 5,  "xPct": 0.08, "yPct": 0.58,  "side": "left",  "labelOffsetYPct": 0.0  }
     ],
-    // Negative buttonIndex values are scroll-zone sentinels:
-    //   -1 = main scroll wheel, -2 = thumb wheel, -3 = pointer / sensor area
     "scroll": [
       { "buttonIndex": -1, "xPct": 0.73, "yPct": 0.16, "side": "right", "labelOffsetYPct": 0.0, "kind": "scrollwheel" },
       { "buttonIndex": -2, "xPct": 0.55, "yPct": 0.51, "side": "left",  "labelOffsetYPct": 0.0, "kind": "thumbwheel"  },
@@ -375,3 +371,16 @@ The complete descriptor for the MX Master 3S, annotated with comments explaining
   }
 }
 ```
+
+### Field guide
+
+- **`features.battery`** -- battery level and charging status via HID++ 0x1004 (Battery Unified). DeviceManager also handles 0x1000 (Battery Status); set `true` for either variant.
+- **`features.adjustableDpi`** -- DPI slider via HID++ 0x2201.
+- **`features.smartShift`** -- ratchet/freespin toggle via HID++ 0x2110/0x2111.
+- **`features.hiResWheel`** -- hi-res scroll wheel via HID++ 0x2120.
+- **`features.thumbWheel`** -- horizontal thumb wheel via HID++ 0x2150.
+- **`features.reprogControls`** -- button remapping via HID++ 0x1B04 (ReprogControlsV4).
+- **`controls` entries with `configurable: false`** (Left click, Right click) -- non-configurable buttons still need entries so the profile button array is indexed correctly.
+- **`controlId: "0x0000"` (Thumb wheel)** -- virtual entry; the thumb wheel is driven by HID++ 0x2150, not ReprogControlsV4, so no real CID exists for it.
+- **`hotspots.buttons[].xPct` / `yPct`** -- fractions of image dimensions (0.0 to 1.0). The `side` field controls which direction the callout line extends from the hotspot dot.
+- **`hotspots.scroll` negative `buttonIndex` sentinels** -- `-1` = main scroll wheel, `-2` = thumb wheel, `-3` = pointer/sensor area.
