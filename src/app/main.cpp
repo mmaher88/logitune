@@ -42,6 +42,9 @@ int main(int argc, char *argv[])
     if (qEnvironmentVariableIsEmpty("GSETTINGS_BACKEND"))
         qputenv("GSETTINGS_BACKEND", "memory");
 
+    // Prevent Kvantum/external Qt theme engines from overriding our Theme.qml.
+    qunsetenv("QT_STYLE_OVERRIDE");
+
     // Qt 6.4 QML JIT hangs on some CPU/kernel combinations during compilation.
     // Force the interpreter — startup is ~100ms either way for our QML set.
 #if QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
