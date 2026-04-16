@@ -100,6 +100,8 @@ Item {
             function onSelectedChanged() { lineCanvas.requestPaint() }
             function onXChanged()        { lineCanvas.requestPaint() }
             function onYChanged()        { lineCanvas.requestPaint() }
+            function onLineToXChanged()  { lineCanvas.requestPaint() }
+            function onLineToYChanged()  { lineCanvas.requestPaint() }
         }
     }
 

@@ -83,12 +83,14 @@ Item {
         }
 
         Connections {
-            target: DeviceModel
-            function onSelectedChanged() {
-                if (!markerDrag.active) {
+            target: root
+            function onMarkerCenterXChanged() {
+                if (!markerDrag.active)
                     marker.x = root.markerCenterX - marker.width / 2
+            }
+            function onMarkerCenterYChanged() {
+                if (!markerDrag.active)
                     marker.y = root.markerCenterY - marker.height / 2
-                }
             }
         }
 
@@ -172,15 +174,6 @@ Item {
         x: root.cardTargetX
         y: root.cardTargetY
 
-        Connections {
-            target: DeviceModel
-            function onSelectedChanged() {
-                if (!cardDrag.active) {
-                    cardItem.x = root.cardTargetX
-                    cardItem.y = root.cardTargetY
-                }
-            }
-        }
 
         Rectangle {
             id: cardRect

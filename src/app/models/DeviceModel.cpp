@@ -633,11 +633,6 @@ bool DeviceModel::isSlotPaired(int slot) const
 
 void DeviceModel::refreshFromActiveDevice()
 {
-    // The selected IDevice* (a JsonDevice owned by DeviceRegistry) has been
-    // mutated in place by EditorModel. Re-emit selectedChanged so every QML
-    // binding that reads through activeDevice()->descriptor() re-fetches the
-    // updated values (slot positions, button hotspots, scroll hotspots,
-    // control display names, images, etc).
     emit selectedChanged();
 }
 

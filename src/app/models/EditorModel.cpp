@@ -85,10 +85,6 @@ void EditorModel::pushStateToActiveDevice() {
     if (m_activeDevicePath.isEmpty()) return;
     if (!m_pendingEdits.contains(m_activeDevicePath)) return;
 
-    // findBySourcePath returns const IDevice* because the public registry
-    // contract is read-only, but editor mode owns the mutation lifecycle and
-    // we know the concrete type is a JsonDevice that can be refreshed in
-    // place. Const-cast is safe here.
     const IDevice *constDev = m_registry->findBySourcePath(m_activeDevicePath);
     if (!constDev) return;
     auto *jd = const_cast<JsonDevice*>(dynamic_cast<const JsonDevice*>(constDev));
