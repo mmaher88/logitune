@@ -67,6 +67,21 @@ static const DeviceSpec kDevices[] = {
         .gestureDownPayload = "Super+D",
         .gestureUpType = ButtonAction::Default,
     },
+    {
+        .pid = 0xb037,
+        .name = "MX Anywhere 3S",
+        .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
+        .buttonHotspots = 4, .scrollHotspots = 2,
+        .minControls = 6,
+        .control0Cid = 0x0050, .control5Cid = 0x00C4,
+        .control5ActionType = "smartshift-toggle",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
+        .gestureUpType = ButtonAction::Default,
+    },
 };
 
 class DeviceRegistryTest : public testing::TestWithParam<DeviceSpec> {
