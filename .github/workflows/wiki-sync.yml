@@ -49,6 +49,20 @@ jobs:
             sed "s|\.\./images/|${RAW_BASE//|/\\|}/|g" "$src" > "wiki/$name"
           done
 
+          # Remove wiki pages whose source file no longer exists, so renames
+          # and deletions propagate. Preserve the wiki's own navigation
+          # chrome (_Sidebar.md, _Footer.md) and any assets (images/, etc.)
+          # that this workflow does not manage.
+          for dst in wiki/*.md; do
+            name=$(basename "$dst")
+            case "$name" in
+              _*) continue ;;
+            esac
+            if [ ! -f "docs/wiki/$name" ]; then
+              rm "$dst"
+            fi
+          done
+
       - name: Commit and push
         working-directory: wiki
         env:
@@ -57,7 +71,10 @@ jobs:
           set -euo pipefail
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          # Only stage top-level .md changes. Leave chrome files and any
+          # images/ assets untouched.
+          git add --update '*.md'
+          git add '*.md'
           if git diff --cached --quiet; then
             echo "Wiki already in sync with docs/wiki; nothing to push."
             exit 0
