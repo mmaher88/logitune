@@ -114,8 +114,14 @@ logitune
 | MX Master 3S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | MX Master 2S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | MX Master 4  | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ off | ✅ |
+| MX Anywhere 3S              | 🧪 Beta     | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
+| MX Anywhere 3S for Business | 🧪 Beta     | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
+| MX Anywhere 3               | 🧪 Beta     | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
+| MX Anywhere 3 for Business  | 🧪 Beta     | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
 
 > **MX Master 4 smooth scrolling** is disabled in the shipped descriptor: the hardware does not respond correctly to the HID++ configuration used on MX Master 2S / 3S. Regular scroll wheel and SmartShift work normally; only sub-tick smoothing is unavailable. Re-enable yourself by setting `"smoothScroll": true` in `devices/mx-master-4/descriptor.json` if your unit behaves differently; if it works we will promote the default.
+
+The four MX Anywhere family descriptors ship as 🧪 **Beta** pending hardware confirmation. Issue [#46](https://github.com/mmaher88/logitune/issues/46) tracks the verification.
 
 Other Logitech HID++ 2.0 devices can be added by contributing a [device descriptor](https://github.com/mmaher88/logitune/wiki/Adding-a-Device). See [Device Support Status](https://github.com/mmaher88/logitune/wiki/Getting-Started#device-support-status) for what the badges mean.
 
