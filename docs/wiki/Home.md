@@ -29,7 +29,8 @@ The UI is modeled after Logitech's Options+ application — a sidebar navigation
 | [Getting Started](Getting-Started) | Installation, first run, permissions, UI overview |
 | [Building](Building) | Build from source, native packages, devcontainer, CI |
 | [Architecture](Architecture) | System design, signal flow, MVVM, HID++ protocol layer |
-| [Adding a Device](Adding-a-Device) | Step-by-step guide to adding support for a new Logitech device |
+| [Adding a Device](Adding-a-Device) | Step-by-step JSON descriptor workflow with a worked MX Master 3S example |
+| [Editor Mode](Editor-Mode) | Visual editor for existing device descriptors: positions hotspots, slot circles, image uploads |
 | [Adding a Desktop Environment](Adding-a-Desktop-Environment) | How to add GNOME, Hyprland, or other DE support |
 | [Testing](Testing) | Test philosophy, tiers, infrastructure, how to write tests |
 | [Contributing](Contributing) | Fork workflow, code style, commit format, PR checklist |
