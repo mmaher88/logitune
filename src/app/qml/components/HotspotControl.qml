@@ -171,6 +171,12 @@ Item {
         width: cardRect.implicitWidth
         height: cardRect.implicitHeight
 
+        // Initial position. Drags break this binding; Connections below and
+        // the Qt.callLater in cardDrag.onActiveChanged restore position
+        // imperatively afterwards.
+        x: root.cardTargetX
+        y: root.cardTargetY
+
         Connections {
             target: root
             function onCardTargetXChanged() {
