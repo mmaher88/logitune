@@ -48,7 +48,16 @@ void CrashHandler::removeLockFile()
 
 bool CrashHandler::previousSessionCrashed() const
 {
-    return QFile::exists(lockFilePath());
+    if (!QFile::exists(lockFilePath()))
+        return false;
+
+    // Catchable crashes (SIGSEGV, SIGABRT, exceptions) already show
+    // the crash dialog at the moment they happen via the signal handler.
+    // Uncatchable exits (SIGKILL, OOM, power loss, reboot) leave the
+    // lock behind but the user already knows — no value in showing a
+    // dialog on next launch. Silently clean up.
+    QFile::remove(lockFilePath());
+    return false;
 }
 
 CrashInfo CrashHandler::previousSessionCrashInfo() const
