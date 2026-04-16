@@ -16,8 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache apt archives
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: release-deb-apt-v1
+
       - name: Install dependencies
         run: |
+          echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' | \
+            sudo tee /etc/apt/apt.conf.d/01keep-debs >/dev/null
           sudo apt-get update
           sudo apt-get install -y \
             build-essential cmake ninja-build pkg-config dpkg-dev \
@@ -29,6 +37,7 @@ jobs:
             qml6-module-qtquick-dialogs qml6-module-qt5compat-graphicaleffects \
             qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev \
             libxkbcommon-dev libudev-dev
+          sudo chmod -R a+rX /var/cache/apt/archives
 
       - name: Build .deb
         run: bash scripts/package-deb.sh
