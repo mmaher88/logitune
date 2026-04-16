@@ -109,14 +109,15 @@ logitune
 
 ## 🖱️ Supported Devices
 
-| Device | Status | Connection |
-|--------|--------|------------|
-| MX Master 3S | ✅ Verified | Bolt / Bluetooth |
-| MX Master 2S | ✅ Verified | Bolt / Bluetooth / Unifying |
-| MX Master 4 | ✅ Verified | Bolt / Bluetooth |
-| Other Logitech HID++ 2.0 | 🔧 Add via [device descriptor](https://github.com/mmaher88/logitune/wiki/Adding-a-Device) | varies |
+| Device | Status | Battery | DPI | SmartShift | Thumb wheel | Button remap | Gestures | Smooth scroll | Easy-Switch |
+|--------|:------:|:------:|:---:|:----------:|:-----------:|:------------:|:--------:|:-------------:|:-----------:|
+| MX Master 3S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| MX Master 2S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| MX Master 4  | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ off | ✅ |
 
-See [Device Support Status](https://github.com/mmaher88/logitune/wiki/Getting-Started#device-support-status) for what the badges mean.
+> **MX Master 4 smooth scrolling** is disabled in the shipped descriptor: the hardware does not respond correctly to the HID++ configuration used on MX Master 2S / 3S. Regular scroll wheel and SmartShift work normally; only sub-tick smoothing is unavailable. Re-enable yourself by setting `"smoothScroll": true` in `devices/mx-master-4/descriptor.json` if your unit behaves differently; if it works we will promote the default.
+
+Other Logitech HID++ 2.0 devices can be added by contributing a [device descriptor](https://github.com/mmaher88/logitune/wiki/Adding-a-Device). See [Device Support Status](https://github.com/mmaher88/logitune/wiki/Getting-Started#device-support-status) for what the badges mean.
 
 ## 🖥️ Desktop Environment Support
 
