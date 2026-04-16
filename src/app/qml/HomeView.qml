@@ -105,6 +105,18 @@ Item {
                         carousel.currentIndex = index
                 }
             }
+
+            WheelHandler {
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: function(event) {
+                    if (DeviceModel.count <= 1)
+                        return
+                    if (event.angleDelta.y > 0 || event.angleDelta.x > 0)
+                        carousel.decrementCurrentIndex()
+                    else if (event.angleDelta.y < 0 || event.angleDelta.x < 0)
+                        carousel.incrementCurrentIndex()
+                }
+            }
         }
 
         // Counter text
