@@ -247,8 +247,9 @@ TEST(EditorModel, SaveFailurePreservesState) {
     m.setActiveDevicePath(path);
     m.updateSlotPosition(0, 0.55, 0.66);
 
-    // Make the device dir read-only so QSaveFile.commit() fails
-    QFile::setPermissions(path, QFileDevice::ReadOwner | QFileDevice::ExeOwner);
+    // Remove the descriptor so QSaveFile can't write (works even as root)
+    QFile::remove(path + QStringLiteral("/descriptor.json"));
+    QDir(path).removeRecursively();
 
     QSignalSpy failSpy(&m, &logitune::EditorModel::saveFailed);
     m.save();
@@ -256,9 +257,6 @@ TEST(EditorModel, SaveFailurePreservesState) {
     EXPECT_EQ(failSpy.count(), 1);
     EXPECT_TRUE(m.hasUnsavedChanges());
     EXPECT_TRUE(m.canUndo());
-
-    QFile::setPermissions(path,
-        QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
 }
 
 TEST(EditorModel, ResetDiscardsPendingAndClearsStacks) {
