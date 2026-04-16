@@ -31,38 +31,40 @@
 
 ## 📸 Screenshots
 
-<table>
-<tr>
-<td width="50%">
-<img src="docs/images/buttons-page.jpeg" alt="Buttons Page">
-<p align="center"><em>Button remapping with callout cards</em></p>
-</td>
-<td width="50%">
-<img src="docs/images/buttons-actions-panel.jpeg" alt="Actions Panel">
-<p align="center"><em>Action selection panel</em></p>
-</td>
-</tr>
-<tr>
-<td>
-<img src="docs/images/point-scroll-page.jpeg" alt="Point & Scroll">
-<p align="center"><em>Scroll, thumb wheel & pointer speed</em></p>
-</td>
-<td>
-<img src="docs/images/point-scroll-detail-panel.jpeg" alt="Scroll Settings">
-<p align="center"><em>Scroll direction, SmartShift, smooth scrolling</em></p>
-</td>
-</tr>
-<tr>
-<td>
-<img src="docs/images/settings-page.jpeg" alt="Settings">
-<p align="center"><em>Device info, dark mode, debug logging</em></p>
-</td>
-<td>
-<img src="docs/images/easy-switch-page.jpeg" alt="Easy-Switch">
-<p align="center"><em>Easy-Switch channel management</em></p>
-</td>
-</tr>
-</table>
+<p align="center">
+  <img src="docs/images/buttons-actions-panel.jpeg" alt="Actions Panel" width="800">
+  <br>
+  <em>Action selection panel</em>
+</p>
+
+<details>
+<summary><strong>More screenshots</strong></summary>
+
+<p align="center">
+  <img src="docs/images/point-scroll-page.jpeg" alt="Point &amp; Scroll" width="800">
+  <br>
+  <em>Scroll, thumb wheel &amp; pointer speed</em>
+</p>
+
+<p align="center">
+  <img src="docs/images/point-scroll-detail-panel.jpeg" alt="Scroll Settings" width="800">
+  <br>
+  <em>Scroll direction, SmartShift, smooth scrolling</em>
+</p>
+
+<p align="center">
+  <img src="docs/images/easy-switch-page.jpeg" alt="Easy-Switch" width="800">
+  <br>
+  <em>Easy-Switch channel management</em>
+</p>
+
+<p align="center">
+  <img src="docs/images/settings-page.jpeg" alt="Settings" width="800">
+  <br>
+  <em>Device info, dark mode, debug logging</em>
+</p>
+
+</details>
 
 ## 🚀 Install
 
