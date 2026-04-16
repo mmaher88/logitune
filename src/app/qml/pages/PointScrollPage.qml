@@ -116,6 +116,16 @@ Item {
                         opacity: 0.7
                     }
 
+                    Connections {
+                        target: DeviceModel
+                        function onSelectedChanged() {
+                            if (!scrollMarkerDrag.active) {
+                                scrollMarker.x = scrollMarker.targetX - scrollMarker.width / 2
+                                scrollMarker.y = scrollMarker.targetY - scrollMarker.height / 2
+                            }
+                        }
+                    }
+
                     DragHandler {
                         id: scrollMarkerDrag
                         enabled: typeof EditorModel !== 'undefined' && EditorModel.editing
@@ -132,8 +142,6 @@ Item {
                                                                  xPct, yPct,
                                                                  scrollMarker.modelData.side,
                                                                  scrollMarker.modelData.labelOffsetYPct)
-                                scrollMarker.x = Qt.binding(function() { return scrollMarker.targetX - scrollMarker.width / 2 })
-                                scrollMarker.y = Qt.binding(function() { return scrollMarker.targetY - scrollMarker.height / 2 })
                             }
                         }
                     }

@@ -99,6 +99,16 @@ Item {
         }
     }
 
+    Connections {
+        target: DeviceModel
+        function onSelectedChanged() {
+            if (!cardDrag.active) {
+                root.x = root.targetX
+                root.y = root.targetY
+            }
+        }
+    }
+
     // Editor-mode drag: translate root Item freely, on release snap side to the
     // nearest half-page column and persist labelOffsetYPct as a delta from grab.
     DragHandler {
@@ -123,8 +133,6 @@ Item {
                                                      root.hsXPct, root.hsYPct,
                                                      newSide, newOffsetY)
                 }
-                root.x = Qt.binding(function() { return root.targetX })
-                root.y = Qt.binding(function() { return root.targetY })
             }
         }
     }

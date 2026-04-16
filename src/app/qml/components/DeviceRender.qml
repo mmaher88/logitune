@@ -130,6 +130,16 @@ Item {
                 }
             }
 
+            Connections {
+                target: DeviceModel
+                function onSelectedChanged() {
+                    if (!drag.active) {
+                        markerItem.x = markerItem.targetX - markerItem.width / 2
+                        markerItem.y = markerItem.targetY - markerItem.height / 2
+                    }
+                }
+            }
+
             // Editor-mode drag handler — disabled (and effectively absent) in production.
             DragHandler {
                 id: drag
@@ -147,8 +157,6 @@ Item {
                                                    xPct, yPct,
                                                    markerItem.hp.side,
                                                    markerItem.hp.labelOffsetYPct)
-                        markerItem.x = Qt.binding(function() { return markerItem.targetX - markerItem.width / 2 })
-                        markerItem.y = Qt.binding(function() { return markerItem.targetY - markerItem.height / 2 })
                     }
                 }
             }
