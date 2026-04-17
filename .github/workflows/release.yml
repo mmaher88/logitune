@@ -69,3 +69,7 @@ jobs:
           files: |
             logitune-*.deb
           generate_release_notes: true
+          # Tags with a pre-release identifier (e.g. v0.2.0-beta.1, v0.2.0-rc.1)
+          # are published as GitHub pre-releases so they do not appear as the
+          # latest stable download.
+          prerelease: ${{ contains(github.ref_name, '-') }}
