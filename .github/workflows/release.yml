@@ -3,6 +3,10 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Manual trigger lets us dry-run the packaging jobs without publishing.
+  # The `release` job is skipped unless a tag was pushed, so nothing is
+  # uploaded; artifacts are still attached to the run for inspection.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,21 +20,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Route apt's .deb cache into a user-owned directory so actions/cache
-      # can both read it on save and extract into it on restore. Caching
-      # /var/cache/apt/archives on a native runner fails on restore because
-      # the directory is root-owned and tar runs as the runner user.
       - name: Cache apt archives
         uses: actions/cache@v4
         with:
-          path: ~/.cache/apt-archives
-          key: release-deb-apt-v2
+          path: /var/cache/apt/archives
+          key: release-deb-apt-v1
 
       - name: Install dependencies
         run: |
-          mkdir -p ~/.cache/apt-archives/partial
+          echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' | \
+            sudo tee /etc/apt/apt.conf.d/01keep-debs >/dev/null
           sudo apt-get update
-          sudo apt-get -o Dir::Cache::archives="$HOME/.cache/apt-archives" install -y \
+          sudo apt-get install -y \
             build-essential cmake ninja-build pkg-config dpkg-dev \
             qt6-base-dev qt6-declarative-dev qt6-svg-dev \
             qt6-tools-dev qt6-tools-dev-tools \
@@ -40,7 +41,7 @@ jobs:
             qml6-module-qtquick-dialogs qml6-module-qt5compat-graphicaleffects \
             qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev \
             libxkbcommon-dev libudev-dev
-          sudo chown -R "$(id -u):$(id -g)" ~/.cache/apt-archives
+          sudo chmod -R a+rX /var/cache/apt/archives
 
       - name: Build .deb
         run: bash scripts/package-deb.sh
@@ -52,11 +53,78 @@ jobs:
           path: logitune-*.deb
 
   # --------------------------------------------------------------------------
+  # Fedora / RHEL package (.rpm)
+  # --------------------------------------------------------------------------
+  package-rpm:
+    runs-on: ubuntu-24.04
+    container:
+      image: fedora:41
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y \
+            gcc gcc-c++ cmake ninja-build pkgconf-pkg-config rpm-build \
+            qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtsvg-devel \
+            qt6-qttools-devel qt6-qt5compat-devel \
+            libxkbcommon-devel systemd-devel grep
+
+      - name: Build .rpm
+        run: bash scripts/package-rpm.sh
+
+      - name: Collect .rpm
+        run: cp "$HOME"/rpmbuild/RPMS/x86_64/logitune-*.rpm .
+
+      - name: Upload .rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: logitune-*.rpm
+
+  # --------------------------------------------------------------------------
+  # Arch Linux package (.pkg.tar.zst)
+  # --------------------------------------------------------------------------
+  package-arch:
+    runs-on: ubuntu-24.04
+    container:
+      image: archlinux:latest
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed \
+            base-devel cmake ninja \
+            qt6-base qt6-declarative qt6-svg qt6-tools qt6-5compat \
+            libxkbcommon systemd-libs sudo
+
+      - name: Create unprivileged build user (makepkg refuses root)
+        run: |
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Build pacman package
+        run: sudo -E -u builder bash scripts/package-arch.sh
+
+      - name: Upload pacman artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacman-package
+          path: logitune-*.pkg.tar.zst
+
+  # --------------------------------------------------------------------------
   # Create GitHub Release with all packages
   # --------------------------------------------------------------------------
   release:
-    needs: [package-deb]
+    needs: [package-deb, package-rpm, package-arch]
     runs-on: ubuntu-latest
+    # Only publish when triggered by a tag push. workflow_dispatch runs are
+    # for dry-running the package jobs and stop before the release step.
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -68,6 +136,8 @@ jobs:
         with:
           files: |
             logitune-*.deb
+            logitune-*.rpm
+            logitune-*.pkg.tar.zst
           generate_release_notes: true
           # Tags with a pre-release identifier (e.g. v0.2.0-beta.1, v0.2.0-rc.1)
           # are published as GitHub pre-releases so they do not appear as the
