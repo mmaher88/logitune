@@ -546,6 +546,7 @@ QVariantList DeviceModel::scrollHotspots() const
         entry[QStringLiteral("yPct")]            = hs.yPct;
         entry[QStringLiteral("side")]            = hs.side;
         entry[QStringLiteral("labelOffsetYPct")] = hs.labelOffsetYPct;
+        entry[QStringLiteral("kind")]            = hs.kind;
         result.append(entry);
     }
     return result;
