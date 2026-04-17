@@ -16,7 +16,15 @@ Item {
     // Total fixed content: title(~60) + channels(~180) + footer(~30) + spacing(~80) = ~350
     readonly property real imageMaxH: Math.max(120, availH - 380)
     readonly property real imageH: Math.min(380, imageMaxH)
-    readonly property real imageW: imageH * 0.676  // back image aspect ratio 692/1024
+    // Aspect from actual image, falling back to a portrait default if the
+    // image has not loaded yet. Keeps landscape bottom-view shots from
+    // shrinking down to a portrait-sized container.
+    readonly property real imageAspect: {
+        if (deviceImage.sourceSize.width > 0 && deviceImage.sourceSize.height > 0)
+            return deviceImage.sourceSize.width / deviceImage.sourceSize.height
+        return 0.676
+    }
+    readonly property real imageW: imageH * root.imageAspect
 
     Flickable {
         anchors.fill: parent
@@ -120,7 +128,12 @@ Item {
                         readonly property var pos: index < imageContainer.slotPositions.length
                             ? imageContainer.slotPositions[index] : { xPct: 0.5, yPct: 0.65 }
 
-                        width: 24; height: 24
+                        // Scale the hit area / inner dot with the rendered
+                        // device image so circles look consistent regardless
+                        // of window size. Use height so landscape and
+                        // portrait back shots produce the same circle size.
+                        readonly property real circleSize: Math.max(14, imageContainer.imgH * 0.06)
+                        width: circleSize; height: circleSize
 
                         readonly property real targetX: imageContainer.imgX + imageContainer.imgW * pos.xPct
                         readonly property real targetY: imageContainer.imgY + imageContainer.imgH * pos.yPct
@@ -140,17 +153,27 @@ Item {
 
                         Rectangle {
                             anchors.centerIn: parent
-                            width: 16; height: 16; radius: 8
+                            width: slotItem.circleSize * 0.67
+                            height: width
+                            radius: width / 2
                             color: slotItem.isActive ? Theme.accent : "transparent"
                             border.color: Theme.accent
-                            border.width: slotItem.isActive ? 0 : 1.5
+                            border.width: Math.max(1, slotItem.circleSize * 0.06)
+                            // In run mode, only the active slot's circle is
+                            // shown — the device's own printed labels mark
+                            // the inactive slots. Edit mode shows all so
+                            // positions can be tuned.
+                            visible: slotItem.isActive || (typeof EditorModel !== 'undefined' && EditorModel.editing)
 
                             Text {
                                 anchors.centerIn: parent
                                 text: (slotItem.index + 1).toString()
-                                font.pixelSize: 9
+                                font.pixelSize: Math.max(8, slotItem.circleSize * 0.4)
                                 font.bold: true
                                 color: slotItem.isActive ? Theme.activeTabText : Theme.accent
+                                // Labels help positioning in edit mode; in run
+                                // mode the device itself has printed labels.
+                                visible: typeof EditorModel !== 'undefined' && EditorModel.editing
                             }
 
                             SequentialAnimation on opacity {
