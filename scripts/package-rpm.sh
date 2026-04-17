@@ -46,14 +46,11 @@ cp -a /tmp/logitune-rpm/* %{buildroot}/
 /usr/share/applications/logitune.desktop
 /usr/etc/xdg/autostart/logitune.desktop
 /usr/share/icons/hicolor/scalable/apps/com.logitune.Logitune.svg
-%dir /usr/share/gnome-shell
-%dir /usr/share/gnome-shell/extensions
-%dir /usr/share/gnome-shell/extensions/logitune-focus@logitune.com
-/usr/share/gnome-shell/extensions/logitune-focus@logitune.com/metadata.json
-%dir /usr/share/gnome-shell/extensions/logitune-focus@logitune.com/v42
-/usr/share/gnome-shell/extensions/logitune-focus@logitune.com/v42/extension.js
-%dir /usr/share/gnome-shell/extensions/logitune-focus@logitune.com/v45
-/usr/share/gnome-shell/extensions/logitune-focus@logitune.com/v45/extension.js
+# Device descriptors (JSON + images) and the GNOME shell extension live in
+# their own subtrees. List the directory so new devices and any additional
+# extension resources ship without having to touch this spec.
+/usr/share/logitune
+/usr/share/gnome-shell/extensions/logitune-focus@logitune.com
 
 %post
 udevadm control --reload-rules 2>/dev/null || true
