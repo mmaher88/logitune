@@ -598,6 +598,14 @@ bool DeviceModel::smoothScrollSupported() const
     return true;
 }
 
+bool DeviceModel::thumbWheelSupported() const
+{
+    auto *s = selectedDevice();
+    if (s && s->descriptor())
+        return s->descriptor()->features().thumbWheel;
+    return true;
+}
+
 QString DeviceModel::deviceSerial() const
 {
     auto *s = selectedDevice();

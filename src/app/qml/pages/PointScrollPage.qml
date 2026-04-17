@@ -198,6 +198,7 @@ Item {
             // ── Thumb wheel callout — positioned from descriptor hotspot [1]
             InfoCallout {
                 id: thumbCallout
+                visible: DeviceModel.thumbWheelSupported
                 readonly property var hs: {
                     var d = renderGroup.scrollHotspotsData
                     if (!d) return null
