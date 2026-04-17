@@ -62,7 +62,7 @@ jobs:
             echo "Wiki already in sync with docs/wiki; nothing to push."
             exit 0
           fi
-          git commit -m "sync: update wiki from ${GITHUB_SHA::7}
-
-Source: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+          git commit \
+            -m "sync: update wiki from ${GITHUB_SHA::7}" \
+            -m "Source: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
           git push
