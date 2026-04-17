@@ -1,70 +1,157 @@
 {
-  "$schema": "../schema.json",
-  "name": "MX Anywhere 3 for Business",
-  "status": "beta",
-  "productIds": ["0xb02d"],
-
-  "features": {
-    "battery": true,
-    "adjustableDpi": true,
-    "extendedDpi": false,
-    "smartShift": true,
-    "hiResWheel": true,
-    "hiResScrolling": false,
-    "lowResWheel": false,
-    "smoothScroll": true,
-    "thumbWheel": false,
-    "reprogControls": true,
-    "gestureV2": false,
-    "mouseGesture": false,
-    "hapticFeedback": false,
-    "forceSensingButton": false,
-    "crown": false,
-    "reportRate": false,
-    "extendedReportRate": false,
-    "pointerSpeed": false,
-    "leftRightSwap": false,
-    "surfaceTuning": false,
-    "angleSnapping": false,
-    "colorLedEffects": false,
-    "rgbEffects": false,
-    "onboardProfiles": false,
-    "gkey": false,
-    "mkeys": false,
-    "persistentRemappableAction": false
-  },
-
-  "dpi": { "min": 200, "max": 4000, "step": 50 },
-
-  "controls": [
-    { "controlId": "0x0050", "buttonIndex": 0, "defaultName": "Left click",       "defaultActionType": "default",           "configurable": false },
-    { "controlId": "0x0051", "buttonIndex": 1, "defaultName": "Right click",      "defaultActionType": "default",           "configurable": false },
-    { "controlId": "0x0052", "buttonIndex": 2, "defaultName": "Middle click",     "defaultActionType": "default",           "configurable": true  },
-    { "controlId": "0x0053", "buttonIndex": 3, "defaultName": "Back",             "defaultActionType": "default",           "configurable": true  },
-    { "controlId": "0x0056", "buttonIndex": 4, "defaultName": "Forward",          "defaultActionType": "default",           "configurable": true  },
-    { "controlId": "0x00C4", "buttonIndex": 5, "defaultName": "Shift wheel mode", "defaultActionType": "smartshift-toggle", "configurable": true  }
-  ],
-
-  "hotspots": {
-    "buttons": [
-      { "buttonIndex": 2, "xPct": 0.5, "yPct": 0.5, "side": "right", "labelOffsetYPct": 0.0 },
-      { "buttonIndex": 3, "xPct": 0.5, "yPct": 0.5, "side": "left",  "labelOffsetYPct": 0.0 },
-      { "buttonIndex": 4, "xPct": 0.5, "yPct": 0.5, "side": "left",  "labelOffsetYPct": 0.0 },
-      { "buttonIndex": 5, "xPct": 0.5, "yPct": 0.5, "side": "right", "labelOffsetYPct": 0.0 }
+    "$schema": "../schema.json",
+    "controls": [
+        {
+            "buttonIndex": 0,
+            "configurable": false,
+            "controlId": "0x0050",
+            "defaultActionType": "default",
+            "defaultName": "Left click"
+        },
+        {
+            "buttonIndex": 1,
+            "configurable": false,
+            "controlId": "0x0051",
+            "defaultActionType": "default",
+            "defaultName": "Right click"
+        },
+        {
+            "buttonIndex": 2,
+            "configurable": true,
+            "controlId": "0x0052",
+            "defaultActionType": "default",
+            "defaultName": "Middle click"
+        },
+        {
+            "buttonIndex": 3,
+            "configurable": true,
+            "controlId": "0x0053",
+            "defaultActionType": "default",
+            "defaultName": "Back"
+        },
+        {
+            "buttonIndex": 4,
+            "configurable": true,
+            "controlId": "0x0056",
+            "defaultActionType": "default",
+            "defaultName": "Forward"
+        },
+        {
+            "buttonIndex": 5,
+            "configurable": true,
+            "controlId": "0x00C4",
+            "defaultActionType": "smartshift-toggle",
+            "defaultName": "Shift wheel mode"
+        }
     ],
-    "scroll": [
-      { "buttonIndex": -1, "xPct": 0.5, "yPct": 0.5, "side": "right", "labelOffsetYPct": 0.0, "kind": "scrollwheel" },
-      { "buttonIndex": -3, "xPct": 0.5, "yPct": 0.5, "side": "right", "labelOffsetYPct": 0.0, "kind": "pointer" }
-    ]
-  },
-
-  "images": { "front": "front.png", "side": "side.png", "back": "back.png" },
-
-  "easySwitchSlots": [
-    { "xPct": 0.5, "yPct": 0.5 },
-    { "xPct": 0.5, "yPct": 0.5 },
-    { "xPct": 0.5, "yPct": 0.5 }
-  ],
-
-  "defaultGestures": {}
+    "defaultGestures": {
+    },
+    "dpi": {
+        "max": 4000,
+        "min": 200,
+        "step": 50
+    },
+    "easySwitchSlots": [
+        {
+            "xPct": 0.46349782843338805,
+            "yPct": 0.700318667763158
+        },
+        {
+            "xPct": 0.5005120014391446,
+            "yPct": 0.6805818256578948
+        },
+        {
+            "xPct": 0.536961207339638,
+            "yPct": 0.7024157072368422
+        }
+    ],
+    "features": {
+        "adjustableDpi": true,
+        "angleSnapping": false,
+        "battery": true,
+        "colorLedEffects": false,
+        "crown": false,
+        "extendedDpi": false,
+        "extendedReportRate": false,
+        "forceSensingButton": false,
+        "gestureV2": false,
+        "gkey": false,
+        "hapticFeedback": false,
+        "hiResScrolling": false,
+        "hiResWheel": true,
+        "leftRightSwap": false,
+        "lowResWheel": false,
+        "mkeys": false,
+        "mouseGesture": false,
+        "onboardProfiles": false,
+        "persistentRemappableAction": false,
+        "pointerSpeed": false,
+        "reportRate": false,
+        "reprogControls": true,
+        "rgbEffects": false,
+        "smartShift": true,
+        "smoothScroll": true,
+        "surfaceTuning": false,
+        "thumbWheel": false
+    },
+    "hotspots": {
+        "buttons": [
+            {
+                "buttonIndex": 2,
+                "labelOffsetYPct": 0,
+                "side": "right",
+                "xPct": 0.6792657678129577,
+                "yPct": 0.1773852657004831
+            },
+            {
+                "buttonIndex": 3,
+                "labelOffsetYPct": 0.10458182367149758,
+                "side": "left",
+                "xPct": 0.27291950714538205,
+                "yPct": 0.6096014492753623
+            },
+            {
+                "buttonIndex": 4,
+                "labelOffsetYPct": -0.11164892814009662,
+                "side": "left",
+                "xPct": 0.21424784123617635,
+                "yPct": 0.4246678743961353
+            },
+            {
+                "buttonIndex": 5,
+                "labelOffsetYPct": 0.17926290760869565,
+                "side": "right",
+                "xPct": 0.7254393273746402,
+                "yPct": 0.33952294685990336
+            }
+        ],
+        "scroll": [
+            {
+                "buttonIndex": -1,
+                "kind": "scrollwheel",
+                "labelOffsetYPct": 0,
+                "side": "right",
+                "xPct": 0.667446220269656,
+                "yPct": 0.16310952596618358
+            },
+            {
+                "buttonIndex": -3,
+                "kind": "pointer",
+                "labelOffsetYPct": 0,
+                "side": "right",
+                "xPct": 0.7233878705246679,
+                "yPct": 0.34061745169082125
+            }
+        ]
+    },
+    "images": {
+        "back": "back.png",
+        "front": "front.png",
+        "side": "side.png"
+    },
+    "name": "MX Anywhere 3 for Business",
+    "productIds": [
+        "0xb02d"
+    ],
+    "status": "beta"
 }
