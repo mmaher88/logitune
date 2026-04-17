@@ -1,8 +1,8 @@
 # Logitune
 
-[![CI](../../.github/workflows/ci.yml/badge.svg)](../../.github/workflows/ci.yml)
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/logitune/logitune)](https://github.com/logitune/logitune/releases)
+[![CI](https://github.com/mmaher88/logitune/actions/workflows/ci.yml/badge.svg)](https://github.com/mmaher88/logitune/actions/workflows/ci.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://github.com/mmaher88/logitune/blob/master/LICENSE)
+[![Release](https://img.shields.io/github/v/release/mmaher88/logitune?include_prereleases)](https://github.com/mmaher88/logitune/releases)
 
 **Logitune** is a native Linux configurator for Logitech HID++ peripherals, starting with the MX Master 3S. It communicates directly with the device over hidraw using the HID++ 2.0 protocol — no Solaar, no logiops, no daemon. Just a Qt 6 / QML desktop application with a system tray icon.
 
