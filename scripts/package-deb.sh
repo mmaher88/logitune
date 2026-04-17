@@ -32,7 +32,7 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Depends: libqt6core6 (>= 6.4), libqt6quick6, libqt6svg6, libqt6dbus6, libqt6widgets6, libudev1, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtquick-layouts, qml6-module-qtqml, qml6-module-qtqml-workerscript, qml6-module-qt5compat-graphicaleffects
+Depends: libqt6core6 (>= 6.4), libqt6quick6, libqt6svg6, libqt6dbus6, libqt6widgets6, libudev1, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-dialogs, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtquick-layouts, qml6-module-qtqml, qml6-module-qtqml-workerscript, qml6-module-qt5compat-graphicaleffects
 Maintainer: Mina Maher <mina.maher88@hotmail.com>
 Description: Logitech device configurator for Linux
  Configure Logitech HID++ peripherals (MX Master 3S and more).
