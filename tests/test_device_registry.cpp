@@ -131,11 +131,11 @@ static const DeviceSpec kDevices[] = {
     {
         .pid = 0xb020,
         .name = "MX Vertical",
-        .minDpi = 400, .maxDpi = 4000, .dpiStep = 100,
+        .minDpi = 400, .maxDpi = 4000, .dpiStep = 50,
         .buttonHotspots = 4, .scrollHotspots = 2,
         .minControls = 6,
         .control0Cid = 0x0050, .control5Cid = 0x00C3,
-        .control5ActionType = "default",
+        .control5ActionType = "dpi-cycle",
         .control6ActionType = nullptr,
         .battery = true, .adjustableDpi = true, .smartShift = false,
         .reprogControls = true, .gestureV2 = false,
@@ -281,7 +281,20 @@ TEST(DeviceRegistry, MxVerticalForBusinessRegistered) {
     EXPECT_EQ(dev->minDpi(), 400);
     EXPECT_EQ(dev->controls().size(), 6);
     EXPECT_EQ(dev->controls()[5].controlId, 0x00C3);
-    EXPECT_EQ(dev->controls()[5].defaultActionType, QStringLiteral("default"));
+    EXPECT_EQ(dev->controls()[5].defaultActionType, QStringLiteral("dpi-cycle"));
     EXPECT_FALSE(dev->features().smartShift);
     EXPECT_TRUE(dev->features().pointerSpeed);
+    const auto ring = dev->dpiCycleRing();
+    ASSERT_EQ(ring.size(), 4u);
+    EXPECT_EQ(ring[0], 400);
+    EXPECT_EQ(ring[1], 1000);
+    EXPECT_EQ(ring[2], 1750);
+    EXPECT_EQ(ring[3], 4000);
+}
+
+TEST(DeviceRegistry, MxMaster3sHasNoDpiCycleRing) {
+    logitune::DeviceRegistry reg;
+    const auto *dev = reg.findByName(QStringLiteral("MX Master 3S"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_TRUE(dev->dpiCycleRing().empty());
 }

@@ -40,16 +40,17 @@
             "buttonIndex": 5,
             "configurable": true,
             "controlId": "0x00C3",
-            "defaultActionType": "default",
+            "defaultActionType": "dpi-cycle",
             "defaultName": "DPI cycle"
         }
     ],
     "defaultGestures": {
     },
     "dpi": {
+        "cycleRing": [400, 1000, 1750, 4000],
         "max": 4000,
         "min": 400,
-        "step": 100
+        "step": 50
     },
     "easySwitchSlots": [
         {
