@@ -127,6 +127,21 @@ static const DeviceSpec kDevices[] = {
         .gestureDownPayload = nullptr,
         .gestureUpType = ButtonAction::Default,
     },
+    {
+        .pid = 0xb020,
+        .name = "MX Vertical",
+        .minDpi = 400, .maxDpi = 4000, .dpiStep = 100,
+        .buttonHotspots = 4, .scrollHotspots = 2,
+        .minControls = 6,
+        .control0Cid = 0x0050, .control5Cid = 0x00C3,
+        .control5ActionType = "dpi-cycle",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = true, .smartShift = false,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
+        .gestureUpType = ButtonAction::Default,
+    },
 };
 
 class DeviceRegistryTest : public testing::TestWithParam<DeviceSpec> {
