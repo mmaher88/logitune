@@ -1,6 +1,7 @@
 #pragma once
 #include "interfaces/IDevice.h"
 #include <memory>
+#include <vector>
 #include <QString>
 #include <QJsonObject>
 
@@ -33,6 +34,7 @@ public:
     int minDpi() const override { return m_minDpi; }
     int maxDpi() const override { return m_maxDpi; }
     int dpiStep() const override { return m_dpiStep; }
+    std::vector<int> dpiCycleRing() const override { return m_dpiCycleRing; }
     QList<EasySwitchSlotPosition> easySwitchSlotPositions() const override { return m_easySwitchSlots; }
 
 private:
@@ -45,6 +47,7 @@ private:
     std::vector<uint16_t> m_pids;
     FeatureSupport m_features;
     int m_minDpi = 200, m_maxDpi = 8000, m_dpiStep = 50;
+    std::vector<int> m_dpiCycleRing;
     QList<ControlDescriptor> m_controls;
     QList<HotspotDescriptor> m_buttonHotspots;
     QList<HotspotDescriptor> m_scrollHotspots;

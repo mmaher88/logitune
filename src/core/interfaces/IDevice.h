@@ -80,6 +80,7 @@ public:
     virtual int minDpi() const = 0;
     virtual int maxDpi() const = 0;
     virtual int dpiStep() const = 0;
+    virtual std::vector<int> dpiCycleRing() const = 0;
     virtual QList<EasySwitchSlotPosition> easySwitchSlotPositions() const = 0;
 };
 

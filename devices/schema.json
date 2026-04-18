@@ -69,7 +69,12 @@
       "properties": {
         "min":  { "type": "integer", "default": 200,  "minimum": 1 },
         "max":  { "type": "integer", "default": 8000, "minimum": 1 },
-        "step": { "type": "integer", "default": 50,   "minimum": 1 }
+        "step": { "type": "integer", "default": 50,   "minimum": 1 },
+        "cycleRing": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 2
+        }
       }
     },
     "controls": {
@@ -100,6 +105,7 @@
               "keystroke",
               "gesture-trigger",
               "smartshift-toggle",
+              "dpi-cycle",
               "app-launch",
               "dbus",
               "media"

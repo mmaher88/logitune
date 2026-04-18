@@ -183,6 +183,26 @@ bool JsonDevice::parseFromObject(const QJsonObject& root, const QString& dirPath
         m_minDpi = dpiObj.value(QStringLiteral("min")).toInt(200);
         m_maxDpi = dpiObj.value(QStringLiteral("max")).toInt(8000);
         m_dpiStep = dpiObj.value(QStringLiteral("step")).toInt(50);
+        const QJsonArray cycleRingArr = dpiObj.value(QStringLiteral("cycleRing")).toArray();
+        m_dpiCycleRing.clear();
+        m_dpiCycleRing.reserve(cycleRingArr.size());
+        for (const auto &v : cycleRingArr) {
+            const int value = v.toInt(-1);
+            if (value < m_minDpi || value > m_maxDpi) {
+                qCWarning(lcDevice) << "dpi.cycleRing value" << value
+                                    << "out of range [" << m_minDpi << "," << m_maxDpi
+                                    << "] in" << dir.absolutePath() << ", dropped";
+                continue;
+            }
+            if (m_dpiStep > 0 && (value - m_minDpi) % m_dpiStep != 0) {
+                qCWarning(lcDevice) << "dpi.cycleRing value" << value
+                                    << "not a multiple of step" << m_dpiStep
+                                    << "from min" << m_minDpi
+                                    << "in" << dir.absolutePath() << ", dropped";
+                continue;
+            }
+            m_dpiCycleRing.push_back(value);
+        }
     }
 
     m_controls = parseControls(root.value(QStringLiteral("controls")).toArray());
@@ -277,6 +297,7 @@ bool JsonDevice::refresh()
     m_minDpi = 200;
     m_maxDpi = 8000;
     m_dpiStep = 50;
+    m_dpiCycleRing.clear();
     return parseFromDir(src);
 }
 
@@ -301,6 +322,7 @@ bool JsonDevice::refreshFromObject(const QJsonObject &root)
     m_minDpi = 200;
     m_maxDpi = 8000;
     m_dpiStep = 50;
+    m_dpiCycleRing.clear();
     return parseFromObject(root, src, /*strict=*/false);
 }
 
