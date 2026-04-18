@@ -1,70 +1,158 @@
 {
-  "$schema": "../schema.json",
-  "name": "MX Vertical",
-  "status": "beta",
-  "productIds": ["0xb020", "0x407b"],
-
-  "features": {
-    "battery": true,
-    "adjustableDpi": true,
-    "extendedDpi": false,
-    "smartShift": false,
-    "hiResWheel": true,
-    "hiResScrolling": false,
-    "lowResWheel": false,
-    "smoothScroll": true,
-    "thumbWheel": false,
-    "reprogControls": true,
-    "gestureV2": false,
-    "mouseGesture": false,
-    "hapticFeedback": false,
-    "forceSensingButton": false,
-    "crown": false,
-    "reportRate": false,
-    "extendedReportRate": false,
-    "pointerSpeed": true,
-    "leftRightSwap": false,
-    "surfaceTuning": false,
-    "angleSnapping": false,
-    "colorLedEffects": false,
-    "rgbEffects": false,
-    "onboardProfiles": false,
-    "gkey": false,
-    "mkeys": false,
-    "persistentRemappableAction": false
-  },
-
-  "dpi": { "min": 400, "max": 4000, "step": 100 },
-
-  "controls": [
-    { "controlId": "0x0050", "buttonIndex": 0, "defaultName": "Left click",   "defaultActionType": "default",    "configurable": false },
-    { "controlId": "0x0051", "buttonIndex": 1, "defaultName": "Right click",  "defaultActionType": "default",    "configurable": false },
-    { "controlId": "0x0052", "buttonIndex": 2, "defaultName": "Middle click", "defaultActionType": "default",    "configurable": true  },
-    { "controlId": "0x0053", "buttonIndex": 3, "defaultName": "Back",         "defaultActionType": "default",    "configurable": true  },
-    { "controlId": "0x0056", "buttonIndex": 4, "defaultName": "Forward",      "defaultActionType": "default",    "configurable": true  },
-    { "controlId": "0x00C3", "buttonIndex": 5, "defaultName": "DPI cycle",    "defaultActionType": "default",    "configurable": true  }
-  ],
-
-  "hotspots": {
-    "buttons": [
-      { "buttonIndex": 2, "xPct": 0.5, "yPct": 0.5, "side": "right", "labelOffsetYPct": 0.0 },
-      { "buttonIndex": 3, "xPct": 0.5, "yPct": 0.5, "side": "left",  "labelOffsetYPct": 0.0 },
-      { "buttonIndex": 4, "xPct": 0.5, "yPct": 0.5, "side": "left",  "labelOffsetYPct": 0.0 },
-      { "buttonIndex": 5, "xPct": 0.5, "yPct": 0.5, "side": "right", "labelOffsetYPct": 0.0 }
+    "$schema": "../schema.json",
+    "controls": [
+        {
+            "buttonIndex": 0,
+            "configurable": false,
+            "controlId": "0x0050",
+            "defaultActionType": "default",
+            "defaultName": "Left click"
+        },
+        {
+            "buttonIndex": 1,
+            "configurable": false,
+            "controlId": "0x0051",
+            "defaultActionType": "default",
+            "defaultName": "Right click"
+        },
+        {
+            "buttonIndex": 2,
+            "configurable": true,
+            "controlId": "0x0052",
+            "defaultActionType": "default",
+            "defaultName": "Middle click"
+        },
+        {
+            "buttonIndex": 3,
+            "configurable": true,
+            "controlId": "0x0053",
+            "defaultActionType": "default",
+            "defaultName": "Back"
+        },
+        {
+            "buttonIndex": 4,
+            "configurable": true,
+            "controlId": "0x0056",
+            "defaultActionType": "default",
+            "defaultName": "Forward"
+        },
+        {
+            "buttonIndex": 5,
+            "configurable": true,
+            "controlId": "0x00C3",
+            "defaultActionType": "default",
+            "defaultName": "DPI cycle"
+        }
     ],
-    "scroll": [
-      { "buttonIndex": -1, "xPct": 0.5, "yPct": 0.5, "side": "right", "labelOffsetYPct": 0.0, "kind": "scrollwheel" },
-      { "buttonIndex": -3, "xPct": 0.5, "yPct": 0.5, "side": "right", "labelOffsetYPct": 0.0, "kind": "pointer" }
-    ]
-  },
-
-  "images": { "front": "front.png", "side": "side.png", "back": "back.png" },
-
-  "easySwitchSlots": [
-    { "xPct": 0.5, "yPct": 0.5 },
-    { "xPct": 0.5, "yPct": 0.5 },
-    { "xPct": 0.5, "yPct": 0.5 }
-  ],
-
-  "defaultGestures": {}
+    "defaultGestures": {
+    },
+    "dpi": {
+        "max": 4000,
+        "min": 400,
+        "step": 100
+    },
+    "easySwitchSlots": [
+        {
+            "xPct": 0.4475728181537833,
+            "yPct": 0.6135999177631579
+        },
+        {
+            "xPct": 0.4804821520353622,
+            "yPct": 0.5968133223684211
+        },
+        {
+            "xPct": 0.5140182462993425,
+            "yPct": 0.6135279605263158
+        }
+    ],
+    "features": {
+        "adjustableDpi": true,
+        "angleSnapping": false,
+        "battery": true,
+        "colorLedEffects": false,
+        "crown": false,
+        "extendedDpi": false,
+        "extendedReportRate": false,
+        "forceSensingButton": false,
+        "gestureV2": false,
+        "gkey": false,
+        "hapticFeedback": false,
+        "hiResScrolling": false,
+        "hiResWheel": true,
+        "leftRightSwap": false,
+        "lowResWheel": false,
+        "mkeys": false,
+        "mouseGesture": false,
+        "onboardProfiles": false,
+        "persistentRemappableAction": false,
+        "pointerSpeed": true,
+        "reportRate": false,
+        "reprogControls": true,
+        "rgbEffects": false,
+        "smartShift": false,
+        "smoothScroll": true,
+        "surfaceTuning": false,
+        "thumbWheel": false
+    },
+    "hotspots": {
+        "buttons": [
+            {
+                "buttonIndex": 2,
+                "labelOffsetYPct": -0.2510945048309179,
+                "side": "right",
+                "xPct": 0.36088985719542566,
+                "yPct": 0.27483393719806765
+            },
+            {
+                "buttonIndex": 3,
+                "labelOffsetYPct": 0.06751019021739131,
+                "side": "right",
+                "xPct": 0.8144228727921196,
+                "yPct": 0.280306461352657
+            },
+            {
+                "buttonIndex": 4,
+                "labelOffsetYPct": 0,
+                "side": "left",
+                "xPct": 0.7714829420006794,
+                "yPct": 0.32542647946859904
+            },
+            {
+                "buttonIndex": 5,
+                "labelOffsetYPct": 0,
+                "side": "right",
+                "xPct": 0.8052425837862318,
+                "yPct": 0.11672516606280194
+            }
+        ],
+        "scroll": [
+            {
+                "buttonIndex": -1,
+                "kind": "scrollwheel",
+                "labelOffsetYPct": 0,
+                "side": "right",
+                "xPct": 0.3580620364866394,
+                "yPct": 0.2953464673913043
+            },
+            {
+                "buttonIndex": -3,
+                "kind": "pointer",
+                "labelOffsetYPct": 0,
+                "side": "right",
+                "xPct": 0.8019812719372735,
+                "yPct": 0.11093183876811594
+            }
+        ]
+    },
+    "images": {
+        "back": "back.png",
+        "front": "front.png",
+        "side": "side.png"
+    },
+    "name": "MX Vertical",
+    "productIds": [
+        "0xb020",
+        "0x407b"
+    ],
+    "status": "beta"
 }
