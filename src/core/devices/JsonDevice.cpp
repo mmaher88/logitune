@@ -35,6 +35,8 @@ static ButtonAction::Type parseButtonActionType(const QString& s)
         return ButtonAction::GestureTrigger;
     if (lower == QStringLiteral("smartshift-toggle") || lower == QStringLiteral("smartshifttoggle"))
         return ButtonAction::SmartShiftToggle;
+    if (lower == QStringLiteral("dpi-cycle") || lower == QStringLiteral("dpicycle"))
+        return ButtonAction::DpiCycle;
     if (lower == QStringLiteral("app-launch") || lower == QStringLiteral("applaunch"))
         return ButtonAction::AppLaunch;
     if (lower == QStringLiteral("dbus"))

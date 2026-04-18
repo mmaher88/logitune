@@ -32,6 +32,17 @@ TEST(ButtonAction, ParseSmartShiftToggleKeyword) {
     EXPECT_TRUE(a.payload.isEmpty());
 }
 
+TEST(ButtonAction, ParseDpiCycleKeyword) {
+    auto a = ButtonAction::parse("dpi-cycle");
+    EXPECT_EQ(a.type, ButtonAction::DpiCycle);
+    EXPECT_TRUE(a.payload.isEmpty());
+}
+
+TEST(ButtonAction, SerializeDpiCycleType) {
+    ButtonAction a{ButtonAction::DpiCycle, {}};
+    EXPECT_EQ(a.serialize(), "dpi-cycle");
+}
+
 TEST(ButtonAction, ParseKeystrokeCtrlC) {
     auto a = ButtonAction::parse("keystroke:Ctrl+C");
     EXPECT_EQ(a.type, ButtonAction::Keystroke);

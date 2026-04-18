@@ -117,6 +117,12 @@ TEST_F(DeviceSessionTest, SetDPISkipsWhenNotConnected) {
     EXPECT_EQ(session->currentDPI(), 0);
 }
 
+TEST_F(DeviceSessionTest, CycleDpiSkipsWhenNotConnected) {
+    auto session = makeSession();
+    session->cycleDpi();
+    EXPECT_EQ(session->currentDPI(), 0);
+}
+
 TEST_F(DeviceSessionTest, SetSmartShiftSkipsWhenNotConnected) {
     auto session = makeSession();
     QSignalSpy spy(session.get(), &DeviceSession::smartShiftChanged);

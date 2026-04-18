@@ -20,6 +20,9 @@ ButtonAction ButtonAction::parse(const QString &str)
     if (str == "smartshift-toggle")
         return {SmartShiftToggle, {}};
 
+    if (str == "dpi-cycle")
+        return {DpiCycle, {}};
+
     // Prefixed forms: "type:payload"
     const int colon = str.indexOf(':');
     if (colon == -1)
@@ -46,6 +49,7 @@ QString ButtonAction::serialize() const
     case Default:       return "default";
     case GestureTrigger:  return "gesture-trigger";
     case SmartShiftToggle: return "smartshift-toggle";
+    case DpiCycle:      return "dpi-cycle";
     case Keystroke:     return "keystroke:" + payload;
     case Media:         return "media:" + payload;
     case DBus:          return "dbus:" + payload;

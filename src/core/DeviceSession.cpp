@@ -18,7 +18,70 @@
 #include <QSocketNotifier>
 #include <QTimer>
 
+#include <cstddef>
+#include <cstdlib>
+
 namespace logitune {
+
+// ---------------------------------------------------------------------------
+// DPI cycle pure helpers
+// ---------------------------------------------------------------------------
+
+std::vector<int> DeviceSession::effectiveDpiRing(const std::vector<int> &curated,
+                                                 bool adjustableDpi,
+                                                 int minDpi, int maxDpi, int step)
+{
+    if (!curated.empty())
+        return curated;
+    if (!adjustableDpi)
+        return {};
+    if (maxDpi <= minDpi || step <= 0)
+        return {};
+    int mid = (minDpi + maxDpi) / 2;
+    // Quantise to step relative to minDpi so the midpoint is a reachable value.
+    mid = minDpi + ((mid - minDpi) / step) * step;
+    if (mid <= minDpi) mid = minDpi + step;
+    if (mid >= maxDpi) mid = maxDpi - step;
+    return { minDpi, mid, maxDpi };
+}
+
+int DeviceSession::nextDpiInRing(const std::vector<int> &ring, int currentDpi)
+{
+    if (ring.empty())
+        return 0;
+    std::size_t nearest = 0;
+    int bestDiff = std::abs(ring[0] - currentDpi);
+    for (std::size_t i = 1; i < ring.size(); ++i) {
+        int diff = std::abs(ring[i] - currentDpi);
+        if (diff < bestDiff) {
+            bestDiff = diff;
+            nearest = i;
+        }
+    }
+    return ring[(nearest + 1) % ring.size()];
+}
+
+void DeviceSession::cycleDpi()
+{
+    if (!m_connected) {
+        qCDebug(lcDevice) << "cycleDpi: not connected, skipping";
+        return;
+    }
+    if (!m_activeDevice) {
+        qCDebug(lcDevice) << "cycleDpi: no active device, skipping";
+        return;
+    }
+    auto ring = effectiveDpiRing(m_activeDevice->dpiCycleRing(),
+                                 m_activeDevice->features().adjustableDpi,
+                                 m_minDPI, m_maxDPI, m_dpiStep);
+    if (ring.empty()) {
+        qCDebug(lcDevice) << "cycleDpi: no ring available, skipping";
+        return;
+    }
+    const int next = nextDpiInRing(ring, m_currentDPI);
+    qCDebug(lcDevice) << "cycleDpi: current" << m_currentDPI << "-> next" << next;
+    setDPI(next);
+}
 
 // ---------------------------------------------------------------------------
 // Construction / destruction

@@ -9,6 +9,7 @@ struct ButtonAction {
         Keystroke,
         GestureTrigger,
         SmartShiftToggle,
+        DpiCycle,
         AppLaunch,
         DBus,
         Media,

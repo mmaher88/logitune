@@ -12,6 +12,7 @@
 #include <QTimer>
 #include <memory>
 #include <optional>
+#include <vector>
 
 namespace logitune::test { class AppControllerFixture; }
 
@@ -61,6 +62,15 @@ public:
     int currentHost() const;
     int hostCount() const;
     bool isHostPaired(int host) const;
+
+    // Pure helpers exposed as static methods so they can be unit-tested
+    // without constructing a session. See tests/test_dpi_cycle_ring.cpp.
+    static std::vector<int> effectiveDpiRing(const std::vector<int> &curated,
+                                             bool adjustableDpi,
+                                             int minDpi, int maxDpi, int step);
+    static int nextDpiInRing(const std::vector<int> &ring, int currentDpi);
+
+    Q_INVOKABLE void cycleDpi();
 
     // Setters (write to device via command queue)
     void setDPI(int value);
