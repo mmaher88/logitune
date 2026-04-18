@@ -85,8 +85,7 @@ Item {
             DeviceRender {
                 id: deviceRender
                 anchors.centerIn: parent
-                implicitWidth:  280
-                implicitHeight: 414
+                targetHeight: 414
                 imageSource: DeviceModel.sideImage
             }
 

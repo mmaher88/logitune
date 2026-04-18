@@ -43,7 +43,7 @@ Item {
         Item {
             id: renderGroup
             width: mouseRender.implicitWidth + 460  // match ButtonsPage: room for callouts
-            height: 414
+            height: Math.max(414, mouseRender.implicitHeight)
             anchors.verticalCenter: parent.verticalCenter
 
             // Scale down when available space is tight
@@ -65,8 +65,7 @@ Item {
             DeviceRender {
                 id: mouseRender
                 imageSource: DeviceModel.sideImage
-                implicitWidth: 280
-                implicitHeight: 414
+                targetHeight: 414
                 anchors.centerIn: parent
             }
 

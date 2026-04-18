@@ -8,8 +8,23 @@ import Logitune
 Item {
     id: root
 
-    implicitWidth:  280
-    implicitHeight: 414
+    // Caller sets the render's height budget (in canvas units). Width is
+    // derived from the loaded image aspect, so landscape composites (e.g.
+    // MX Vertical side stitch) expand horizontally to the full image width
+    // instead of being squished into a portrait-sized box, and portrait
+    // single-angle shots (e.g. MX Master 3S) keep their existing footprint.
+    property real targetHeight: 414
+
+    // Aspect from the loaded image. Fall back to MX Master's portrait ratio
+    // until the PNG's sourceSize is known, so the initial layout is stable.
+    readonly property real imageAspect: {
+        if (mouseImage.sourceSize.width > 0 && mouseImage.sourceSize.height > 0)
+            return mouseImage.sourceSize.width / mouseImage.sourceSize.height
+        return 0.676
+    }
+
+    implicitHeight: targetHeight
+    implicitWidth:  targetHeight * imageAspect
 
     // Allow parent to override the image source per page
     property string imageSource: "qrc:/Logitune/qml/assets/mx-master-3s.png"
@@ -24,9 +39,7 @@ Item {
 
     Image {
         id: mouseImage
-        anchors.centerIn: parent
-        width: parent.implicitWidth
-        height: parent.implicitHeight
+        anchors.fill: parent
         source: root.imageSource
         fillMode: Image.PreserveAspectFit
         smooth: true
