@@ -30,6 +30,24 @@ TEST(DpiCycleRing, FallbackQuantisesMidpointToStep) {
     EXPECT_EQ(ring[2], 4000);
 }
 
+TEST(DpiCycleRing, FallbackDegradesToTwoEntriesWhenStepTooLarge) {
+    // min=200, max=300, step=200: quantised mid snaps below min or above max
+    // depending on rounding; the correct policy is a two-entry ring.
+    auto ring = DeviceSession::effectiveDpiRing({}, true, 200, 300, 200);
+    ASSERT_EQ(ring.size(), 2u);
+    EXPECT_EQ(ring[0], 200);
+    EXPECT_EQ(ring[1], 300);
+}
+
+TEST(DpiCycleRing, FallbackDegradesToTwoEntriesWhenStepEqualsRange) {
+    // min=200, max=400, step=200: single step spans the whole range; no
+    // valid interior midpoint exists.
+    auto ring = DeviceSession::effectiveDpiRing({}, true, 200, 400, 200);
+    ASSERT_EQ(ring.size(), 2u);
+    EXPECT_EQ(ring[0], 200);
+    EXPECT_EQ(ring[1], 400);
+}
+
 TEST(DpiCycleRing, EmptyWhenAdjustableDpiFalse) {
     auto ring = DeviceSession::effectiveDpiRing({}, false, 200, 8000, 50);
     EXPECT_TRUE(ring.empty());

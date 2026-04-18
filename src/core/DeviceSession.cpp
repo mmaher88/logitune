@@ -40,8 +40,11 @@ std::vector<int> DeviceSession::effectiveDpiRing(const std::vector<int> &curated
     int mid = (minDpi + maxDpi) / 2;
     // Quantise to step relative to minDpi so the midpoint is a reachable value.
     mid = minDpi + ((mid - minDpi) / step) * step;
-    if (mid <= minDpi) mid = minDpi + step;
-    if (mid >= maxDpi) mid = maxDpi - step;
+    // If step is too large relative to the range, the quantised midpoint
+    // ends up at an endpoint (or worse). Fall back to a two-entry ring so
+    // the cycle is still well-formed: minDpi -> maxDpi -> minDpi.
+    if (mid <= minDpi || mid >= maxDpi)
+        return { minDpi, maxDpi };
     return { minDpi, mid, maxDpi };
 }
 
