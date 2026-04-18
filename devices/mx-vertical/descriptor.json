@@ -42,7 +42,7 @@
     { "controlId": "0x0052", "buttonIndex": 2, "defaultName": "Middle click", "defaultActionType": "default",    "configurable": true  },
     { "controlId": "0x0053", "buttonIndex": 3, "defaultName": "Back",         "defaultActionType": "default",    "configurable": true  },
     { "controlId": "0x0056", "buttonIndex": 4, "defaultName": "Forward",      "defaultActionType": "default",    "configurable": true  },
-    { "controlId": "0x00C3", "buttonIndex": 5, "defaultName": "DPI cycle",    "defaultActionType": "dpi-cycle",  "configurable": true  }
+    { "controlId": "0x00C3", "buttonIndex": 5, "defaultName": "DPI cycle",    "defaultActionType": "default",    "configurable": true  }
   ],
 
   "hotspots": {

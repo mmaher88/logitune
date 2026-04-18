@@ -134,7 +134,7 @@ static const DeviceSpec kDevices[] = {
         .buttonHotspots = 4, .scrollHotspots = 2,
         .minControls = 6,
         .control0Cid = 0x0050, .control5Cid = 0x00C3,
-        .control5ActionType = "dpi-cycle",
+        .control5ActionType = "default",
         .control6ActionType = nullptr,
         .battery = true, .adjustableDpi = true, .smartShift = false,
         .reprogControls = true, .gestureV2 = false,
