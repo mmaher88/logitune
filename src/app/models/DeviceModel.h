@@ -46,6 +46,7 @@ class DeviceModel : public QAbstractListModel {
     Q_PROPERTY(QVariantList easySwitchSlotPositions READ easySwitchSlotPositions NOTIFY selectedChanged)
     Q_PROPERTY(bool smoothScrollSupported READ smoothScrollSupported NOTIFY selectedChanged)
     Q_PROPERTY(bool thumbWheelSupported READ thumbWheelSupported NOTIFY selectedChanged)
+    Q_PROPERTY(bool smartShiftSupported READ smartShiftSupported NOTIFY selectedChanged)
     Q_PROPERTY(QString deviceSerial READ deviceSerial NOTIFY selectedChanged)
     Q_PROPERTY(QString firmwareVersion READ firmwareVersion NOTIFY selectedChanged)
     Q_PROPERTY(int activeSlot READ activeSlot NOTIFY selectedChanged)
@@ -119,6 +120,7 @@ public:
     QVariantList easySwitchSlotPositions() const;
     bool smoothScrollSupported() const;
     bool thumbWheelSupported() const;
+    bool smartShiftSupported() const;
     QString deviceSerial() const;
     QString firmwareVersion() const;
     int activeSlot() const;

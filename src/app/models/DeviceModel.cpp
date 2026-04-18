@@ -606,6 +606,14 @@ bool DeviceModel::thumbWheelSupported() const
     return true;
 }
 
+bool DeviceModel::smartShiftSupported() const
+{
+    auto *s = selectedDevice();
+    if (s && s->descriptor())
+        return s->descriptor()->features().smartShift;
+    return true;
+}
+
 QString DeviceModel::deviceSerial() const
 {
     auto *s = selectedDevice();

@@ -185,7 +185,8 @@ Item {
                     ];
                     if (DeviceModel.smoothScrollSupported)
                         s.push("Smooth scrolling: " + (DeviceModel.scrollHiRes ? "On" : "Off"));
-                    s.push("SmartShift: " + (DeviceModel.smartShiftEnabled ? "On" : "Off"));
+                    if (DeviceModel.smartShiftSupported)
+                        s.push("SmartShift: " + (DeviceModel.smartShiftEnabled ? "On" : "Off"));
                     return s;
                 }
 
