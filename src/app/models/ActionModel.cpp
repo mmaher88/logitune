@@ -14,6 +14,7 @@ ActionModel::ActionModel(QObject *parent)
         { "Close window",         "Close the active window",                    "keystroke",       "Alt+F4"      },
         { "Copy",                 "Copy selected content to clipboard",         "keystroke",       "Ctrl+C"      },
         { "Cut",                  "Cut selected content to clipboard",          "keystroke",       "Ctrl+X"      },
+        { "DPI cycle",            "Step through the device's DPI preset list",  "dpi-cycle",       ""            },
         { "Do nothing",           "Button is disabled",                         "none",            ""            },
         { "Forward",              "Navigate forward in browser/file manager",   "keystroke",       "Alt+Right"   },
         { "Gestures",             "Trigger gesture recognition",                "gesture-trigger", ""            },

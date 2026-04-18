@@ -252,6 +252,8 @@ void AppController::setupProfileForDevice(PhysicalDevice *device)
                     seed.buttons[i] = {ButtonAction::GestureTrigger, {}};
                 else if (ctrl.defaultActionType == "smartshift-toggle")
                     seed.buttons[i] = {ButtonAction::SmartShiftToggle, {}};
+                else if (ctrl.defaultActionType == "dpi-cycle")
+                    seed.buttons[i] = {ButtonAction::DpiCycle, {}};
             }
             const auto defaultGestures = m_currentDevice->defaultGestures();
             for (auto it = defaultGestures.begin(); it != defaultGestures.end(); ++it) {
@@ -421,6 +423,10 @@ void AppController::restoreButtonModelFromProfile(const Profile &p)
         case ButtonAction::SmartShiftToggle:
             aType = QStringLiteral("smartshift-toggle");
             aName = QStringLiteral("Shift wheel mode");
+            break;
+        case ButtonAction::DpiCycle:
+            aType = QStringLiteral("dpi-cycle");
+            aName = QStringLiteral("DPI cycle");
             break;
         case ButtonAction::Keystroke:
             aType = QStringLiteral("keystroke");
@@ -678,6 +684,8 @@ void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
     if (ba.type == ButtonAction::SmartShiftToggle) {
         bool current = session->smartShiftEnabled();
         session->setSmartShift(!current, session->smartShiftThreshold());
+    } else if (ba.type == ButtonAction::DpiCycle) {
+        session->cycleDpi();
     } else if ((ba.type == ButtonAction::Keystroke || ba.type == ButtonAction::Media)
                && !ba.payload.isEmpty()) {
         m_actionExecutor.injectKeystroke(ba.payload);
@@ -757,6 +765,8 @@ ButtonAction AppController::buttonEntryToAction(const QString &actionType, const
         return {ButtonAction::GestureTrigger, {}};
     if (actionType == QStringLiteral("smartshift-toggle"))
         return {ButtonAction::SmartShiftToggle, {}};
+    if (actionType == QStringLiteral("dpi-cycle"))
+        return {ButtonAction::DpiCycle, {}};
     if (actionType == QStringLiteral("media-controls")) {
         static const QHash<QString, QString> mediaKeys = {
             {"Play/Pause",     "Play"},
