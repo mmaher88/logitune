@@ -4,6 +4,7 @@
 #include <QTemporaryDir>
 #include <QFile>
 #include <QFileInfo>
+#include <algorithm>
 using namespace logitune;
 
 struct DeviceSpec {
@@ -268,4 +269,19 @@ TEST(DeviceRegistry, ReloadByPathRefreshesSingleDevice) {
 TEST(DeviceRegistry, ReloadUnknownPathReturnsFalse) {
     logitune::DeviceRegistry reg;
     EXPECT_FALSE(reg.reload(QStringLiteral("/nonexistent/path/that/does/not/exist")));
+}
+
+TEST(DeviceRegistry, MxVerticalForBusinessRegistered) {
+    logitune::DeviceRegistry reg;
+    const auto *dev = reg.findByName(QStringLiteral("MX Vertical for Business"));
+    ASSERT_NE(dev, nullptr);
+    const auto ids = dev->productIds();
+    EXPECT_NE(std::find(ids.begin(), ids.end(), 0xb020), ids.end());
+    EXPECT_EQ(dev->maxDpi(), 4000);
+    EXPECT_EQ(dev->minDpi(), 400);
+    EXPECT_EQ(dev->controls().size(), 6);
+    EXPECT_EQ(dev->controls()[5].controlId, 0x00C3);
+    EXPECT_EQ(dev->controls()[5].defaultActionType, QStringLiteral("default"));
+    EXPECT_FALSE(dev->features().smartShift);
+    EXPECT_TRUE(dev->features().pointerSpeed);
 }
