@@ -177,24 +177,29 @@ void DeviceModel::addPhysicalDevice(PhysicalDevice *device)
         if (device != selectedDevice())
             return;
         m_hasDisplayValues = false;
+        emit smartShiftEnabledChanged();
+        emit smartShiftThresholdChanged();
     });
     connect(device, &PhysicalDevice::scrollConfigChanged, this,
             [this, device]() {
         if (device != selectedDevice())
             return;
         m_hasDisplayValues = false;
+        emit scrollConfigChanged();
     });
     connect(device, &PhysicalDevice::thumbWheelModeChanged, this,
             [this, device]() {
         if (device != selectedDevice())
             return;
         m_hasDisplayValues = false;
+        emit thumbWheelModeChanged();
     });
     connect(device, &PhysicalDevice::currentDPIChanged, this,
             [this, device]() {
         if (device != selectedDevice())
             return;
         m_hasDisplayValues = false;
+        emit currentDPIChanged();
     });
 
     // If the device is already connected at the time of addition, insert
@@ -696,6 +701,11 @@ void DeviceModel::setDisplayValues(int dpi, bool smartShiftEnabled, int smartShi
     m_displayThumbWheelMode = thumbWheelMode;
     m_displayThumbWheelInvert = thumbWheelInvert;
     m_hasDisplayValues = true;
+    emit currentDPIChanged();
+    emit smartShiftEnabledChanged();
+    emit smartShiftThresholdChanged();
+    emit scrollConfigChanged();
+    emit thumbWheelModeChanged();
     emit settingsReloaded();
 }
 

@@ -268,3 +268,65 @@ TEST_F(DeviceModelWithDeviceTest, ThumbWheelHardwareChangeInvalidatesCache) {
     EXPECT_EQ(model.thumbWheelMode(), QStringLiteral("volume"));
     EXPECT_FALSE(model.thumbWheelInvert());
 }
+
+TEST_F(DeviceModelWithDeviceTest, SmartShiftHardwareChangeEmitsProperty) {
+    model.setDisplayValues(1000, true, 128, true, false,
+                           QStringLiteral("scroll"), false);
+
+    QSignalSpy enabledSpy(&model, &DeviceModel::smartShiftEnabledChanged);
+    QSignalSpy thresholdSpy(&model, &DeviceModel::smartShiftThresholdChanged);
+
+    emit m_pd->smartShiftChanged(false, 192);
+
+    EXPECT_EQ(enabledSpy.count(), 1);
+    EXPECT_EQ(thresholdSpy.count(), 1);
+}
+
+TEST_F(DeviceModelWithDeviceTest, ScrollConfigHardwareChangeEmitsOnce) {
+    model.setDisplayValues(1000, true, 128, true, false,
+                           QStringLiteral("scroll"), false);
+
+    QSignalSpy spy(&model, &DeviceModel::scrollConfigChanged);
+    emit m_pd->scrollConfigChanged();
+
+    // scrollHiRes and scrollInvert both NOTIFY on this signal; expect
+    // a single emission, not two.
+    EXPECT_EQ(spy.count(), 1);
+}
+
+TEST_F(DeviceModelWithDeviceTest, ThumbWheelHardwareChangeEmitsProperty) {
+    model.setDisplayValues(1000, true, 128, true, false,
+                           QStringLiteral("scroll"), false);
+
+    QSignalSpy spy(&model, &DeviceModel::thumbWheelModeChanged);
+    emit m_pd->thumbWheelModeChanged();
+
+    EXPECT_EQ(spy.count(), 1);
+}
+
+TEST_F(DeviceModelWithDeviceTest, DPIHardwareChangeEmitsProperty) {
+    model.setDisplayValues(1000, true, 128, true, false,
+                           QStringLiteral("scroll"), false);
+
+    QSignalSpy spy(&model, &DeviceModel::currentDPIChanged);
+    emit m_pd->currentDPIChanged();
+
+    EXPECT_EQ(spy.count(), 1);
+}
+
+TEST_F(DeviceModelWithDeviceTest, SetDisplayValuesEmitsPerPropertySignals) {
+    QSignalSpy dpiSpy(&model, &DeviceModel::currentDPIChanged);
+    QSignalSpy smartSpy(&model, &DeviceModel::smartShiftEnabledChanged);
+    QSignalSpy threshSpy(&model, &DeviceModel::smartShiftThresholdChanged);
+    QSignalSpy scrollSpy(&model, &DeviceModel::scrollConfigChanged);
+    QSignalSpy thumbSpy(&model, &DeviceModel::thumbWheelModeChanged);
+
+    model.setDisplayValues(1500, false, 200, false, true,
+                           QStringLiteral("zoom"), true);
+
+    EXPECT_EQ(dpiSpy.count(), 1);
+    EXPECT_EQ(smartSpy.count(), 1);
+    EXPECT_EQ(threshSpy.count(), 1);
+    EXPECT_EQ(scrollSpy.count(), 1);
+    EXPECT_EQ(thumbSpy.count(), 1);
+}
