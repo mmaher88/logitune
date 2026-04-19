@@ -98,11 +98,25 @@ void PhysicalDevice::connectSessionSignals(DeviceSession *session)
     connect(session, &DeviceSession::batteryChanged, this,
             [this](int, bool) { emit stateChanged(); });
     connect(session, &DeviceSession::smartShiftChanged, this,
-            [this](bool, int) { emit stateChanged(); });
+            [this](bool enabled, int threshold) {
+        emit smartShiftChanged(enabled, threshold);
+        emit stateChanged();
+    });
     connect(session, &DeviceSession::scrollConfigChanged, this,
-            [this]() { emit stateChanged(); });
+            [this]() {
+        emit scrollConfigChanged();
+        emit stateChanged();
+    });
     connect(session, &DeviceSession::thumbWheelModeChanged, this,
-            [this]() { emit stateChanged(); });
+            [this]() {
+        emit thumbWheelModeChanged();
+        emit stateChanged();
+    });
+    connect(session, &DeviceSession::currentDPIChanged, this,
+            [this]() {
+        emit currentDPIChanged();
+        emit stateChanged();
+    });
 
     // Forwarded input events.
     connect(session, &DeviceSession::gestureRawXY,
