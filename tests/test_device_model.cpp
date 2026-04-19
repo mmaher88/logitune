@@ -197,14 +197,17 @@ protected:
 TEST_F(DeviceModelWithDeviceTest, HardwareSmartShiftChangeInvalidatesDisplayCache) {
     model.setDisplayValues(1000, true, 128, true, false,
                            QStringLiteral("scroll"), false);
-    EXPECT_TRUE(model.smartShiftEnabled());
+    EXPECT_TRUE(model.smartShiftEnabled()) << "precondition: cache is armed";
 
     emit m_pd->smartShiftChanged(false, 128);
 
-    // Re-arm with distinct values. If cache invalidation worked, the
-    // getters read from the (freshly re-armed) cache after this call.
-    // If invalidation did NOT work, the getters still see the original
-    // cached values and this test fails.
+    // Falsifiable: after invalidation the getter falls through to the
+    // unenumerated session, which reports smartShiftEnabled() == false.
+    // If the handler failed to clear m_hasDisplayValues, the cached true
+    // would still be returned and this assertion would fail.
+    EXPECT_FALSE(model.smartShiftEnabled()) << "cache invalidated, falls through to live session";
+
+    // Re-arm with distinct values and verify the fresh cache is honored.
     model.setDisplayValues(2000, false, 64, false, true,
                            QStringLiteral("zoom"), true);
     EXPECT_EQ(model.currentDPI(), 2000);
@@ -219,7 +222,12 @@ TEST_F(DeviceModelWithDeviceTest, HardwareSmartShiftChangeInvalidatesDisplayCach
 TEST_F(DeviceModelWithDeviceTest, ScrollConfigHardwareChangeInvalidatesCache) {
     model.setDisplayValues(1000, true, 128, true, false,
                            QStringLiteral("scroll"), false);
+    EXPECT_TRUE(model.scrollHiRes()) << "precondition: scrollHiRes cache is armed true";
+
     emit m_pd->scrollConfigChanged();
+
+    // Falsifiable: cache was true, session default is false.
+    EXPECT_FALSE(model.scrollHiRes()) << "cache invalidated, falls through to live session";
 
     model.setDisplayValues(2500, true, 200, false, true,
                            QStringLiteral("scroll"), false);
@@ -230,9 +238,33 @@ TEST_F(DeviceModelWithDeviceTest, ScrollConfigHardwareChangeInvalidatesCache) {
 TEST_F(DeviceModelWithDeviceTest, DPIHardwareChangeInvalidatesCache) {
     model.setDisplayValues(1000, true, 128, true, false,
                            QStringLiteral("scroll"), false);
+    EXPECT_EQ(model.currentDPI(), 1000) << "precondition: cache is armed";
+
     emit m_pd->currentDPIChanged();
+
+    // Falsifiable: cache was 1000, session default is 0.
+    EXPECT_EQ(model.currentDPI(), 0) << "cache invalidated, falls through to live session";
 
     model.setDisplayValues(3000, true, 128, true, false,
                            QStringLiteral("scroll"), false);
     EXPECT_EQ(model.currentDPI(), 3000);
+}
+
+TEST_F(DeviceModelWithDeviceTest, ThumbWheelHardwareChangeInvalidatesCache) {
+    model.setDisplayValues(1000, true, 128, true, false,
+                           QStringLiteral("zoom"), true);
+    EXPECT_EQ(model.thumbWheelMode(), QStringLiteral("zoom"))
+        << "precondition: cache is armed";
+
+    emit m_pd->thumbWheelModeChanged();
+
+    // Falsifiable: cache was "zoom", session default is "scroll".
+    EXPECT_EQ(model.thumbWheelMode(), QStringLiteral("scroll"))
+        << "cache invalidated, falls through to live session";
+
+    // Re-arm and verify.
+    model.setDisplayValues(1500, true, 128, true, false,
+                           QStringLiteral("volume"), false);
+    EXPECT_EQ(model.thumbWheelMode(), QStringLiteral("volume"));
+    EXPECT_FALSE(model.thumbWheelInvert());
 }
