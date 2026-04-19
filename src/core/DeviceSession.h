@@ -109,6 +109,7 @@ signals:
     void disconnected();
     void batteryChanged(int level, bool charging);
     void smartShiftChanged(bool enabled, int threshold);
+    void currentDPIChanged();
     void scrollConfigChanged();
     void thumbWheelModeChanged();
     void divertedButtonPressed(uint16_t controlId, bool pressed);
