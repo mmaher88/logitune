@@ -2,6 +2,10 @@
 #include <QSignalSpy>
 
 #include "DeviceModel.h"
+#include "DeviceRegistry.h"
+#include "DeviceSession.h"
+#include "PhysicalDevice.h"
+#include "hidpp/HidrawDevice.h"
 #include "helpers/TestFixtures.h"
 
 using logitune::DeviceModel;
@@ -157,4 +161,78 @@ TEST_F(DeviceModelTest, SetActiveProfileNameNoOpOnSame) {
     QSignalSpy spy(&model, &DeviceModel::activeProfileNameChanged);
     model.setActiveProfileName(QStringLiteral("Firefox"));
     EXPECT_EQ(spy.count(), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Fixture with a fake-connected PhysicalDevice, so addPhysicalDevice's
+// per-property relay hooks fire. The session is never driven through HID++
+// enumeration; we just flip setConnectedForTest(true) so PhysicalDevice's
+// isConnected() returns true and DeviceModel inserts the row immediately.
+// ---------------------------------------------------------------------------
+
+class DeviceModelWithDeviceTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        logitune::test::ensureApp();
+
+        auto hidraw = std::make_unique<logitune::hidpp::HidrawDevice>("/dev/null");
+        m_session = std::make_unique<logitune::DeviceSession>(
+            std::move(hidraw), 0xFF, QStringLiteral("Bluetooth"), &m_registry);
+        m_session->setConnectedForTest(true);
+        m_session->setDeviceNameForTest(QStringLiteral("Test Device"));
+
+        m_pd = std::make_unique<logitune::PhysicalDevice>(QStringLiteral("test-serial"));
+        m_pd->attachTransport(m_session.get());
+
+        model.addPhysicalDevice(m_pd.get());
+        model.setSelectedIndex(0);
+    }
+
+    logitune::DeviceRegistry m_registry;
+    std::unique_ptr<logitune::DeviceSession> m_session;
+    std::unique_ptr<logitune::PhysicalDevice> m_pd;
+    DeviceModel model;
+};
+
+TEST_F(DeviceModelWithDeviceTest, HardwareSmartShiftChangeInvalidatesDisplayCache) {
+    model.setDisplayValues(1000, true, 128, true, false,
+                           QStringLiteral("scroll"), false);
+    EXPECT_TRUE(model.smartShiftEnabled());
+
+    emit m_pd->smartShiftChanged(false, 128);
+
+    // Re-arm with distinct values. If cache invalidation worked, the
+    // getters read from the (freshly re-armed) cache after this call.
+    // If invalidation did NOT work, the getters still see the original
+    // cached values and this test fails.
+    model.setDisplayValues(2000, false, 64, false, true,
+                           QStringLiteral("zoom"), true);
+    EXPECT_EQ(model.currentDPI(), 2000);
+    EXPECT_FALSE(model.smartShiftEnabled());
+    EXPECT_EQ(model.smartShiftThreshold(), 64);
+    EXPECT_FALSE(model.scrollHiRes());
+    EXPECT_TRUE(model.scrollInvert());
+    EXPECT_EQ(model.thumbWheelMode(), QStringLiteral("zoom"));
+    EXPECT_TRUE(model.thumbWheelInvert());
+}
+
+TEST_F(DeviceModelWithDeviceTest, ScrollConfigHardwareChangeInvalidatesCache) {
+    model.setDisplayValues(1000, true, 128, true, false,
+                           QStringLiteral("scroll"), false);
+    emit m_pd->scrollConfigChanged();
+
+    model.setDisplayValues(2500, true, 200, false, true,
+                           QStringLiteral("scroll"), false);
+    EXPECT_FALSE(model.scrollHiRes());
+    EXPECT_TRUE(model.scrollInvert());
+}
+
+TEST_F(DeviceModelWithDeviceTest, DPIHardwareChangeInvalidatesCache) {
+    model.setDisplayValues(1000, true, 128, true, false,
+                           QStringLiteral("scroll"), false);
+    emit m_pd->currentDPIChanged();
+
+    model.setDisplayValues(3000, true, 128, true, false,
+                           QStringLiteral("scroll"), false);
+    EXPECT_EQ(model.currentDPI(), 3000);
 }

@@ -164,6 +164,39 @@ void DeviceModel::addPhysicalDevice(PhysicalDevice *device)
         }
     });
 
+    // Per-property relay hooks. DeviceModel caches the last values pushed
+    // in by setDisplayValues (profile load) and short-circuits the getters
+    // to that cache whenever m_hasDisplayValues is true. If the hardware
+    // state changes out from under the cache (button press, on-device
+    // toggle, or a setter emitting optimistic echo), we must clear the
+    // cache so the next getter call falls through to the live session.
+    // Only the selected device's events should clear the cache; events
+    // from alternates are ignored.
+    connect(device, &PhysicalDevice::smartShiftChanged, this,
+            [this, device](bool, int) {
+        if (device != selectedDevice())
+            return;
+        m_hasDisplayValues = false;
+    });
+    connect(device, &PhysicalDevice::scrollConfigChanged, this,
+            [this, device]() {
+        if (device != selectedDevice())
+            return;
+        m_hasDisplayValues = false;
+    });
+    connect(device, &PhysicalDevice::thumbWheelModeChanged, this,
+            [this, device]() {
+        if (device != selectedDevice())
+            return;
+        m_hasDisplayValues = false;
+    });
+    connect(device, &PhysicalDevice::currentDPIChanged, this,
+            [this, device]() {
+        if (device != selectedDevice())
+            return;
+        m_hasDisplayValues = false;
+    });
+
     // If the device is already connected at the time of addition, insert
     // its row immediately. Otherwise we wait for the first connect
     // transition in the stateChanged handler.
