@@ -13,11 +13,25 @@ cycle button press, scroll invert change from another app) don't
 propagate to QML bindings. Properties read stale values until the next
 profile reload.
 
-Fix: give `PhysicalDevice` per-property relay signals, have `DeviceModel`
-forward them (gated on the selected device) to the matching
-Q_PROPERTY NOTIFY signals that already exist but are never emitted.
-Flip the Q_PROPERTY NOTIFYs from the coarse `settingsReloaded` to the
-property-specific signals.
+Two layers to fix:
+
+1. **Signal plumbing.** Give `PhysicalDevice` per-property relay signals,
+   have `DeviceModel` forward them (gated on the selected device) to the
+   Q_PROPERTY NOTIFY signals that already exist but are never emitted.
+   Flip the Q_PROPERTY NOTIFYs from the coarse `settingsReloaded` to the
+   property-specific signals.
+
+2. **Display-cache invalidation.** `DeviceModel` getters like
+   `smartShiftEnabled()` currently return `m_display*` (the active
+   profile's cached values, set by `setDisplayValues`) whenever
+   `m_hasDisplayValues == true`. After the first profile loads, this is
+   true forever, so even when QML re-reads, the getter returns the stale
+   profile value instead of the live session state. Fix: when a hardware
+   state change arrives on the selected device, set
+   `m_hasDisplayValues = false`. Getters fall through to
+   `session->smartShiftEnabled()` etc. The next profile reload (focus
+   change, profile switch, explicit reload) re-populates the cache via
+   `setDisplayValues`.
 
 ## Scope
 
@@ -47,7 +61,27 @@ Out of scope:
 
 ## Root cause
 
-Signal chain today:
+Two layered issues.
+
+### Layer 1: display-values cache shadows live state
+
+`DeviceModel::smartShiftEnabled()` (line 441, mirrored for DPI / threshold
+/ scroll / thumb-wheel) starts with:
+
+```cpp
+if (m_hasDisplayValues) return m_displaySmartShiftEnabled;
+```
+
+`m_hasDisplayValues` is flipped to `true` inside `setDisplayValues` (line
+665), which is called from `AppController::onDisplayProfileChanged`
+every time the active per-app profile changes. After the first profile
+loads, `m_hasDisplayValues` stays `true`, so the getter returns the
+cached *profile* value forever. Hardware changes from the device side
+can fire any number of signals; the getter never sees them.
+
+### Layer 2: signal chain stops at refreshRow
+
+Even ignoring Layer 1, the signal chain today:
 
 ```
 DeviceSession                     PhysicalDevice                  DeviceModel
@@ -73,6 +107,13 @@ All the specific signals declared on `DeviceModel`
 (`smartShiftEnabledChanged`, `smartShiftThresholdChanged`,
 `scrollConfigChanged`, `thumbWheelModeChanged`, `currentDPIChanged`)
 exist but are never emitted.
+
+Note that `refreshRow` already emits `settingsReloaded` on the selected
+row path (line 245). So today's QML bindings on `NOTIFY
+settingsReloaded` *do* get pinged on hardware change. They re-read the
+getter and still see the stale cached profile value because of Layer 1.
+This is why fixing only the signal plumbing (as the original issue
+diagnosis suggests) is insufficient.
 
 ## Design
 
@@ -104,6 +145,24 @@ the existing `selectedBatteryChanged` pattern used for battery.
 Selection change (a different mouse becomes selected) is already
 handled by `selectedChanged` on the properties that care; swapping the
 selected device re-evaluates everything on both QML sides.
+
+### Cache-invalidation rule (Layer 1)
+
+The per-property handler in `DeviceModel` does **both** things when the
+change is on the selected device:
+
+1. Sets `m_hasDisplayValues = false`.
+2. Emits the matching per-property NOTIFY signal(s).
+
+After step 1, the getters (`smartShiftEnabled()`, `currentDPI()`, etc.)
+stop returning the cached `m_display*` values and fall through to
+`session->smartShiftEnabled()` and the other live session readers. QML
+bindings re-read and see the hardware's current value.
+
+`setDisplayValues` re-sets `m_hasDisplayValues = true` as it does today,
+so the next profile reload (focus change, profile switch) cleanly
+re-populates the cache and restores profile-shaped semantics. No other
+call site touches `m_hasDisplayValues`.
 
 ## Code surface
 
@@ -195,15 +254,17 @@ In `addPhysicalDevice` (the same method that already connects
 `stateChanged` around line 146), add five new `connect` calls that wire
 the new PhysicalDevice signals to small handler lambdas. Each handler:
 
-1. Calls `refreshRow(device)` (safety net; the existing `stateChanged`
-   connection already does this, but explicit keeps the handler
-   self-contained if future refactoring separates the two).
-2. Early-returns if `device != selectedDevice()`.
+1. Early-returns if `device != selectedDevice()`.
+2. Sets `m_hasDisplayValues = false` so the getters stop shadowing the
+   live session state with the cached profile value.
 3. Emits the matching DeviceModel signal(s). For `smartShiftChanged`
    this is both `smartShiftEnabledChanged()` and
    `smartShiftThresholdChanged()`. For `scrollConfigChanged` nothing
    needs to happen inside the handler beyond re-emit because both
    affected Q_PROPERTYs share that NOTIFY.
+
+`refreshRow(device)` keeps running via the existing `stateChanged`
+connection; no duplicate call from the per-property handlers.
 
 Keep `settingsReloaded` untouched. It stays as the coarse "reloaded
 from profile" signal that still fires on profile reload paths, and
@@ -234,6 +295,19 @@ selected. For each property in scope:
 - **UnselectedDeviceStillRefreshesRow**: assert that `rowChanged`
   (the QAbstractListModel signal) fires on both selected and
   unselected devices so the carousel stays in sync regardless.
+
+### Cache-invalidation tests
+
+- **HardwareChangeInvalidatesCache**: call `setDisplayValues` to populate
+  the cache, verify the getter returns cached value, simulate a
+  PhysicalDevice per-property emit on the selected device, verify the
+  getter now returns the live session value instead of the cached one.
+- **ProfileReloadRestoresCache**: after a hardware change invalidates
+  the cache, call `setDisplayValues` again; getter should return the
+  new cached value (confirms `setDisplayValues` re-arms the cache).
+- **UnselectedDeviceDoesNotInvalidateCache**: cache invalidation is
+  scoped to the selected device. A hardware change on a non-selected
+  mouse must NOT invalidate the cache.
 
 ### Scroll-pair coupling
 
@@ -266,12 +340,15 @@ stay green.
 
 ## Rollout
 
-Single PR on branch `fix-stale-property-notifys`. Four commit groups:
+Single PR on branch `fix-stale-property-notifys`. Five commit groups:
 
 1. `feat(device-session): emit currentDPIChanged and thumbWheelInvertChanged` — add missing emit points + tests.
 2. `feat(physical-device): relay per-property session signals` — new PhysicalDevice signals + expanded `connectSessionSignals` lambdas.
-3. `feat(device-model): emit per-property notifications gated on selection` — handler lambdas in `addPhysicalDevice`, the `thumbWheelInvertChanged` signal declaration, the new tests.
-4. `feat(device-model): flip Q_PROPERTY NOTIFY to per-property signals` — the header edits. Must land last so QML bindings only flip to the new NOTIFYs after the emit sites exist.
+3. `fix(device-model): invalidate display cache on live hardware change` — in the per-property handlers (added in the next commit), set `m_hasDisplayValues = false` on the selected device. Own commit so the cache-invalidation rule is reviewable in isolation; tested against the `setDisplayValues` round-trip.
+4. `feat(device-model): emit per-property notifications gated on selection` — handler lambdas in `addPhysicalDevice`, the `thumbWheelInvertChanged` signal declaration, the QSignalSpy tests.
+5. `feat(device-model): flip Q_PROPERTY NOTIFY to per-property signals` — the header edits. Must land last so QML bindings only flip to the new NOTIFYs after the emit sites exist.
+
+Commits 3 and 4 touch the same handler lambdas. Land them as separate commits by staging the handler skeleton in commit 3 (cache invalidation only, no emits) and extending it in commit 4 (add the emits). Reviewers see two reviewable diffs: "the handler invalidates the cache" vs "the handler also emits NOTIFYs".
 
 No separate release tag. Lands incidentally in whatever beta comes next.
 
@@ -280,11 +357,15 @@ No separate release tag. Lands incidentally in whatever beta comes next.
 - **Double-emit on profile reload.** Today `settingsReloaded` fires on
   profile reload and drives all these properties. After the flip, those
   properties no longer listen to `settingsReloaded`, so profile reload
-  must also emit the per-property signals. Audit the existing
-  `settingsReloaded` emit sites in `DeviceModel.cpp` (there are four,
-  including `setDisplayValues` and `refreshFromActiveDevice`) and add
-  the per-property emits alongside them. Tests must cover profile
-  reload as a path too.
+  must also emit the per-property signals. Update `setDisplayValues`
+  (the only site that changes `m_display*` in bulk) to emit the
+  corresponding per-property signals: `currentDPIChanged`,
+  `smartShiftEnabledChanged`, `smartShiftThresholdChanged`,
+  `scrollConfigChanged`, `thumbWheelModeChanged`. Audit the four
+  existing `settingsReloaded` emit sites in `DeviceModel.cpp` (lines
+  122, 208, 232, 245, 666); only `setDisplayValues` and
+  `refreshFromActiveDevice` need per-property companions. Tests must
+  cover profile reload as a path too.
 - **Signal storms on rapid hardware changes.** A chattering physical
   button or a DPI ramp could pulse Q_PROPERTY NOTIFYs in quick
   succession. QML bindings are debounced by the event loop; not an
