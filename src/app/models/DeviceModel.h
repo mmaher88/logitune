@@ -26,14 +26,14 @@ class DeviceModel : public QAbstractListModel {
     Q_PROPERTY(bool batteryCharging READ batteryCharging NOTIFY selectedBatteryChanged)
     Q_PROPERTY(QString batteryStatusText READ batteryStatusText NOTIFY selectedBatteryChanged)
     Q_PROPERTY(QString connectionType READ connectionType NOTIFY selectedChanged)
-    Q_PROPERTY(int currentDPI READ currentDPI NOTIFY settingsReloaded)
+    Q_PROPERTY(int currentDPI READ currentDPI NOTIFY currentDPIChanged)
     Q_PROPERTY(int minDPI READ minDPI NOTIFY selectedChanged)
     Q_PROPERTY(int maxDPI READ maxDPI NOTIFY selectedChanged)
     Q_PROPERTY(int dpiStep READ dpiStep NOTIFY selectedChanged)
-    Q_PROPERTY(bool smartShiftEnabled READ smartShiftEnabled NOTIFY settingsReloaded)
-    Q_PROPERTY(int smartShiftThreshold READ smartShiftThreshold NOTIFY settingsReloaded)
-    Q_PROPERTY(bool scrollHiRes READ scrollHiRes NOTIFY settingsReloaded)
-    Q_PROPERTY(bool scrollInvert READ scrollInvert NOTIFY settingsReloaded)
+    Q_PROPERTY(bool smartShiftEnabled READ smartShiftEnabled NOTIFY smartShiftEnabledChanged)
+    Q_PROPERTY(int smartShiftThreshold READ smartShiftThreshold NOTIFY smartShiftThresholdChanged)
+    Q_PROPERTY(bool scrollHiRes READ scrollHiRes NOTIFY scrollConfigChanged)
+    Q_PROPERTY(bool scrollInvert READ scrollInvert NOTIFY scrollConfigChanged)
     Q_PROPERTY(QString activeProfileName READ activeProfileName NOTIFY activeProfileNameChanged)
     Q_PROPERTY(QString activeWmClass READ activeWmClass NOTIFY activeWmClassChanged)
 
@@ -51,8 +51,8 @@ class DeviceModel : public QAbstractListModel {
     Q_PROPERTY(QString firmwareVersion READ firmwareVersion NOTIFY selectedChanged)
     Q_PROPERTY(int activeSlot READ activeSlot NOTIFY selectedChanged)
     Q_PROPERTY(QString deviceStatus READ deviceStatus NOTIFY selectedChanged)
-    Q_PROPERTY(QString thumbWheelMode READ thumbWheelMode NOTIFY settingsReloaded)
-    Q_PROPERTY(bool thumbWheelInvert READ thumbWheelInvert NOTIFY settingsReloaded)
+    Q_PROPERTY(QString thumbWheelMode READ thumbWheelMode NOTIFY thumbWheelModeChanged)
+    Q_PROPERTY(bool thumbWheelInvert READ thumbWheelInvert NOTIFY thumbWheelModeChanged)
 
 public:
     enum Roles {
