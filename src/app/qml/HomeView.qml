@@ -233,7 +233,7 @@ Item {
                     text: {
                         var status = DeviceModel.gnomeTrayStatus()
                         if (status === "not-installed")
-                            return "Run: sudo pacman -S gnome-shell-extension-appindicator\nThen log out and back in."
+                            return "Run: " + DeviceModel.appIndicatorInstallCommand() + "\nThen log out and back in."
                         if (status === "disabled")
                             return "Run: gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com\nThen restart Logitune."
                         return ""

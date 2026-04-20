@@ -141,6 +141,7 @@ public:
     bool thumbWheelInvert() const;
     Q_INVOKABLE void setThumbWheelInvert(bool invert);
     Q_INVOKABLE QString gnomeTrayStatus() const;
+    Q_INVOKABLE QString appIndicatorInstallCommand() const;
 
     void loadGesturesFromProfile(const QMap<QString, QPair<QString, QString>> &gestures);
     void setActiveProfileName(const QString &name);

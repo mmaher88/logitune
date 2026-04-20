@@ -163,6 +163,13 @@ TEST_F(DeviceModelTest, SetActiveProfileNameNoOpOnSame) {
     EXPECT_EQ(spy.count(), 0);
 }
 
+TEST_F(DeviceModelTest, AppIndicatorInstallCommandNonEmpty) {
+    const QString cmd = model.appIndicatorInstallCommand();
+    EXPECT_FALSE(cmd.isEmpty());
+    EXPECT_TRUE(cmd.contains(QStringLiteral("gnome-shell-extension-appindicator")))
+        << "command: " << cmd.toStdString();
+}
+
 // ---------------------------------------------------------------------------
 // Fixture with a fake-connected PhysicalDevice, so addPhysicalDevice's
 // per-property relay hooks fire. The session is never driven through HID++
