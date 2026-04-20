@@ -44,7 +44,7 @@ cp -a /tmp/logitune-rpm/* %{buildroot}/
 /usr/bin/logitune
 /usr/lib/udev/rules.d/71-logitune.rules
 /usr/share/applications/logitune.desktop
-/usr/etc/xdg/autostart/logitune.desktop
+/etc/xdg/autostart/logitune.desktop
 /usr/share/icons/hicolor/scalable/apps/com.logitune.Logitune.svg
 # Device descriptors (JSON + images) and the GNOME shell extension live in
 # their own subtrees. List the directory so new devices and any additional
