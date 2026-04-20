@@ -33,7 +33,9 @@ Item {
 
     signal clicked()
 
-    visible: root.configurable
+    // Non-configurable hotspots (firmware-locked buttons like MX Vertical's
+    // DPI cycle, CID 0x00C3) stay visible so the user still sees the button
+    // labeled on the mouse, but the card does not open the action picker.
 
     // ── Computed marker centre ──
     readonly property real markerCenterX: imageX + hotspotXPct * imageW
@@ -77,8 +79,8 @@ Item {
             anchors.centerIn: parent
             width: 0.22 * root.imageW
             height: 0.14 * root.imageH
-            cursorShape: Qt.PointingHandCursor
-            enabled: !markerDrag.enabled
+            cursorShape: root.configurable ? Qt.PointingHandCursor : Qt.ArrowCursor
+            enabled: !markerDrag.enabled && root.configurable
             onClicked: root.clicked()
         }
 
@@ -197,6 +199,7 @@ Item {
             color: root.selected ? Theme.accent : Theme.cardBg
             border.color: root.selected ? Theme.accentHover : Theme.cardBorder
             border.width: 1
+            opacity: root.configurable ? 1.0 : 0.65
 
             Behavior on color { ColorAnimation { duration: 150 } }
             Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -223,7 +226,7 @@ Item {
                     pixelSize: 12
                     fontWeight: Font.DemiBold
                     textColor: root.selected ? Theme.activeTabText
-                        : (hoverHandler.hovered ? Theme.accent : Theme.text)
+                        : ((hoverHandler.hovered && root.configurable) ? Theme.accent : Theme.text)
                     onCommit: function(v) {
                         var ctrls = DeviceModel.controlDescriptors
                         if (!ctrls) return
@@ -251,7 +254,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 radius: cardRect.radius
-                color: hoverHandler.hovered && !root.selected
+                color: hoverHandler.hovered && !root.selected && root.configurable
                     ? Qt.rgba(0, 0, 0, 0.04) : "transparent"
                 Behavior on color { ColorAnimation { duration: 100 } }
             }
@@ -260,7 +263,8 @@ Item {
 
             MouseArea {
                 anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
+                cursorShape: root.configurable ? Qt.PointingHandCursor : Qt.ArrowCursor
+                enabled: root.configurable
                 propagateComposedEvents: true
                 onClicked: root.clicked()
                 onDoubleClicked: function(mouse) { mouse.accepted = false }

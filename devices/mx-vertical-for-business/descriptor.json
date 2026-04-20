@@ -38,7 +38,7 @@
         },
         {
             "buttonIndex": 5,
-            "configurable": true,
+            "configurable": false,
             "controlId": "0x00C3",
             "defaultActionType": "dpi-cycle",
             "defaultName": "DPI cycle"
