@@ -260,6 +260,15 @@ int main(int argc, char *argv[])
     tray.show();
 
     const bool trayVisible = tray.trayIcon()->isVisible();
+    if (!trayVisible) {
+        // Without a tray icon (e.g. GNOME with no AppIndicator extension)
+        // there is no way to re-open the window or quit from a tray menu, so
+        // closing the window must terminate the process or the user gets
+        // stranded with an invisible running app.
+        app.setQuitOnLastWindowClosed(true);
+        qCInfo(lcApp) << "Tray unavailable -- closing the last window will "
+                         "quit the app";
+    }
     if (startMinimized && trayVisible) {
         for (QObject *obj : engine.rootObjects()) {
             if (auto *window = qobject_cast<QQuickWindow*>(obj))
