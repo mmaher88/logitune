@@ -56,40 +56,66 @@ Item {
             right:  actionsPanel.left
         }
 
-        // ── Mouse + callouts container — moves together when panel opens ─────
+        // Scale math is shared between the device image (scaled) and the
+        // callout overlay (unscaled, reads back the scale to position itself).
+        // The 460 gutter accounts for callout cards spilling outside the
+        // painted image area; landscape composites like MX Vertical rely on
+        // the floor so the image does not vanish in a narrow window.
+        readonly property real fitScale: Math.min(1.0, Math.max(0.55,
+            renderArea.width / (deviceRender.implicitWidth + 460)))
+        readonly property real horizontalShift: root.selectedButton >= 0 ? -60 : 0
+
+        // ── Scaled image stage ───────────────────────────────────────────
         Item {
             id: mouseContainer
 
-            width:  deviceRender.implicitWidth + 460   // extra space for callouts
+            width:  deviceRender.implicitWidth
             height: deviceRender.implicitHeight
 
             anchors.verticalCenter: parent.verticalCenter
-
-            // Scale down when available space is tight
-            readonly property real fitScale: Math.min(1.0, Math.max(0.55, renderArea.width / width))
-            scale: fitScale
+            scale: renderArea.fitScale
             transformOrigin: Item.Center
 
             Behavior on scale {
                 NumberAnimation { duration: 300; easing.type: Easing.InOutCubic }
             }
 
-            // Centre horizontally; shift left when panel opens
-            x: (parent.width - width) / 2 + (root.selectedButton >= 0 ? -60 : 0)
+            x: (parent.width - width) / 2 + renderArea.horizontalShift
 
             Behavior on x {
                 NumberAnimation { duration: 300; easing.type: Easing.InOutCubic }
             }
 
-            // DeviceRender — side view for buttons page
             DeviceRender {
                 id: deviceRender
                 anchors.centerIn: parent
                 targetHeight: 414
                 imageSource: DeviceModel.sideImage
             }
+        }
 
-            // ── Unified hotspot controls (marker + line + card) ─────────────
+        // ── Unscaled callout overlay ─────────────────────────────────────
+        // Callouts live outside the scaled container so their text stays
+        // legible when the image has to shrink (landscape side composites
+        // on narrow windows). Positions project the scaled painted bounds
+        // back into renderArea coordinates.
+        Item {
+            id: calloutLayer
+            anchors.fill: parent
+
+            readonly property real imgCenterX: mouseContainer.x + mouseContainer.width / 2
+            readonly property real imgCenterY: mouseContainer.y + mouseContainer.height / 2
+            readonly property real paintedCx: deviceRender.x + deviceRender.paintedX + deviceRender.paintedW / 2
+            readonly property real paintedCy: deviceRender.y + deviceRender.paintedY + deviceRender.paintedH / 2
+            readonly property real paintedOffsetX: paintedCx - mouseContainer.width / 2
+            readonly property real paintedOffsetY: paintedCy - mouseContainer.height / 2
+            readonly property real scaledPaintedCenterX: imgCenterX + paintedOffsetX * mouseContainer.scale
+            readonly property real scaledPaintedCenterY: imgCenterY + paintedOffsetY * mouseContainer.scale
+            readonly property real scaledPaintedW: deviceRender.paintedW * mouseContainer.scale
+            readonly property real scaledPaintedH: deviceRender.paintedH * mouseContainer.scale
+            readonly property real scaledPaintedX: scaledPaintedCenterX - scaledPaintedW / 2
+            readonly property real scaledPaintedY: scaledPaintedCenterY - scaledPaintedH / 2
+
             Repeater {
                 model: root.calloutData.length
 
@@ -99,23 +125,19 @@ Item {
                     readonly property var cdata: root.calloutData[modelData]
                     readonly property int btnId: cdata.buttonId
 
-                    // Fill mouseContainer so marker + card can position freely
                     anchors.fill: parent
 
-                    // Device image bounds
-                    imageX: deviceRender.x + deviceRender.paintedX
-                    imageY: deviceRender.y + deviceRender.paintedY
-                    imageW: deviceRender.paintedW
-                    imageH: deviceRender.paintedH
+                    imageX: calloutLayer.scaledPaintedX
+                    imageY: calloutLayer.scaledPaintedY
+                    imageW: calloutLayer.scaledPaintedW
+                    imageH: calloutLayer.scaledPaintedH
 
-                    // Hotspot data
                     hotspotXPct: cdata.hotspotXPct
                     hotspotYPct: cdata.hotspotYPct
                     side: cdata.side
                     labelOffsetYPct: cdata.labelOffsetYPct || 0
                     configurable: cdata.configurable
 
-                    // Card data
                     buttonName: cdata.buttonLabel
                     actionName: {
                         var an = ButtonModel.actionNameForButton(btnId)
@@ -125,8 +147,8 @@ Item {
                     buttonId: btnId
                     hotspotIndex: modelData
 
-                    pageWidth: mouseContainer.width
-                    pageHeight: mouseContainer.height
+                    pageWidth: renderArea.width
+                    pageHeight: renderArea.height
 
                     onClicked: selectButton(btnId)
 

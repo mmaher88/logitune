@@ -218,9 +218,9 @@ Item {
                 // Physical button name (primary, bold)
                 EditableText {
                     id: nameLabel
-                    width: 156; height: 16
+                    width: 156; height: 18
                     text: root.buttonName
-                    pixelSize: 12
+                    pixelSize: 14
                     fontWeight: Font.DemiBold
                     textColor: root.selected ? Theme.activeTabText
                         : (hoverHandler.hovered ? Theme.accent : Theme.text)
@@ -239,8 +239,9 @@ Item {
                 // Action name (secondary)
                 Text {
                     text: root.actionName
-                    font.pixelSize: 10
-                    color: root.selected ? Qt.rgba(1,1,1,0.75) : "#999999"
+                    font.pixelSize: 12
+                    color: root.selected ? Qt.rgba(1,1,1,0.85)
+                        : Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, 0.65)
                     width: Math.min(implicitWidth, 156)
                     elide: Text.ElideRight
                     Behavior on color { ColorAnimation { duration: 150 } }
