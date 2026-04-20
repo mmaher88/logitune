@@ -317,6 +317,7 @@ void DeviceSession::enumerateAndSetup()
         if (dpiResp.has_value()) {
             m_currentDPI = hidpp::features::AdjustableDPI::parseCurrentDPI(*dpiResp);
             qCDebug(lcDevice) << "current DPI:" << m_currentDPI;
+            emit currentDPIChanged();
         }
     }
 
@@ -741,19 +742,24 @@ const IDevice* DeviceSession::descriptor() const { return m_activeDevice; }
 
 void DeviceSession::setDPI(int value)
 {
-    if (!m_connected || !m_features || !m_commandQueue) {
-        qCDebug(lcDevice) << "setDPI: skipped (not connected)";
-        return;
-    }
-    if (!m_features->hasFeature(hidpp::FeatureId::AdjustableDPI))
+    if (!m_connected)
         return;
 
     value = qBound(m_minDPI, value, m_maxDPI);
-    value = (value / m_dpiStep) * m_dpiStep;
+    if (m_dpiStep > 0)
+        value = (value / m_dpiStep) * m_dpiStep;
 
-    qCDebug(lcDevice) << "setDPI:" << value << "(was" << m_currentDPI << ") queue=" << m_commandQueue->pending();
+    const int previous = m_currentDPI;
     m_currentDPI = value;
+    if (previous != value)
+        emit currentDPIChanged();
 
+    if (!m_features || !m_commandQueue)
+        return;
+    if (!m_features->hasFeature(hidpp::FeatureId::AdjustableDPI))
+        return;
+
+    qCDebug(lcDevice) << "setDPI:" << value << "(was" << previous << ") queue=" << m_commandQueue->pending();
     auto params = hidpp::features::AdjustableDPI::buildSetDPI(value);
     m_commandQueue->enqueue(hidpp::FeatureId::AdjustableDPI,
                             hidpp::features::AdjustableDPI::kFnSetSensorDpi,

@@ -88,6 +88,15 @@ signals:
     void divertedButtonPressed(uint16_t controlId, bool pressed);
     void thumbWheelRotation(int delta);
 
+    // Per-property relay signals. Mirror DeviceSession's per-field change
+    // signals so QML bindings on specific Q_PROPERTYs can refresh without
+    // waiting on the catch-all stateChanged. DeviceModel subscribes to
+    // these to drive targeted dataChanged roles.
+    void smartShiftChanged(bool enabled, int threshold);
+    void scrollConfigChanged();
+    void thumbWheelModeChanged();
+    void currentDPIChanged();
+
 private:
     void promoteBest();
     void connectSessionSignals(DeviceSession *session);
