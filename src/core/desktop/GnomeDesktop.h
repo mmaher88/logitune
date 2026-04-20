@@ -25,6 +25,7 @@ public slots:
 private:
     bool ensureExtensionInstalled();
     int detectShellMajorVersion();
+    void detectAppIndicatorStatus();
 
     QString m_lastAppId;
     bool m_available = false;

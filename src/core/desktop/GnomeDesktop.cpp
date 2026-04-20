@@ -44,6 +44,12 @@ void GnomeDesktop::start()
         return;
     }
 
+    // Probe the AppIndicator extension before touching our own focus extension.
+    // The two extensions are independent: a fresh install of logitune-focus
+    // requires a shell reload to register, and we still want the tray-icon
+    // banner to reflect reality on the user's first launch.
+    detectAppIndicatorStatus();
+
     // Install and enable the extension
     if (!ensureExtensionInstalled()) {
         qCWarning(lcFocus) << "GNOME: failed to install/enable extension";
@@ -59,45 +65,44 @@ void GnomeDesktop::start()
 
     m_available = true;
     qCInfo(lcFocus) << "GNOME desktop integration started";
+}
 
-    // Check AppIndicator extension status (needed for tray icon on GNOME).
-    // Emit a signal so the UI can show a one-time notification to the user.
-    {
-        static const QString kAppIndicatorUuid =
-            QStringLiteral("appindicatorsupport@rgcjonas.gmail.com");
+void GnomeDesktop::detectAppIndicatorStatus()
+{
+    static const QString kAppIndicatorUuid =
+        QStringLiteral("appindicatorsupport@rgcjonas.gmail.com");
 
-        // Check if extension exists and its state via GetExtensionInfo
-        QDBusMessage infoMsg = QDBusMessage::createMethodCall(
-            QStringLiteral("org.gnome.Shell.Extensions"),
-            QStringLiteral("/org/gnome/Shell/Extensions"),
-            QStringLiteral("org.gnome.Shell.Extensions"),
-            QStringLiteral("GetExtensionInfo"));
-        infoMsg << kAppIndicatorUuid;
-        QDBusMessage infoReply = QDBusConnection::sessionBus().call(infoMsg, QDBus::Block, 2000);
+    QDBusMessage infoMsg = QDBusMessage::createMethodCall(
+        QStringLiteral("org.gnome.Shell.Extensions"),
+        QStringLiteral("/org/gnome/Shell/Extensions"),
+        QStringLiteral("org.gnome.Shell.Extensions"),
+        QStringLiteral("GetExtensionInfo"));
+    infoMsg << kAppIndicatorUuid;
+    QDBusMessage infoReply = QDBusConnection::sessionBus().call(infoMsg, QDBus::Block, 2000);
 
-        bool installed = false;
-        QVariantMap info;
-        if (infoReply.type() == QDBusMessage::ReplyMessage && !infoReply.arguments().isEmpty()) {
-            info = qdbus_cast<QVariantMap>(infoReply.arguments().first());
-            installed = !info.isEmpty();
-        }
+    bool installed = false;
+    QVariantMap info;
+    if (infoReply.type() == QDBusMessage::ReplyMessage && !infoReply.arguments().isEmpty()) {
+        info = qdbus_cast<QVariantMap>(infoReply.arguments().first());
+        installed = !info.isEmpty();
+    }
 
-        if (!installed) {
-            m_appIndicatorStatus = AppIndicatorNotInstalled;
-            qCWarning(lcFocus) << "AppIndicator extension not installed -- tray icon will not be visible."
-                               << "Install: gnome-shell-extension-appindicator";
-        } else {
-            // GNOME Shell extension states: 1=ENABLED, 2=DISABLED, 3=ERROR, 4=OUT_OF_DATE, 5=DOWNLOADING, 6=INITIALIZED
-            int state = info.value(QStringLiteral("state")).toInt();
-            if (state == 1) {
-                m_appIndicatorStatus = AppIndicatorActive;
-                qCInfo(lcFocus) << "AppIndicator extension active";
-            } else {
-                m_appIndicatorStatus = AppIndicatorDisabled;
-                qCWarning(lcFocus) << "AppIndicator extension installed but not enabled (state:" << state << ")"
-                                   << "-- run: gnome-extensions enable" << kAppIndicatorUuid;
-            }
-        }
+    if (!installed) {
+        m_appIndicatorStatus = AppIndicatorNotInstalled;
+        qCWarning(lcFocus) << "AppIndicator extension not installed -- tray icon will not be visible."
+                           << "Install: gnome-shell-extension-appindicator";
+        return;
+    }
+
+    // GNOME Shell extension states: 1=ENABLED, 2=DISABLED, 3=ERROR, 4=OUT_OF_DATE, 5=DOWNLOADING, 6=INITIALIZED
+    int state = info.value(QStringLiteral("state")).toInt();
+    if (state == 1) {
+        m_appIndicatorStatus = AppIndicatorActive;
+        qCInfo(lcFocus) << "AppIndicator extension active";
+    } else {
+        m_appIndicatorStatus = AppIndicatorDisabled;
+        qCWarning(lcFocus) << "AppIndicator extension installed but not enabled (state:" << state << ")"
+                           << "-- run: gnome-extensions enable" << kAppIndicatorUuid;
     }
 }
 
