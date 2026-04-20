@@ -14,6 +14,7 @@
 #include <QTimer>
 #include <QLockFile>
 #include <QStandardPaths>
+#include <QSystemTrayIcon>
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusVariant>
@@ -79,9 +80,15 @@ int main(int argc, char *argv[])
                        "device pages to edit slot positions, hotspots, and images. "
                        "Save writes back to the source descriptor JSON."));
     parser.addOption(editOption);
+    QCommandLineOption minimizedOption(
+        QStringLiteral("minimized"),
+        QStringLiteral("Start hidden to the system tray. Intended for autostart "
+                       "launchers; ignored if no system tray is available."));
+    parser.addOption(minimizedOption);
     parser.process(app);
     const bool simulateAll = parser.isSet(simulateAllOption);
     const bool editMode = parser.isSet(editOption);
+    const bool startMinimized = parser.isSet(minimizedOption);
 
     // Single-instance guard — prevent two instances fighting over the device
     QLockFile lockFile(QStandardPaths::writableLocation(QStandardPaths::TempLocation)
@@ -236,6 +243,20 @@ int main(int argc, char *argv[])
             qCWarning(lcApp) << "Theme expression error:" << expr.error().toString();
         else
             qCInfo(lcApp) << "Theme.dark applied:" << isDark;
+    }
+
+    const bool trayAvailable = QSystemTrayIcon::isSystemTrayAvailable();
+    if (startMinimized && trayAvailable) {
+        for (QObject *obj : engine.rootObjects()) {
+            if (auto *window = qobject_cast<QQuickWindow*>(obj))
+                window->hide();
+        }
+        qCInfo(lcApp) << "Startup: minimized to tray";
+    } else if (startMinimized && !trayAvailable) {
+        qCInfo(lcApp) << "Startup: --minimized requested but no system tray "
+                         "available, showing window";
+    } else {
+        qCDebug(lcApp) << "Startup: showing window";
     }
 
     // System tray
