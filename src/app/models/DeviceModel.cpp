@@ -831,9 +831,9 @@ QString DeviceModel::appIndicatorInstallCommand() const
     case logitune::util::DistroFamily::Fedora:
         return QStringLiteral("sudo dnf install gnome-shell-extension-appindicator");
     case logitune::util::DistroFamily::Unknown:
-    default:
         return QStringLiteral("Install gnome-shell-extension-appindicator via your package manager.");
     }
+    Q_UNREACHABLE();
 }
 
 void DeviceModel::setActiveWmClass(const QString &wmClass)

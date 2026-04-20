@@ -197,16 +197,14 @@ Item {
         // GNOME AppIndicator notification banner
         Rectangle {
             id: trayBanner
+            readonly property string trayStatus: DeviceModel.gnomeTrayStatus()
             anchors { bottom: parent.bottom; left: parent.left; right: parent.right; margins: 16 }
             height: bannerCol.implicitHeight + 24
             radius: 8
             color: Theme.surface
             border.color: Theme.border
             border.width: 1
-            visible: {
-                var status = DeviceModel.gnomeTrayStatus()
-                return status === "not-installed" || status === "disabled"
-            }
+            visible: trayStatus === "not-installed" || trayStatus === "disabled"
 
             Column {
                 id: bannerCol
@@ -215,10 +213,9 @@ Item {
 
                 Text {
                     text: {
-                        var status = DeviceModel.gnomeTrayStatus()
-                        if (status === "not-installed")
+                        if (trayBanner.trayStatus === "not-installed")
                             return "Tray icon requires the AppIndicator GNOME extension"
-                        if (status === "disabled")
+                        if (trayBanner.trayStatus === "disabled")
                             return "AppIndicator extension is installed but not enabled"
                         return ""
                     }
@@ -231,10 +228,9 @@ Item {
 
                 Text {
                     text: {
-                        var status = DeviceModel.gnomeTrayStatus()
-                        if (status === "not-installed")
+                        if (trayBanner.trayStatus === "not-installed")
                             return "Run: " + DeviceModel.appIndicatorInstallCommand() + "\nThen log out and back in."
-                        if (status === "disabled")
+                        if (trayBanner.trayStatus === "disabled")
                             return "Run: gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com\nThen restart Logitune."
                         return ""
                     }
