@@ -25,7 +25,9 @@ endif()
 
 install(FILES data/71-logitune.rules DESTINATION lib/udev/rules.d)
 install(FILES data/logitune.desktop DESTINATION share/applications)
-install(FILES data/logitune.desktop DESTINATION etc/xdg/autostart)
+install(FILES data/logitune-autostart.desktop
+        DESTINATION /etc/xdg/autostart
+        RENAME logitune.desktop)
 install(FILES data/com.logitune.Logitune.svg DESTINATION share/icons/hicolor/scalable/apps)
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/devices/
