@@ -98,23 +98,46 @@ Item {
         // Callouts live outside the scaled container so their text stays
         // legible when the image has to shrink (landscape side composites
         // on narrow windows). Positions project the scaled painted bounds
-        // back into renderArea coordinates.
+        // back into renderArea coordinates via mapToItem, which resolves
+        // the transform in one step and avoids the chain of derived
+        // properties that Qt's binding engine can mis-flag as a loop.
         Item {
             id: calloutLayer
             anchors.fill: parent
 
-            readonly property real imgCenterX: mouseContainer.x + mouseContainer.width / 2
-            readonly property real imgCenterY: mouseContainer.y + mouseContainer.height / 2
-            readonly property real paintedCx: deviceRender.x + deviceRender.paintedX + deviceRender.paintedW / 2
-            readonly property real paintedCy: deviceRender.y + deviceRender.paintedY + deviceRender.paintedH / 2
-            readonly property real paintedOffsetX: paintedCx - mouseContainer.width / 2
-            readonly property real paintedOffsetY: paintedCy - mouseContainer.height / 2
-            readonly property real scaledPaintedCenterX: imgCenterX + paintedOffsetX * mouseContainer.scale
-            readonly property real scaledPaintedCenterY: imgCenterY + paintedOffsetY * mouseContainer.scale
-            readonly property real scaledPaintedW: deviceRender.paintedW * mouseContainer.scale
-            readonly property real scaledPaintedH: deviceRender.paintedH * mouseContainer.scale
-            readonly property real scaledPaintedX: scaledPaintedCenterX - scaledPaintedW / 2
-            readonly property real scaledPaintedY: scaledPaintedCenterY - scaledPaintedH / 2
+            function refreshBounds() {
+                var tl = deviceRender.mapToItem(calloutLayer,
+                    deviceRender.paintedX, deviceRender.paintedY)
+                var br = deviceRender.mapToItem(calloutLayer,
+                    deviceRender.paintedX + deviceRender.paintedW,
+                    deviceRender.paintedY + deviceRender.paintedH)
+                scaledPaintedX = tl.x
+                scaledPaintedY = tl.y
+                scaledPaintedW = br.x - tl.x
+                scaledPaintedH = br.y - tl.y
+            }
+
+            property real scaledPaintedX: 0
+            property real scaledPaintedY: 0
+            property real scaledPaintedW: 0
+            property real scaledPaintedH: 0
+
+            Connections {
+                target: mouseContainer
+                function onXChanged()      { calloutLayer.refreshBounds() }
+                function onYChanged()      { calloutLayer.refreshBounds() }
+                function onScaleChanged()  { calloutLayer.refreshBounds() }
+                function onWidthChanged()  { calloutLayer.refreshBounds() }
+                function onHeightChanged() { calloutLayer.refreshBounds() }
+            }
+            Connections {
+                target: deviceRender
+                function onPaintedXChanged() { calloutLayer.refreshBounds() }
+                function onPaintedYChanged() { calloutLayer.refreshBounds() }
+                function onPaintedWChanged() { calloutLayer.refreshBounds() }
+                function onPaintedHChanged() { calloutLayer.refreshBounds() }
+            }
+            Component.onCompleted: refreshBounds()
 
             Repeater {
                 model: root.calloutData.length
