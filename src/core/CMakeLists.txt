@@ -36,6 +36,7 @@ target_sources(logitune-core PRIVATE
     logging/LogManager.cpp
     logging/CrashHandler.cpp
     DeviceFetcher.cpp
+    DistroDetector.cpp
 )
 
 target_include_directories(logitune-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
