@@ -27,7 +27,8 @@ url="https://github.com/mmaher88/logitune"
 license=('GPL-3.0-or-later')
 depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-5compat' 'systemd-libs')
 makedepends=('cmake' 'ninja' 'qt6-tools')
-optdepends=('gnome-shell: per-app profile switching on GNOME')
+optdepends=('gnome-shell: per-app profile switching on GNOME'
+            'gnome-shell-extension-appindicator: system tray icon on GNOME')
 source=()
 
 build() {
