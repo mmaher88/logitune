@@ -245,20 +245,6 @@ int main(int argc, char *argv[])
             qCInfo(lcApp) << "Theme.dark applied:" << isDark;
     }
 
-    const bool trayAvailable = QSystemTrayIcon::isSystemTrayAvailable();
-    if (startMinimized && trayAvailable) {
-        for (QObject *obj : engine.rootObjects()) {
-            if (auto *window = qobject_cast<QQuickWindow*>(obj))
-                window->hide();
-        }
-        qCInfo(lcApp) << "Startup: minimized to tray";
-    } else if (startMinimized && !trayAvailable) {
-        qCInfo(lcApp) << "Startup: --minimized requested but no system tray "
-                         "available, showing window";
-    } else {
-        qCDebug(lcApp) << "Startup: showing window";
-    }
-
     // System tray
     logitune::TrayManager tray(controller.deviceModel());
     QObject::connect(&tray, &logitune::TrayManager::showWindowRequested, [&engine]() {
@@ -272,6 +258,20 @@ int main(int argc, char *argv[])
     });
     QObject::connect(tray.quitAction(), &QAction::triggered, &app, &QApplication::quit);
     tray.show();
+
+    const bool trayVisible = tray.trayIcon()->isVisible();
+    if (startMinimized && trayVisible) {
+        for (QObject *obj : engine.rootObjects()) {
+            if (auto *window = qobject_cast<QQuickWindow*>(obj))
+                window->hide();
+        }
+        qCInfo(lcApp) << "Startup: minimized to tray";
+    } else if (startMinimized && !trayVisible) {
+        qCInfo(lcApp) << "Startup: --minimized requested but tray is not "
+                         "visible, showing window";
+    } else {
+        qCDebug(lcApp) << "Startup: showing window";
+    }
 
     qCInfo(lcApp) << "Startup complete";
 
