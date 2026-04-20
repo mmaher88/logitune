@@ -30,6 +30,7 @@ Release:        1%{?dist}
 Summary:        Logitech device configurator for Linux
 License:        GPL-3.0-or-later
 URL:            https://github.com/mmaher88/logitune
+Recommends:     gnome-shell-extension-appindicator
 
 %description
 Configure Logitech HID++ peripherals (MX Master 3S and more).
