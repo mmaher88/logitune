@@ -32,6 +32,14 @@ ID=arch
               DistroFamily::Arch);
 }
 
+TEST(DistroDetector, ArchLinuxSingleQuoted) {
+    auto f = writeOsRelease(R"(NAME='Arch Linux'
+ID='arch'
+)");
+    EXPECT_EQ(logitune::util::detectDistroFamilyFromFile(f->fileName()),
+              DistroFamily::Arch);
+}
+
 TEST(DistroDetector, CachyOSViaIdLike) {
     auto f = writeOsRelease(R"(NAME="CachyOS Linux"
 ID=cachyos

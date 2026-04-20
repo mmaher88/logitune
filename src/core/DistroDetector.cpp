@@ -14,7 +14,11 @@ bool parseLine(const QString &line, QString &key, QString &value) {
     if (eq <= 0) return false;
     key = line.left(eq).trimmed();
     QString raw = line.mid(eq + 1).trimmed();
-    if (raw.size() >= 2 && raw.startsWith(QLatin1Char('"')) && raw.endsWith(QLatin1Char('"')))
+    // /etc/os-release per spec allows both double-quoted and single-quoted
+    // values. Historical Alpine and a few embedded distros use single quotes.
+    if (raw.size() >= 2
+        && ((raw.startsWith(QLatin1Char('"'))  && raw.endsWith(QLatin1Char('"')))
+         || (raw.startsWith(QLatin1Char('\'')) && raw.endsWith(QLatin1Char('\'')))))
         raw = raw.mid(1, raw.size() - 2);
     value = raw;
     return true;
