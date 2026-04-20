@@ -75,22 +75,27 @@ void GnomeDesktop::start()
         infoMsg << kAppIndicatorUuid;
         QDBusMessage infoReply = QDBusConnection::sessionBus().call(infoMsg, QDBus::Block, 2000);
 
-        if (infoReply.type() != QDBusMessage::ReplyMessage) {
+        bool installed = false;
+        QVariantMap info;
+        if (infoReply.type() == QDBusMessage::ReplyMessage && !infoReply.arguments().isEmpty()) {
+            info = qdbus_cast<QVariantMap>(infoReply.arguments().first());
+            installed = !info.isEmpty();
+        }
+
+        if (!installed) {
             m_appIndicatorStatus = AppIndicatorNotInstalled;
-            qCWarning(lcFocus) << "AppIndicator extension not installed — tray icon will not be visible."
+            qCWarning(lcFocus) << "AppIndicator extension not installed -- tray icon will not be visible."
                                << "Install: gnome-shell-extension-appindicator";
         } else {
-            // Extension exists — check if enabled (state 1 = ENABLED/ACTIVE)
-            QVariantMap info = qdbus_cast<QVariantMap>(infoReply.arguments().first());
-            double state = info.value(QStringLiteral("state")).toDouble();
             // GNOME Shell extension states: 1=ENABLED, 2=DISABLED, 3=ERROR, 4=OUT_OF_DATE, 5=DOWNLOADING, 6=INITIALIZED
-            if (state == 1.0) {
+            int state = info.value(QStringLiteral("state")).toInt();
+            if (state == 1) {
                 m_appIndicatorStatus = AppIndicatorActive;
                 qCInfo(lcFocus) << "AppIndicator extension active";
             } else {
                 m_appIndicatorStatus = AppIndicatorDisabled;
                 qCWarning(lcFocus) << "AppIndicator extension installed but not enabled (state:" << state << ")"
-                                   << "— run: gnome-extensions enable" << kAppIndicatorUuid;
+                                   << "-- run: gnome-extensions enable" << kAppIndicatorUuid;
             }
         }
     }
