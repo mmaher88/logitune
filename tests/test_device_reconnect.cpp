@@ -29,7 +29,7 @@ TEST_F(AppControllerFixture, ReconnectPreservesHwProfile) {
 // This mirrors the state of AppController before device setup completes.
 TEST(DeviceReconnect, HwProfileEmptyOnFirstConnect) {
     ProfileEngine engine;
-    EXPECT_TRUE(engine.hardwareProfile().isEmpty());
+    EXPECT_TRUE(engine.hardwareProfile(QStringLiteral("mock-serial")).isEmpty());
 }
 
 TEST_F(AppControllerFixture, ProfileDataIntactAcrossReconnect) {

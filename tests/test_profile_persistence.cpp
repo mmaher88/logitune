@@ -94,54 +94,58 @@ TEST_F(ProfilePersistenceTest, MissingFileReturnsDefaults) {
 }
 
 TEST_F(ProfilePersistenceTest, CreateProfileSavesToDisk) {
+    const QString kSerial = QStringLiteral("test-serial");
     ProfileEngine engine;
     Profile def = makeDefaultProfile();
     ProfileEngine::saveProfile(tmpPath() + "/default.conf", def);
-    engine.setDeviceConfigDir(tmpPath());
+    engine.registerDevice(kSerial, tmpPath());
 
-    engine.createProfileForApp("google-chrome", "Google Chrome");
+    engine.createProfileForApp(kSerial, "google-chrome", "Google Chrome");
 
     EXPECT_TRUE(QFile::exists(tmpPath() + "/Google Chrome.conf"));
 }
 
 TEST_F(ProfilePersistenceTest, RemoveProfileDeletesFile) {
+    const QString kSerial = QStringLiteral("test-serial");
     ProfileEngine engine;
     Profile def = makeDefaultProfile();
     ProfileEngine::saveProfile(tmpPath() + "/default.conf", def);
-    engine.setDeviceConfigDir(tmpPath());
+    engine.registerDevice(kSerial, tmpPath());
 
-    engine.createProfileForApp("google-chrome", "Google Chrome");
+    engine.createProfileForApp(kSerial, "google-chrome", "Google Chrome");
     EXPECT_TRUE(QFile::exists(tmpPath() + "/Google Chrome.conf"));
 
-    engine.removeAppProfile("google-chrome");
+    engine.removeAppProfile(kSerial, "google-chrome");
     EXPECT_FALSE(QFile::exists(tmpPath() + "/Google Chrome.conf"));
 }
 
 TEST_F(ProfilePersistenceTest, SaveProfileToDiskWritesCache) {
+    const QString kSerial = QStringLiteral("test-serial");
     ProfileEngine engine;
     Profile def = makeDefaultProfile();
     ProfileEngine::saveProfile(tmpPath() + "/default.conf", def);
-    engine.setDeviceConfigDir(tmpPath());
+    engine.registerDevice(kSerial, tmpPath());
 
-    auto &p = engine.cachedProfile("default");
+    auto &p = engine.cachedProfile(kSerial, "default");
     p.dpi = 3200;
-    engine.saveProfileToDisk("default");
+    engine.saveProfileToDisk(kSerial, "default");
 
     // Reload from disk and verify
     Profile reloaded = ProfileEngine::loadProfile(tmpPath() + "/default.conf");
     EXPECT_EQ(reloaded.dpi, 3200);
 }
 
-TEST_F(ProfilePersistenceTest, SetDeviceConfigDirLoadsAllProfiles) {
+TEST_F(ProfilePersistenceTest, RegisterDeviceLoadsAllProfiles) {
     // Create two profile files on disk
     Profile p1 = makeDefaultProfile(); p1.name = "default"; p1.dpi = 1000;
     Profile p2 = makeDefaultProfile(); p2.name = "Chrome"; p2.dpi = 2000;
     ProfileEngine::saveProfile(tmpPath() + "/default.conf", p1);
     ProfileEngine::saveProfile(tmpPath() + "/Chrome.conf", p2);
 
+    const QString kSerial = QStringLiteral("test-serial");
     ProfileEngine engine;
-    engine.setDeviceConfigDir(tmpPath());
+    engine.registerDevice(kSerial, tmpPath());
 
-    EXPECT_EQ(engine.cachedProfile("default").dpi, 1000);
-    EXPECT_EQ(engine.cachedProfile("Chrome").dpi, 2000);
+    EXPECT_EQ(engine.cachedProfile(kSerial, "default").dpi, 1000);
+    EXPECT_EQ(engine.cachedProfile(kSerial, "Chrome").dpi, 2000);
 }

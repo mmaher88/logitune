@@ -197,63 +197,6 @@ ProfileEngine::ProfileEngine(QObject *parent)
 {
 }
 
-void ProfileEngine::setDeviceConfigDir(const QString &dir)
-{
-    registerDevice(QLatin1String(kLegacySerial), dir);
-    m_configDir = dir;
-}
-
-QStringList ProfileEngine::profileNames() const
-{
-    return profileNames(QLatin1String(kLegacySerial));
-}
-
-Profile& ProfileEngine::cachedProfile(const QString &name)
-{
-    return cachedProfile(QLatin1String(kLegacySerial), name);
-}
-
-QString ProfileEngine::displayProfile() const
-{
-    return displayProfile(QLatin1String(kLegacySerial));
-}
-
-QString ProfileEngine::hardwareProfile() const
-{
-    return hardwareProfile(QLatin1String(kLegacySerial));
-}
-
-void ProfileEngine::setDisplayProfile(const QString &name)
-{
-    setDisplayProfile(QLatin1String(kLegacySerial), name);
-}
-
-void ProfileEngine::setHardwareProfile(const QString &name)
-{
-    setHardwareProfile(QLatin1String(kLegacySerial), name);
-}
-
-void ProfileEngine::saveProfileToDisk(const QString &name)
-{
-    saveProfileToDisk(QLatin1String(kLegacySerial), name);
-}
-
-void ProfileEngine::createProfileForApp(const QString &wmClass,
-                                        const QString &profileName)
-{
-    createProfileForApp(QLatin1String(kLegacySerial), wmClass, profileName);
-}
-
-void ProfileEngine::removeAppProfile(const QString &wmClass)
-{
-    removeAppProfile(QLatin1String(kLegacySerial), wmClass);
-}
-
-QString ProfileEngine::profileForApp(const QString &wmClass) const
-{
-    return profileForApp(QLatin1String(kLegacySerial), wmClass);
-}
-
 // ---------------------------------------------------------------------------
 // Per-device contexts
 // ---------------------------------------------------------------------------
@@ -366,8 +309,6 @@ void ProfileEngine::setDisplayProfile(const QString &serial, const QString &name
     if (c.displayProfile == name) return;
     c.displayProfile = name;
     emit deviceDisplayProfileChanged(serial, cachedProfile(serial, name));
-    if (serial == QLatin1String(kLegacySerial))
-        emit displayProfileChanged(cachedProfile(serial, name));
 }
 
 void ProfileEngine::setHardwareProfile(const QString &serial, const QString &name)
@@ -376,8 +317,6 @@ void ProfileEngine::setHardwareProfile(const QString &serial, const QString &nam
     if (c.hardwareProfile == name) return;
     c.hardwareProfile = name;
     emit deviceHardwareProfileChanged(serial, cachedProfile(serial, name));
-    if (serial == QLatin1String(kLegacySerial))
-        emit hardwareProfileChanged(cachedProfile(serial, name));
 }
 
 void ProfileEngine::saveProfileToDisk(const QString &serial, const QString &name)

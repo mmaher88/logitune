@@ -54,11 +54,6 @@ public:
     static ProfileDelta diff(const Profile &a, const Profile &b);
 
     // Instance methods
-    void setDeviceConfigDir(const QString &dir);
-    QStringList profileNames() const;
-    void createProfileForApp(const QString &wmClass, const QString &profileName);
-    void removeAppProfile(const QString &wmClass);
-
     void registerDevice(const QString &serial, const QString &configDir);
     bool hasDevice(const QString &serial) const;
 
@@ -76,18 +71,7 @@ public:
                              const QString &profileName);
     void removeAppProfile(const QString &serial, const QString &wmClass);
 
-    // --- Profile cache (Task 1) ---
-    Profile& cachedProfile(const QString &name);
-    QString displayProfile() const;
-    QString hardwareProfile() const;
-    void setDisplayProfile(const QString &name);
-    void setHardwareProfile(const QString &name);
-    void saveProfileToDisk(const QString &name);
-    QString profileForApp(const QString &wmClass) const;
-
 signals:
-    void displayProfileChanged(const Profile &profile);
-    void hardwareProfileChanged(const Profile &profile);
     void deviceDisplayProfileChanged(const QString &serial, const Profile &profile);
     void deviceHardwareProfileChanged(const QString &serial, const Profile &profile);
 
@@ -96,13 +80,8 @@ private:
     // registered on first touch; persists for the life of the process.
     QHash<QString, DeviceProfileContext> m_byDevice;
 
-    // Serial used by the legacy single-context API during migration.
-    static constexpr const char *kLegacySerial = "legacy";
-
     DeviceProfileContext& ctx(const QString &serial);
     const DeviceProfileContext& ctx(const QString &serial) const;
-
-    QString m_configDir;
 };
 
 } // namespace logitune
