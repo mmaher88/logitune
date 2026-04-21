@@ -259,7 +259,13 @@ int main(int argc, char *argv[])
     QObject::connect(tray.quitAction(), &QAction::triggered, &app, &QApplication::quit);
     tray.show();
 
-    const bool trayVisible = tray.trayIcon()->isVisible();
+    // QSystemTrayIcon::isVisible() returns true as soon as show() is called,
+    // even when no StatusNotifier host exists to actually render the icon.
+    // isSystemTrayAvailable() is the real capability check: it returns false
+    // on GNOME Wayland without an AppIndicator extension. Using the wrong
+    // check stranded users with no way to reach the app after --minimized
+    // autostart on a session without a tray.
+    const bool trayVisible = QSystemTrayIcon::isSystemTrayAvailable();
     if (!trayVisible) {
         // Without a tray icon (e.g. GNOME with no AppIndicator extension)
         // there is no way to re-open the window or quit from a tray menu, so
