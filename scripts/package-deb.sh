@@ -2,12 +2,14 @@
 set -e
 
 # Derive version from the tag when the workflow is triggered by a tag push,
-# otherwise fall back to the version in CMakeLists.txt. Pre-release tags
-# like v0.3.0-beta.1 encode as 0.3.0~beta.1 so dpkg sorts them before 0.3.0.
+# otherwise fall back to the latest v*-prefixed git tag (same logic
+# CMakeLists.txt uses). Pre-release tags like v0.3.0-beta.1 encode as
+# 0.3.0~beta.1 so dpkg sorts them before 0.3.0.
 if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF_NAME" =~ ^v[0-9] ]]; then
     TAG="${GITHUB_REF_NAME#v}"
 else
-    TAG=$(grep -oP 'project\(logitune VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+    TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed 's/^v//')
+    : "${TAG:=0.2.3}"
 fi
 VERSION="${TAG//-/\~}"
 PKGDIR="/tmp/logitune-deb"
