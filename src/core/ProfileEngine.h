@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QMap>
+#include <QHash>
 #include <QFileSystemWatcher>
 #include <QSettings>
 #include <array>
@@ -32,6 +33,14 @@ struct ProfileDelta {
     bool scrollChanged = false;
     bool buttonsChanged = false;
     bool gesturesChanged = false;
+};
+
+struct DeviceProfileContext {
+    QString configDir;
+    QMap<QString, Profile> cache;
+    QMap<QString, QString> appBindings;
+    QString displayProfile;
+    QString hardwareProfile;
 };
 
 class ProfileEngine : public QObject {
@@ -66,6 +75,16 @@ signals:
     void hardwareProfileChanged(const Profile &profile);
 
 private:
+    // Per-device contexts. Key is PhysicalDevice::deviceSerial(). Lazy-
+    // registered on first touch; persists for the life of the process.
+    QHash<QString, DeviceProfileContext> m_byDevice;
+
+    // Serial used by the legacy single-context API during migration.
+    static constexpr const char *kLegacySerial = "legacy";
+
+    DeviceProfileContext& ctx(const QString &serial);
+    const DeviceProfileContext& ctx(const QString &serial) const;
+
     QString m_configDir;
     QMap<QString, QString> m_appBindings;
     QMap<QString, Profile> m_cache;
