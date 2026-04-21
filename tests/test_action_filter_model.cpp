@@ -74,12 +74,13 @@ TEST(ActionFilterModel, FilterHidesUnsupportedActions) {
 
     MockDevice mock;
     mock.setupMxControls();
-    FeatureSupport f;
-    f.adjustableDpi = true;
-    f.smartShift    = false;   // no free-spin wheel
-    f.thumbWheel    = false;   // no thumb wheel
-    f.reprogControls = true;
-    mock.m_features = f;
+    // setupMxControls() seeds a full-featured MX-family profile; overwrite
+    // m_features to model a ratcheted-wheel device without a thumb wheel.
+    mock.m_features = FeatureSupport{};
+    mock.m_features.adjustableDpi   = true;
+    mock.m_features.smartShift      = false;
+    mock.m_features.thumbWheel      = false;
+    mock.m_features.reprogControls  = true;
 
     attachMockDevice(dm, mock);
     dm.setSelectedIndex(0);
