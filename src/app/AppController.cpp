@@ -662,12 +662,6 @@ void AppController::onThumbWheelInvertChangeRequested(bool invert)
     }
 }
 
-void AppController::onGestureRawXY(int16_t dx, int16_t dy)
-{
-    Q_UNUSED(dx); Q_UNUSED(dy);
-    // Handled by per-session lambda in onSessionAdded
-}
-
 void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
 {
     auto *session = selectedSession();

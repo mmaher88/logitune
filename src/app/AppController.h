@@ -60,7 +60,6 @@ private slots:
     void onDisplayProfileChanged(const QString &serial, const Profile &profile);
     void onPhysicalDeviceAdded(PhysicalDevice *device);
     void onPhysicalDeviceRemoved(PhysicalDevice *device);
-    void onGestureRawXY(int16_t dx, int16_t dy);
     void onDivertedButtonPressed(uint16_t controlId, bool pressed);
     void onThumbWheelRotation(int delta);
     void onDpiChangeRequested(int value);
