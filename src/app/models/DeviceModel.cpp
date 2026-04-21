@@ -653,6 +653,22 @@ bool DeviceModel::smartShiftSupported() const
     return true;
 }
 
+bool DeviceModel::adjustableDpiSupported() const
+{
+    auto *s = selectedDevice();
+    if (s && s->descriptor())
+        return s->descriptor()->features().adjustableDpi;
+    return true;
+}
+
+bool DeviceModel::reprogControlsSupported() const
+{
+    auto *s = selectedDevice();
+    if (s && s->descriptor())
+        return s->descriptor()->features().reprogControls;
+    return true;
+}
+
 QString DeviceModel::deviceSerial() const
 {
     auto *s = selectedDevice();
