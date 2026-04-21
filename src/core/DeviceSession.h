@@ -97,6 +97,10 @@ public:
     // Not intended for production use; called exclusively from test fixtures.
     void setConnectedForTest(bool v) { m_connected = v; }
     void setDeviceNameForTest(const QString &n) { m_deviceName = n; }
+    void setBatteryForTest(int level, bool charging) {
+        m_batteryLevel = level;
+        m_batteryCharging = charging;
+    }
 
     // --simulate-all CLI flag entry point — wires a DeviceSession
     // into a "fake connected" state against a registry descriptor so
