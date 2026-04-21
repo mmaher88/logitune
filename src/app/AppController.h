@@ -67,6 +67,7 @@ private slots:
     void onScrollConfigChangeRequested(bool hiRes, bool invert);
     void onThumbWheelModeChangeRequested(const QString &mode);
     void onThumbWheelInvertChangeRequested(bool invert);
+    void onSelectedDeviceChanged();
 
 private:
     void wireSignals();

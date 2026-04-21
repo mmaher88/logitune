@@ -121,6 +121,9 @@ void AppController::wireSignals()
     connect(&m_profileEngine, &ProfileEngine::deviceDisplayProfileChanged,
             this, &AppController::onDisplayProfileChanged);
 
+    connect(&m_deviceModel, &DeviceModel::selectedChanged,
+            this, &AppController::onSelectedDeviceChanged);
+
     // Physical device lifecycle — one per unique serial, survives transport
     // switches. Per-transport events are routed through PhysicalDevice
     // (which fans in signals from all its transports).
@@ -226,6 +229,25 @@ void AppController::onPhysicalDeviceRemoved(PhysicalDevice *device)
 
     if (m_deviceModel.count() > 0 && m_deviceModel.selectedIndex() < 0)
         m_deviceModel.setSelectedIndex(0);
+}
+
+// Carousel selection changed. Refresh the UI from the newly-selected
+// device's cached profile. No file I/O, no seeding, no hardware apply —
+// one-time device provisioning happens in onPhysicalDeviceAdded.
+void AppController::onSelectedDeviceChanged()
+{
+    auto *device = selectedDevice();
+    if (!device) return;
+
+    m_currentDevice = device->descriptor();
+
+    const QString serial = device->deviceSerial();
+    const QString name = m_profileEngine.displayProfile(serial);
+    if (name.isEmpty()) return;  // device not yet fully set up
+
+    const Profile &p = m_profileEngine.cachedProfile(serial, name);
+    restoreButtonModelFromProfile(p);
+    pushDisplayValues(p);
 }
 
 void AppController::setupProfileForDevice(PhysicalDevice *device)
