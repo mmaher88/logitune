@@ -149,3 +149,69 @@ jobs:
           # are published as GitHub pre-releases so they do not appear as the
           # latest stable download.
           prerelease: ${{ contains(github.ref_name, '-') }}
+
+  # --------------------------------------------------------------------------
+  # Publish the updated PKGBUILD to the AUR. Runs only for stable tags
+  # (no '-' in the ref name); pre-release channels stay off the AUR.
+  # --------------------------------------------------------------------------
+  push-aur:
+    needs: [release]
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+    container:
+      image: archlinux:latest
+      options: --user root
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git openssh sudo
+
+      - uses: actions/checkout@v4
+
+      - name: Set up AUR SSH access
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$AUR_SSH_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<'EOF'
+          Host aur.archlinux.org
+              IdentityFile ~/.ssh/aur
+              User aur
+              StrictHostKeyChecking yes
+          EOF
+
+      - name: Clone AUR repo
+        run: git clone ssh://aur@aur.archlinux.org/logitune.git aur
+
+      - name: Stage updated PKGBUILD + install hook
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TARBALL_URL="https://github.com/mmaher88/logitune/archive/v${VERSION}.tar.gz"
+          SHA=$(curl -fsSL --retry 3 "$TARBALL_URL" | sha256sum | awk '{print $1}')
+          cp packaging/PKGBUILD aur/PKGBUILD
+          cp packaging/logitune.install aur/logitune.install
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" aur/PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" aur/PKGBUILD
+          sed -i "s/^sha256sums=.*/sha256sums=('${SHA}')/" aur/PKGBUILD
+
+      - name: Regenerate .SRCINFO (makepkg refuses root)
+        run: |
+          useradd -m builder
+          chown -R builder aur
+          sudo -u builder bash -c 'cd aur && makepkg --printsrcinfo > .SRCINFO'
+
+      - name: Commit and push
+        run: |
+          cd aur
+          git config user.email "mina.maher88@hotmail.com"
+          git config user.name "mmaher88"
+          git add PKGBUILD .SRCINFO logitune.install
+          if git diff --cached --quiet; then
+            echo "No AUR changes to push."
+          else
+            git commit -m "Update to ${GITHUB_REF_NAME#v}"
+            git push
+          fi
