@@ -57,12 +57,8 @@ DPI, SmartShift, scroll, gesture, and thumb wheel settings.
 %{_datadir}/applications/logitune.desktop
 /etc/xdg/autostart/logitune.desktop
 %{_datadir}/icons/hicolor/scalable/apps/com.logitune.Logitune.svg
-%dir %{_datadir}/gnome-shell
-%dir %{_datadir}/gnome-shell/extensions
-%dir %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com
-%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/metadata.json
-%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/extension.js
-%dir %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v42
-%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v42/extension.js
-%dir %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v45
-%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v45/extension.js
+# Device descriptors (JSON + images) and the GNOME shell extension live in
+# their own subtrees. Ship the directories so new devices and any
+# additional extension resources land automatically.
+%{_datadir}/logitune
+%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com
