@@ -62,6 +62,14 @@ jobs:
     container:
       image: fedora:41
     steps:
+      # actions/checkout falls back to a REST API tarball download when git
+      # is missing, which skips .git entirely. That breaks the git-describe
+      # version lookup in CMakeLists.txt and the binary ends up reporting
+      # the hardcoded 0.2.3 fallback. Install git first so checkout does a
+      # real clone.
+      - name: Install git (required by actions/checkout for .git history)
+        run: dnf install -y git
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -95,6 +103,12 @@ jobs:
       image: archlinux:latest
       options: --user root
     steps:
+      # Same reason as package-rpm: without git, actions/checkout uses the
+      # REST API tarball path and there is no .git, so CMake's
+      # git describe lookup falls back to the hardcoded version.
+      - name: Install git (required by actions/checkout for .git history)
+        run: pacman -Sy --noconfirm --needed git
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
