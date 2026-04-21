@@ -2,6 +2,7 @@
 #include "logging/LogManager.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QStandardPaths>
 
 namespace logitune {
 
@@ -342,6 +343,61 @@ QString ProfileEngine::profilePath(const QString &name) const
 QString ProfileEngine::appBindingsPath() const
 {
     return m_configDir + "/app-bindings.conf";
+}
+
+// ---------------------------------------------------------------------------
+// Per-device contexts
+// ---------------------------------------------------------------------------
+
+DeviceProfileContext& ProfileEngine::ctx(const QString &serial)
+{
+    if (!m_byDevice.contains(serial)) {
+        qCWarning(lcProfile)
+            << "ProfileEngine: lazy-registering unknown device" << serial;
+        const QString defaultDir = QStandardPaths::writableLocation(
+            QStandardPaths::AppConfigLocation)
+            + "/devices/" + serial + "/profiles";
+        registerDevice(serial, defaultDir);
+    }
+    return m_byDevice[serial];
+}
+
+const DeviceProfileContext& ProfileEngine::ctx(const QString &serial) const
+{
+    static const DeviceProfileContext empty{};
+    auto it = m_byDevice.constFind(serial);
+    if (it == m_byDevice.constEnd())
+        return empty;
+    return *it;
+}
+
+void ProfileEngine::registerDevice(const QString &serial, const QString &configDir)
+{
+    DeviceProfileContext &c = m_byDevice[serial];
+    c.configDir = configDir;
+    c.cache.clear();
+    c.appBindings.clear();
+
+    QDir d(configDir);
+    if (!d.exists())
+        QDir().mkpath(configDir);
+
+    if (d.exists()) {
+        for (const auto &f : d.entryList({"*.conf"}, QDir::Files)) {
+            if (f == "app-bindings.conf") continue;
+            QString name = QFileInfo(f).baseName();
+            c.cache[name] = loadProfile(d.filePath(f));
+        }
+    }
+
+    const QString bindingsFile = configDir + "/app-bindings.conf";
+    if (QFileInfo::exists(bindingsFile))
+        c.appBindings = loadAppBindings(bindingsFile);
+}
+
+bool ProfileEngine::hasDevice(const QString &serial) const
+{
+    return m_byDevice.contains(serial);
 }
 
 } // namespace logitune

@@ -61,6 +61,9 @@ public:
     void createProfileForApp(const QString &wmClass, const QString &profileName);
     void removeAppProfile(const QString &wmClass);
 
+    void registerDevice(const QString &serial, const QString &configDir);
+    bool hasDevice(const QString &serial) const;
+
     // --- Profile cache (Task 1) ---
     Profile& cachedProfile(const QString &name);
     QString displayProfile() const;
