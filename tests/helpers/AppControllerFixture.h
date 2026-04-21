@@ -195,6 +195,47 @@ protected:
         m_ctrl->onThumbWheelRotation(delta);
     }
 
+    // Adds a second mock device and registers it through the normal flow.
+    // Returns the new PhysicalDevice for test-level manipulation.
+    PhysicalDevice* addMockDevice(const QString &serialSuffix,
+                                  int seedDpi = 1000) {
+        const QString serial = QStringLiteral("mock-serial-") + serialSuffix;
+        const QString devProfilesDir = m_tmpDir.path()
+            + "/" + serial + "/profiles";
+        QDir().mkpath(devProfilesDir);
+
+        Profile seed;
+        seed.name = QStringLiteral("Default");
+        seed.dpi  = seedDpi;
+        ProfileEngine::saveProfile(devProfilesDir + "/default.conf", seed);
+
+        m_ctrl->m_profileEngine.registerDevice(serial, devProfilesDir);
+
+        auto mockHidraw = std::make_unique<hidpp::HidrawDevice>("/dev/null");
+        auto *session = new DeviceSession(std::move(mockHidraw), 0xFF,
+                                          "Bluetooth", nullptr, m_ctrl.get());
+        session->m_connected = true;
+        session->m_deviceName = QStringLiteral("Mock Device ") + serialSuffix;
+        session->m_activeDevice = &m_device;  // reuse the fixture's MockDevice descriptor
+
+        auto *device = new PhysicalDevice(serial, m_ctrl.get());
+        device->attachTransport(session);
+
+        m_ctrl->onPhysicalDeviceAdded(device);
+
+        // Same bounce as SetUp: setupProfileForDevice wrote a stale
+        // default.conf into AppConfigLocation using the mock's zero DPI;
+        // re-register at our temp dir and force a display-profile emit
+        // with the properly seeded cache.
+        m_ctrl->m_profileEngine.registerDevice(serial, devProfilesDir);
+        m_ctrl->m_profileEngine.setDisplayProfile(serial, QString());
+        m_ctrl->m_profileEngine.setHardwareProfile(serial, QString());
+        m_ctrl->m_profileEngine.setDisplayProfile(serial, QStringLiteral("default"));
+        m_ctrl->m_profileEngine.setHardwareProfile(serial, QStringLiteral("default"));
+
+        return device;
+    }
+
     // -----------------------------------------------------------------------
     // Accessors
     // -----------------------------------------------------------------------
