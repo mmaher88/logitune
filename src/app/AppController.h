@@ -11,6 +11,7 @@
 #include "ActionExecutor.h"
 #include "models/DeviceModel.h"
 #include "models/ButtonModel.h"
+#include "models/ActionFilterModel.h"
 #include "models/ActionModel.h"
 #include "models/ProfileModel.h"
 #include "models/SettingsModel.h"
@@ -49,6 +50,7 @@ public:
     DeviceModel    *deviceModel()    { return &m_deviceModel; }
     ButtonModel    *buttonModel()    { return &m_buttonModel; }
     ActionModel    *actionModel()    { return &m_actionModel; }
+    ActionFilterModel *actionFilterModel() { return m_actionFilterModel.get(); }
     ProfileModel   *profileModel()   { return &m_profileModel; }
     SettingsModel  *settingsModel()  { return &m_settingsModel; }
     EditorModel    *editorModel() const { return m_editorModel.get(); }
@@ -90,6 +92,7 @@ private:
     SettingsModel  m_settingsModel;
     ButtonModel    m_buttonModel;
     ActionModel    m_actionModel;
+    std::unique_ptr<ActionFilterModel> m_actionFilterModel;
     ProfileModel   m_profileModel;
     ProfileEngine  m_profileEngine;
     ActionExecutor m_actionExecutor;

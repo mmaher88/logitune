@@ -196,13 +196,13 @@ int main(int argc, char *argv[])
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     qmlRegisterSingletonInstance("Logitune", 1, 0, "DeviceModel",    controller.deviceModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ButtonModel",    controller.buttonModel());
-    qmlRegisterSingletonInstance("Logitune", 1, 0, "ActionModel",    controller.actionModel());
+    qmlRegisterSingletonInstance("Logitune", 1, 0, "ActionModel",    controller.actionFilterModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ProfileModel",   controller.profileModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "SettingsModel",  controller.settingsModel());
 #else
     engine.rootContext()->setContextProperty("DeviceModel",    controller.deviceModel());
     engine.rootContext()->setContextProperty("ButtonModel",    controller.buttonModel());
-    engine.rootContext()->setContextProperty("ActionModel",    controller.actionModel());
+    engine.rootContext()->setContextProperty("ActionModel",    controller.actionFilterModel());
     engine.rootContext()->setContextProperty("ProfileModel",   controller.profileModel());
     engine.rootContext()->setContextProperty("SettingsModel",  controller.settingsModel());
 

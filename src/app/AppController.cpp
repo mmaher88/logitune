@@ -48,6 +48,9 @@ AppController::AppController(IDesktopIntegration *desktop, IInputInjector *injec
     }
 
     m_actionExecutor.setInjector(m_injector);
+
+    m_actionFilterModel = std::make_unique<ActionFilterModel>(&m_deviceModel, this);
+    m_actionFilterModel->setSourceModel(&m_actionModel);
 }
 
 AppController::~AppController() = default;
