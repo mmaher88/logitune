@@ -79,7 +79,7 @@ void TrayManager::rebuildEntries()
         DeviceEntry entry;
         entry.header = new QAction(d->deviceName(), &m_menu);
         entry.header->setEnabled(false);
-        entry.battery = new QAction(QStringLiteral("Battery: ---%"), &m_menu);
+        entry.battery = new QAction(QStringLiteral("    Battery: ---%"), &m_menu);
         entry.battery->setEnabled(false);
         entry.separator = new QAction(&m_menu);
         entry.separator->setSeparator(true);
@@ -111,7 +111,10 @@ void TrayManager::refreshEntry(PhysicalDevice *device)
 
     const int level = device->batteryLevel();
     const bool charging = device->batteryCharging();
-    QString text = QStringLiteral("Battery: %1%").arg(level);
+    // Leading spaces indent the battery row under its device header so the
+    // menu has a visible parent/child hierarchy. QAction renders text
+    // verbatim, so this is the simplest portable indent.
+    QString text = QStringLiteral("    Battery: %1%").arg(level);
     if (charging)
         text.append(QStringLiteral(" \u26A1"));  // U+26A1 HIGH VOLTAGE SIGN
     it.value().battery->setText(text);

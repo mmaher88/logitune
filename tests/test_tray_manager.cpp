@@ -105,7 +105,7 @@ TEST(TrayManager, OneDeviceAddsHeaderAndBatterySection) {
     EXPECT_FALSE(header->isEnabled());
 
     auto *battery = findAction(tray.menu(), [](QAction *a) {
-        return a->text() == QStringLiteral("Battery: 80%");
+        return a->text() == QStringLiteral("    Battery: 80%");
     });
     ASSERT_NE(battery, nullptr);
     EXPECT_FALSE(battery->isEnabled());
@@ -126,9 +126,9 @@ TEST(TrayManager, SecondDeviceAppendsSection) {
     // Show + Device A + 80% + Device B + 45% + Quit = 6
     EXPECT_EQ(nonSeparatorCount(tray.menu()), 6);
     EXPECT_NE(findAction(tray.menu(), [](QAction *a) {
-        return a->text() == QStringLiteral("Battery: 80%"); }), nullptr);
+        return a->text() == QStringLiteral("    Battery: 80%"); }), nullptr);
     EXPECT_NE(findAction(tray.menu(), [](QAction *a) {
-        return a->text() == QStringLiteral("Battery: 45%"); }), nullptr);
+        return a->text() == QStringLiteral("    Battery: 45%"); }), nullptr);
 }
 
 TEST(TrayManager, DeviceRemovedStripsSection) {
@@ -154,9 +154,9 @@ TEST(TrayManager, DeviceRemovedStripsSection) {
 
     EXPECT_EQ(nonSeparatorCount(tray.menu()), 4);
     EXPECT_EQ(findAction(tray.menu(), [](QAction *a) {
-        return a->text() == QStringLiteral("Battery: 80%"); }), nullptr);
+        return a->text() == QStringLiteral("    Battery: 80%"); }), nullptr);
     EXPECT_NE(findAction(tray.menu(), [](QAction *a) {
-        return a->text() == QStringLiteral("Battery: 45%"); }), nullptr);
+        return a->text() == QStringLiteral("    Battery: 45%"); }), nullptr);
 }
 
 TEST(TrayManager, BatteryChangeUpdatesMatchingEntryOnly) {
@@ -178,11 +178,11 @@ TEST(TrayManager, BatteryChangeUpdatesMatchingEntryOnly) {
     emit devA->stateChanged();
 
     EXPECT_NE(findAction(tray.menu(), [](QAction *a) {
-        return a->text() == QStringLiteral("Battery: 12%"); }), nullptr);
+        return a->text() == QStringLiteral("    Battery: 12%"); }), nullptr);
     EXPECT_EQ(findAction(tray.menu(), [](QAction *a) {
-        return a->text() == QStringLiteral("Battery: 80%"); }), nullptr);
+        return a->text() == QStringLiteral("    Battery: 80%"); }), nullptr);
     EXPECT_NE(findAction(tray.menu(), [](QAction *a) {
-        return a->text() == QStringLiteral("Battery: 45%"); }), nullptr);
+        return a->text() == QStringLiteral("    Battery: 45%"); }), nullptr);
 }
 
 TEST(TrayManager, ChargingSuffixAppearsWhenCharging) {
@@ -195,7 +195,7 @@ TEST(TrayManager, ChargingSuffixAppearsWhenCharging) {
                      60, true, QStringLiteral("mock-C"));
 
     auto *battery = findAction(tray.menu(), [](QAction *a) {
-        return a->text().startsWith(QStringLiteral("Battery: 60%"));
+        return a->text().startsWith(QStringLiteral("    Battery: 60%"));
     });
     ASSERT_NE(battery, nullptr);
     EXPECT_TRUE(battery->text().contains(QStringLiteral("\u26A1")));
