@@ -467,3 +467,19 @@ TEST_F(AppControllerFixture, CarouselSwitchSwapsButtonModel) {
     EXPECT_EQ(buttonModel().actionTypeForButton(3),
               QStringLiteral("media-controls"));
 }
+
+TEST_F(AppControllerFixture, CarouselSwitchSwapsDisplayValues) {
+    // Fixture primary has DPI 1000 (seeded in SetUp).
+    deviceModel().setSelectedIndex(0);
+    EXPECT_EQ(deviceModel().currentDPI(), 1000);
+
+    auto *secondary = addMockDevice(QStringLiteral("B"), /*seedDpi=*/2500);
+
+    const int idxB = deviceModel().devices().indexOf(secondary);
+    ASSERT_GE(idxB, 0);
+    deviceModel().setSelectedIndex(idxB);
+    EXPECT_EQ(deviceModel().currentDPI(), 2500);
+
+    deviceModel().setSelectedIndex(0);
+    EXPECT_EQ(deviceModel().currentDPI(), 1000);
+}
