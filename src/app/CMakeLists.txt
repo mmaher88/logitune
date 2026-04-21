@@ -18,7 +18,10 @@ target_include_directories(logitune-app-lib PUBLIC
 )
 
 target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widgets)
-target_compile_definitions(logitune-app-lib PUBLIC PROJECT_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(logitune-app-lib PUBLIC
+    PROJECT_VERSION="${PROJECT_VERSION}"
+    PROJECT_VERSION_FULL="${LOGITUNE_DISPLAY_VERSION}"
+)
 
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
