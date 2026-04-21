@@ -4,8 +4,6 @@
 #include <QString>
 #include <QMap>
 #include <QHash>
-#include <QFileSystemWatcher>
-#include <QSettings>
 #include <array>
 #include <map>
 
@@ -105,15 +103,6 @@ private:
     const DeviceProfileContext& ctx(const QString &serial) const;
 
     QString m_configDir;
-    QMap<QString, QString> m_appBindings;
-    QMap<QString, Profile> m_cache;
-    QString m_displayProfile;
-    QString m_hardwareProfile;
-    QFileSystemWatcher m_fileWatcher;
-    bool m_selfWrite = false;  // suppress reload during our own save
-
-    QString profilePath(const QString &name) const;
-    QString appBindingsPath() const;
 };
 
 } // namespace logitune
