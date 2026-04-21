@@ -275,8 +275,12 @@ const DeviceProfileContext& ProfileEngine::ctx(const QString &serial) const
 {
     static const DeviceProfileContext empty{};
     auto it = m_byDevice.constFind(serial);
-    if (it == m_byDevice.constEnd())
+    if (it == m_byDevice.constEnd()) {
+        qCWarning(lcProfile)
+            << "ProfileEngine: const lookup for unknown device" << serial
+            << "- returning empty context";
         return empty;
+    }
     return *it;
 }
 

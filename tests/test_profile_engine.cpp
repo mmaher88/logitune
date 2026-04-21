@@ -271,11 +271,8 @@ TEST(ProfileEngine, MultipleDevicesKeepSeparateCaches) {
     eng.registerDevice(QStringLiteral("A"), tmpA.path());
     eng.registerDevice(QStringLiteral("B"), tmpB.path());
 
-    auto &pa = eng.cachedProfile(QStringLiteral("A"), QStringLiteral("default"));
-    auto &pb = eng.cachedProfile(QStringLiteral("B"), QStringLiteral("default"));
-
-    pa.dpi = 1234;
-    pb.dpi = 5678;
+    eng.cachedProfile(QStringLiteral("A"), QStringLiteral("default")).dpi = 1234;
+    eng.cachedProfile(QStringLiteral("B"), QStringLiteral("default")).dpi = 5678;
 
     EXPECT_EQ(eng.cachedProfile(QStringLiteral("A"),
                                 QStringLiteral("default")).dpi, 1234);

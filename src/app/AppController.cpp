@@ -134,6 +134,10 @@ void AppController::wireSignals()
             saveCurrentProfile();
         });
 
+    // TEMPORARY during migration to per-device ProfileEngine contexts:
+    // qOverload pins to the legacy single-context overloads of
+    // createProfileForApp/removeAppProfile. These rewire to the
+    // serial-aware overloads via lambdas in the Commit 2 migration.
     connect(&m_profileModel, &ProfileModel::profileAdded,
             &m_profileEngine,
             qOverload<const QString &, const QString &>(
