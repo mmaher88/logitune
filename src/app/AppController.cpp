@@ -229,15 +229,15 @@ void AppController::setupProfileForDevice(PhysicalDevice *device)
 {
     m_currentDevice = device->descriptor();
 
-    const QString configBase =
-        QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    const QString serial = device->deviceSerial();
+    const QString configBase = QStandardPaths::writableLocation(
+        QStandardPaths::AppConfigLocation);
     const QString profilesDir = configBase
-        + QStringLiteral("/devices/")
-        + device->deviceSerial()
+        + QStringLiteral("/devices/") + serial
         + QStringLiteral("/profiles");
 
     QDir().mkpath(profilesDir);
-    m_profileEngine.setDeviceConfigDir(profilesDir);
+    m_profileEngine.registerDevice(serial, profilesDir);
     qCDebug(lcApp) << "profile dir:" << profilesDir;
 
     const QString defaultConf = profilesDir + QStringLiteral("/default.conf");
@@ -253,7 +253,9 @@ void AppController::setupProfileForDevice(PhysicalDevice *device)
         seed.smoothScrolling     = !device->scrollRatchet();
         if (m_currentDevice) {
             const auto controls = m_currentDevice->controls();
-            for (int i = 0; i < static_cast<int>(controls.size()) && i < static_cast<int>(seed.buttons.size()); ++i) {
+            for (int i = 0;
+                 i < static_cast<int>(controls.size()) &&
+                 i < static_cast<int>(seed.buttons.size()); ++i) {
                 const auto &ctrl = controls[i];
                 if (ctrl.defaultActionType == "gesture-trigger")
                     seed.buttons[i] = {ButtonAction::GestureTrigger, {}};
@@ -263,19 +265,19 @@ void AppController::setupProfileForDevice(PhysicalDevice *device)
                     seed.buttons[i] = {ButtonAction::DpiCycle, {}};
             }
             const auto defaultGestures = m_currentDevice->defaultGestures();
-            for (auto it = defaultGestures.begin(); it != defaultGestures.end(); ++it) {
+            for (auto it = defaultGestures.begin();
+                 it != defaultGestures.end(); ++it) {
                 seed.gestures[it.key()] = it.value();
             }
         }
         ProfileEngine::saveProfile(defaultConf, seed);
-        m_profileEngine.setDeviceConfigDir(profilesDir);
+        m_profileEngine.registerDevice(serial, profilesDir);  // reload cache after seeding
         qCDebug(lcApp) << "created default profile at" << defaultConf;
     }
 
     const QString bindingsFile = profilesDir + QStringLiteral("/app-bindings.conf");
     if (QFile::exists(bindingsFile)) {
         const auto bindings = ProfileEngine::loadAppBindings(bindingsFile);
-
         QMap<QString, QString> iconLookup;
         const auto apps = m_desktop->runningApplications();
         for (const auto &app : apps) {
@@ -283,26 +285,24 @@ void AppController::setupProfileForDevice(PhysicalDevice *device)
             iconLookup[map[QStringLiteral("wmClass")].toString().toLower()]
                 = map[QStringLiteral("icon")].toString();
         }
-
         for (auto it = bindings.cbegin(); it != bindings.cend(); ++it) {
             QString icon = iconLookup.value(it.key().toLower());
             m_profileModel.restoreProfile(it.key(), it.value(), icon);
         }
     }
 
-    QString hwName = m_profileEngine.hardwareProfile();
+    QString hwName = m_profileEngine.hardwareProfile(serial);
     bool isFirstConnect = hwName.isEmpty();
-
     if (isFirstConnect) {
         hwName = QStringLiteral("default");
         m_profileModel.setHwActiveIndex(0);
-        m_profileEngine.setHardwareProfile(hwName);
-        m_profileEngine.setDisplayProfile(hwName);
+        m_profileEngine.setHardwareProfile(serial, hwName);
+        m_profileEngine.setDisplayProfile(serial, hwName);
     }
 
-    Profile &p = m_profileEngine.cachedProfile(hwName);
+    Profile &p = m_profileEngine.cachedProfile(serial, hwName);
     qCDebug(lcApp) << "setupProfileForDevice: applying profile" << hwName
-                    << "thumbWheelMode=" << p.thumbWheelMode;
+                   << "thumbWheelMode=" << p.thumbWheelMode;
     applyProfileToHardware(p);
 }
 
