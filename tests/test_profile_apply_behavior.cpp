@@ -32,7 +32,7 @@ TEST_F(ProfileApplyBehaviorTest, NonConfigurableButtonsAreSkippedDuringProfileAp
     focusApp("firefox");
 
     // Verify profile was applied (DPI changed = hardware profile switched)
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Firefox");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Firefox");
 }
 
 TEST_F(ProfileApplyBehaviorTest, ConfigurableButtonsStillDivertedWhenNonConfigExist) {
@@ -44,11 +44,11 @@ TEST_F(ProfileApplyBehaviorTest, ConfigurableButtonsStillDivertedWhenNonConfigEx
     setProfileButton("VSCode", 2, {ButtonAction::Keystroke, "Ctrl+Z"});
 
     focusApp("code");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "VSCode");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "VSCode");
 
     // Switching back to default should also work
     focusApp("some-other-app");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
 // ---------------------------------------------------------------------------
@@ -94,17 +94,17 @@ TEST_F(ProfileApplyBehaviorTest, ProfileSwitchDoesNotAccumulateStaleState) {
 
     // Rapidly switch between profiles
     focusApp("firefox");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Firefox");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Firefox");
 
     focusApp("code");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "VSCode");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "VSCode");
 
     focusApp("firefox");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Firefox");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Firefox");
 
     // Final state should be clean — no stale profile lingering
     focusApp("some-other-app");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
 // ---------------------------------------------------------------------------

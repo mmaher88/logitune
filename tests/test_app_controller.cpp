@@ -10,8 +10,8 @@ using namespace logitune::test;
 
 TEST_F(AppControllerFixture, Smoke) {
     EXPECT_NE(m_ctrl.get(), nullptr);
-    EXPECT_EQ(profileEngine().displayProfile(), "default");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "default");
+    EXPECT_EQ(profileEngine().displayProfile(QStringLiteral("mock-serial")), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
 // =============================================================================
@@ -24,26 +24,26 @@ TEST_F(AppControllerFixture, FocusAppWithProfileSwitchesHardware) {
 
     focusApp("google-chrome");
 
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Chrome");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Chrome");
 }
 
 TEST_F(AppControllerFixture, FocusAppWithoutProfileSwitchesToDefault) {
     // No profile for "firefox" — should stay on default
     focusApp("firefox");
 
-    EXPECT_EQ(profileEngine().hardwareProfile(), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
 TEST_F(AppControllerFixture, FocusSameAppTwiceNoDoubleApply) {
     createAppProfile("google-chrome", "Chrome", 1600);
 
     focusApp("google-chrome");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Chrome");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Chrome");
 
     // Focus same app again — hardware profile already "Chrome", should be a no-op.
     // We verify by checking that profileForApp still returns "Chrome" and no crash.
     focusApp("google-chrome");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Chrome");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Chrome");
 }
 
 TEST_F(AppControllerFixture, DesktopComponentsFiltered) {
@@ -52,13 +52,13 @@ TEST_F(AppControllerFixture, DesktopComponentsFiltered) {
     focusApp("org.kde.plasmashell");
 
     // plasmashell is in the ignore list — hardware profile must NOT change
-    EXPECT_EQ(profileEngine().hardwareProfile(), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
 TEST_F(AppControllerFixture, KwinWaylandFiltered) {
     focusApp("kwin_wayland");
 
-    EXPECT_EQ(profileEngine().hardwareProfile(), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
 TEST_F(AppControllerFixture, FocusUpdatesHwIndicator) {
@@ -80,14 +80,14 @@ TEST_F(AppControllerFixture, TabSwitchChangesDisplayNotHardware) {
 
     // Focus Chrome so hardware is on Chrome
     focusApp("google-chrome");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Chrome");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Chrome");
 
     // User clicks the default tab (index 0)
     profileModel().selectTab(0);
 
     // Display should be default, but hardware stays on Chrome
-    EXPECT_EQ(profileEngine().displayProfile(), "default");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Chrome");
+    EXPECT_EQ(profileEngine().displayProfile(QStringLiteral("mock-serial")), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Chrome");
 }
 
 TEST_F(AppControllerFixture, TabSwitchPushesDisplayValues) {
@@ -107,14 +107,14 @@ TEST_F(AppControllerFixture, SettingsSaveToDisplayedProfile) {
     createAppProfile("google-chrome", "Chrome", 1600);
 
     // Display Chrome profile
-    profileEngine().setDisplayProfile("Chrome");
+    profileEngine().setDisplayProfile(QStringLiteral("mock-serial"), "Chrome");
 
     // Set a button action on button 3 (Back) via ButtonModel — simulates UI action
     buttonModel().setAction(3, "Copy", "keystroke");
 
     // Trigger save via saveCurrentProfile (this is what happens after userActionChanged)
     // The action should be saved to the Chrome profile
-    Profile &chromeP = profileEngine().cachedProfile("Chrome");
+    Profile &chromeP = profileEngine().cachedProfile(QStringLiteral("mock-serial"), "Chrome");
     // After save, the Chrome profile should reflect the displayed edit
     // Note: saveCurrentProfile writes from ButtonModel to the displayed profile.
     // buttonModel().setAction emits userActionChanged -> onUserButtonChanged -> saveCurrentProfile
@@ -131,13 +131,13 @@ TEST_F(AppControllerFixture, SettingsDontSaveToOtherProfile) {
     focusApp("google-chrome");
     profileModel().selectTab(0); // switch display to default
 
-    EXPECT_EQ(profileEngine().displayProfile(), "default");
+    EXPECT_EQ(profileEngine().displayProfile(QStringLiteral("mock-serial")), "default");
 
     // Change a button on displayed (default) profile
     buttonModel().setAction(3, "Paste", "keystroke");
 
     // Chrome profile button 3 should still be Alt+Left, not Paste
-    const Profile &chromeP = profileEngine().cachedProfile("Chrome");
+    const Profile &chromeP = profileEngine().cachedProfile(QStringLiteral("mock-serial"), "Chrome");
     EXPECT_EQ(chromeP.buttons[3].type, ButtonAction::Keystroke);
     EXPECT_EQ(chromeP.buttons[3].payload, "Alt+Left");
 }
@@ -167,8 +167,8 @@ TEST_F(AppControllerFixture, DispatchReadsHwNotDisplayProfile) {
 
     // User switches display tab to default
     profileModel().selectTab(0);
-    EXPECT_EQ(profileEngine().displayProfile(), "default");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Chrome");
+    EXPECT_EQ(profileEngine().displayProfile(QStringLiteral("mock-serial")), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Chrome");
 
     // Press button 3 — should dispatch Chrome's action (Alt+Left), not default's
     pressButton(0x53);
@@ -314,11 +314,11 @@ TEST_F(AppControllerFixture, GestureUsesHardwareProfileGestures) {
 
     // Focus Chrome — hardware profile is now Chrome
     focusApp("google-chrome");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Chrome");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Chrome");
 
     // Switch display to default
     profileModel().selectTab(0);
-    EXPECT_EQ(profileEngine().displayProfile(), "default");
+    EXPECT_EQ(profileEngine().displayProfile(QStringLiteral("mock-serial")), "default");
 
     // Gesture right — should use Chrome's (hardware) gesture, not default's (display)
     pressButton(0xC3);

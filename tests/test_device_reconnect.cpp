@@ -7,17 +7,17 @@ using namespace logitune::test;
 
 TEST_F(AppControllerFixture, FirstConnectSetsDefaultProfile) {
     // Fresh controller — hw profile should be "default" after setup
-    EXPECT_EQ(profileEngine().hardwareProfile(), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
 TEST_F(AppControllerFixture, ReconnectPreservesHwProfile) {
     createAppProfile("google-chrome", "Google Chrome", 2000, "zoom");
     focusApp("google-chrome");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Google Chrome");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Google Chrome");
 
     // Simulate reconnect: onDeviceSetupComplete re-runs
     // The hw profile should stay "Google Chrome", not reset to "default"
-    QString hwBefore = profileEngine().hardwareProfile();
+    QString hwBefore = profileEngine().hardwareProfile(QStringLiteral("mock-serial"));
 
     // We can't fully simulate onDeviceSetupComplete without DeviceManager,
     // but we can verify the logic: if hwProfile is non-empty, it should be preserved
@@ -35,13 +35,13 @@ TEST(DeviceReconnect, HwProfileEmptyOnFirstConnect) {
 TEST_F(AppControllerFixture, ProfileDataIntactAcrossReconnect) {
     createAppProfile("google-chrome", "Google Chrome");
     // Explicitly set dpi and thumbWheelMode in the cache (createAppProfile copies from default)
-    profileEngine().cachedProfile("Google Chrome").dpi = 2000;
-    profileEngine().cachedProfile("Google Chrome").thumbWheelMode = "zoom";
+    profileEngine().cachedProfile(QStringLiteral("mock-serial"), "Google Chrome").dpi = 2000;
+    profileEngine().cachedProfile(QStringLiteral("mock-serial"), "Google Chrome").thumbWheelMode = "zoom";
     setProfileButton("Google Chrome", 3, {ButtonAction::Keystroke, "Alt+Left"});
     focusApp("google-chrome");
 
     // Verify profile data is intact
-    auto &p = profileEngine().cachedProfile("Google Chrome");
+    auto &p = profileEngine().cachedProfile(QStringLiteral("mock-serial"), "Google Chrome");
     EXPECT_EQ(p.dpi, 2000);
     EXPECT_EQ(p.thumbWheelMode, "zoom");
     EXPECT_EQ(p.buttons[3].type, ButtonAction::Keystroke);
