@@ -1,6 +1,7 @@
 #include "desktop/GnomeDesktop.h"
 #include "logging/LogManager.h"
 #include <QDBusConnection>
+#include <QDBusConnectionInterface>
 #include <QDBusMessage>
 #include <QDBusReply>
 #include <QDBusVariant>
@@ -69,41 +70,62 @@ void GnomeDesktop::start()
 
 void GnomeDesktop::detectAppIndicatorStatus()
 {
-    static const QString kAppIndicatorUuid =
-        QStringLiteral("appindicatorsupport@rgcjonas.gmail.com");
+    // Primary signal: any AppIndicator implementation (rgcjonas'
+    // appindicatorsupport, Ubuntu's ubuntu-appindicators, etc.) registers
+    // org.kde.StatusNotifierWatcher on the session bus. If present, the
+    // tray icon will render regardless of which extension backs it.
+    //
+    // Previous implementation checked a specific uuid via GetExtensionInfo
+    // and incorrectly reported "not installed" on Ubuntu GNOME, which ships
+    // ubuntu-appindicators@ubuntu.com preinstalled.
+    const bool watcherRegistered = QDBusConnection::sessionBus()
+        .interface()
+        ->isServiceRegistered(QStringLiteral("org.kde.StatusNotifierWatcher"));
 
-    QDBusMessage infoMsg = QDBusMessage::createMethodCall(
-        QStringLiteral("org.gnome.Shell.Extensions"),
-        QStringLiteral("/org/gnome/Shell/Extensions"),
-        QStringLiteral("org.gnome.Shell.Extensions"),
-        QStringLiteral("GetExtensionInfo"));
-    infoMsg << kAppIndicatorUuid;
-    QDBusMessage infoReply = QDBusConnection::sessionBus().call(infoMsg, QDBus::Block, 2000);
-
-    bool installed = false;
-    QVariantMap info;
-    if (infoReply.type() == QDBusMessage::ReplyMessage && !infoReply.arguments().isEmpty()) {
-        info = qdbus_cast<QVariantMap>(infoReply.arguments().first());
-        installed = !info.isEmpty();
-    }
-
-    if (!installed) {
-        m_appIndicatorStatus = AppIndicatorNotInstalled;
-        qCWarning(lcFocus) << "AppIndicator extension not installed -- tray icon will not be visible."
-                           << "Install: gnome-shell-extension-appindicator";
+    if (watcherRegistered) {
+        m_appIndicatorStatus = AppIndicatorActive;
+        qCInfo(lcFocus) << "StatusNotifier watcher active; tray icons supported";
         return;
     }
 
-    // GNOME Shell extension states: 1=ENABLED, 2=DISABLED, 3=ERROR, 4=OUT_OF_DATE, 5=DOWNLOADING, 6=INITIALIZED
-    int state = info.value(QStringLiteral("state")).toInt();
-    if (state == 1) {
-        m_appIndicatorStatus = AppIndicatorActive;
-        qCInfo(lcFocus) << "AppIndicator extension active";
-    } else {
+    // Watcher is absent. Distinguish "installed but disabled" from
+    // "not installed at all" so the banner shows the right remediation
+    // (enable vs install). Probe the two known community uuids.
+    static const QStringList kKnownUuids = {
+        QStringLiteral("appindicatorsupport@rgcjonas.gmail.com"),
+        QStringLiteral("ubuntu-appindicators@ubuntu.com"),
+    };
+
+    for (const QString &uuid : kKnownUuids) {
+        QDBusMessage infoMsg = QDBusMessage::createMethodCall(
+            QStringLiteral("org.gnome.Shell.Extensions"),
+            QStringLiteral("/org/gnome/Shell/Extensions"),
+            QStringLiteral("org.gnome.Shell.Extensions"),
+            QStringLiteral("GetExtensionInfo"));
+        infoMsg << uuid;
+        QDBusMessage infoReply = QDBusConnection::sessionBus()
+            .call(infoMsg, QDBus::Block, 2000);
+
+        if (infoReply.type() != QDBusMessage::ReplyMessage
+            || infoReply.arguments().isEmpty())
+            continue;
+
+        const QVariantMap info = qdbus_cast<QVariantMap>(
+            infoReply.arguments().first());
+        if (info.isEmpty())
+            continue;
+
         m_appIndicatorStatus = AppIndicatorDisabled;
-        qCWarning(lcFocus) << "AppIndicator extension installed but not enabled (state:" << state << ")"
-                           << "-- run: gnome-extensions enable" << kAppIndicatorUuid;
+        qCWarning(lcFocus) << "AppIndicator extension" << uuid
+                           << "installed but not enabled -- run: "
+                              "gnome-extensions enable" << uuid;
+        return;
     }
+
+    m_appIndicatorStatus = AppIndicatorNotInstalled;
+    qCWarning(lcFocus) << "No StatusNotifier watcher and no known AppIndicator "
+                          "extension installed -- tray icon will not be visible."
+                       << "Install: gnome-shell-extension-appindicator";
 }
 
 bool GnomeDesktop::ensureExtensionInstalled()
