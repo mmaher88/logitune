@@ -321,6 +321,12 @@ DeviceSession *AppController::selectedSession() const
     return d ? d->primary() : nullptr;
 }
 
+QString AppController::selectedSerial() const
+{
+    auto *d = selectedDevice();
+    return d ? d->deviceSerial() : QString();
+}
+
 // Slot implementations -------------------------------------------------------
 
 void AppController::onUserButtonChanged(int buttonId, const QString &actionName, const QString &actionType)

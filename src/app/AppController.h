@@ -78,6 +78,7 @@ private:
     void setupProfileForDevice(PhysicalDevice *device);
     PhysicalDevice *selectedDevice() const;
     DeviceSession *selectedSession() const;  // convenience — selectedDevice()->primary()
+    QString selectedSerial() const;  // PhysicalDevice::deviceSerial() of the selected device, or empty
     QString buttonActionToName(const ButtonAction &ba) const;
     ButtonAction buttonEntryToAction(const QString &actionType, const QString &actionName) const;
 
