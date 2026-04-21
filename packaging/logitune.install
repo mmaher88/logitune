@@ -1,0 +1,33 @@
+post_install() {
+    echo ""
+    echo "==> Logitune installed!"
+    echo ""
+
+    # Reload udev rules so hidraw/uinput permissions take effect
+    udevadm control --reload-rules 2>/dev/null
+    udevadm trigger 2>/dev/null
+
+    echo "    1. Unplug and replug your Logitech device (or reboot)"
+    echo "    2. Run: logitune"
+    echo ""
+
+    # Detect GNOME and give specific instructions
+    _de=$(printenv XDG_CURRENT_DESKTOP 2>/dev/null | tr '[:upper:]' '[:lower:]')
+    case "$_de" in
+        *gnome*)
+            echo "    GNOME users:"
+            echo ""
+            echo "    For tray icon support, install and enable AppIndicator:"
+            echo "      sudo pacman -S gnome-shell-extension-appindicator"
+            echo "      gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com"
+            echo ""
+            echo "    Log out and back in after first launch for per-app"
+            echo "    profile switching and tray icon to take effect."
+            echo ""
+            ;;
+    esac
+}
+
+post_upgrade() {
+    post_install
+}
