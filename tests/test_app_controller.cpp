@@ -483,3 +483,28 @@ TEST_F(AppControllerFixture, CarouselSwitchSwapsDisplayValues) {
     deviceModel().setSelectedIndex(0);
     EXPECT_EQ(deviceModel().currentDPI(), 1000);
 }
+
+TEST_F(AppControllerFixture, DisplayProfileChangedIgnoredForNonSelectedDevice) {
+    deviceModel().setSelectedIndex(0);
+    EXPECT_EQ(deviceModel().currentDPI(), 1000);
+
+    // Add a second device without switching to it. Primary stays selected.
+    addMockDevice(QStringLiteral("B"), /*seedDpi=*/2500);
+    EXPECT_EQ(deviceModel().selectedIndex(), 0);
+
+    // Modify device B's cached profile and fire its displayProfile signal.
+    // setDisplayProfile short-circuits on unchanged name, so bounce through
+    // an intermediate value to force emission.
+    const QString serialB = QStringLiteral("mock-serial-B");
+    Profile &pB = profileEngine().cachedProfile(
+        serialB, QStringLiteral("default"));
+    pB.dpi = 9999;
+    profileEngine().setDisplayProfile(
+        serialB, QStringLiteral("other"));
+    profileEngine().setDisplayProfile(
+        serialB, QStringLiteral("default"));
+
+    // DeviceModel should still reflect device A's 1000 DPI — the
+    // onDisplayProfileChanged filter rejected device B's signal.
+    EXPECT_EQ(deviceModel().currentDPI(), 1000);
+}
