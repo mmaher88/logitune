@@ -70,6 +70,14 @@ public:
     QString hardwareProfile(const QString &serial) const;
     QString profileForApp(const QString &serial, const QString &wmClass) const;
 
+    void setDisplayProfile(const QString &serial, const QString &name);
+    void setHardwareProfile(const QString &serial, const QString &name);
+    void saveProfileToDisk(const QString &serial, const QString &name);
+    void createProfileForApp(const QString &serial,
+                             const QString &wmClass,
+                             const QString &profileName);
+    void removeAppProfile(const QString &serial, const QString &wmClass);
+
     // --- Profile cache (Task 1) ---
     Profile& cachedProfile(const QString &name);
     QString displayProfile() const;
@@ -82,6 +90,8 @@ public:
 signals:
     void displayProfileChanged(const Profile &profile);
     void hardwareProfileChanged(const Profile &profile);
+    void deviceDisplayProfileChanged(const QString &serial, const Profile &profile);
+    void deviceHardwareProfileChanged(const QString &serial, const Profile &profile);
 
 private:
     // Per-device contexts. Key is PhysicalDevice::deviceSerial(). Lazy-

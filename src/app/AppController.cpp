@@ -135,9 +135,12 @@ void AppController::wireSignals()
         });
 
     connect(&m_profileModel, &ProfileModel::profileAdded,
-            &m_profileEngine, &ProfileEngine::createProfileForApp);
+            &m_profileEngine,
+            qOverload<const QString &, const QString &>(
+                &ProfileEngine::createProfileForApp));
     connect(&m_profileModel, &ProfileModel::profileRemoved,
-            &m_profileEngine, &ProfileEngine::removeAppProfile);
+            &m_profileEngine,
+            qOverload<const QString &>(&ProfileEngine::removeAppProfile));
 
     connect(&m_deviceFetcher, &DeviceFetcher::descriptorsUpdated,
             this, [this]() {

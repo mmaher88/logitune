@@ -447,4 +447,70 @@ QString ProfileEngine::profileForApp(const QString &serial, const QString &wmCla
     return QStringLiteral("default");
 }
 
+void ProfileEngine::setDisplayProfile(const QString &serial, const QString &name)
+{
+    DeviceProfileContext &c = ctx(serial);
+    if (c.displayProfile == name) return;
+    c.displayProfile = name;
+    emit deviceDisplayProfileChanged(serial, cachedProfile(serial, name));
+    if (serial == QLatin1String(kLegacySerial))
+        emit displayProfileChanged(cachedProfile(serial, name));
+}
+
+void ProfileEngine::setHardwareProfile(const QString &serial, const QString &name)
+{
+    DeviceProfileContext &c = ctx(serial);
+    if (c.hardwareProfile == name) return;
+    c.hardwareProfile = name;
+    emit deviceHardwareProfileChanged(serial, cachedProfile(serial, name));
+    if (serial == QLatin1String(kLegacySerial))
+        emit hardwareProfileChanged(cachedProfile(serial, name));
+}
+
+void ProfileEngine::saveProfileToDisk(const QString &serial, const QString &name)
+{
+    DeviceProfileContext &c = ctx(serial);
+    if (!c.cache.contains(name) || c.configDir.isEmpty()) return;
+    saveProfile(c.configDir + "/" + name + ".conf", c.cache[name]);
+}
+
+void ProfileEngine::createProfileForApp(const QString &serial,
+                                        const QString &wmClass,
+                                        const QString &profileName)
+{
+    DeviceProfileContext &c = ctx(serial);
+    if (c.configDir.isEmpty() || wmClass.isEmpty() || profileName.isEmpty())
+        return;
+    if (!c.cache.contains(profileName)) {
+        c.cache[profileName] = c.cache.value(QStringLiteral("default"));
+        c.cache[profileName].name = profileName;
+        saveProfile(c.configDir + "/" + profileName + ".conf",
+                    c.cache[profileName]);
+    }
+    c.appBindings[wmClass] = profileName;
+    saveAppBindings(c.configDir + "/app-bindings.conf", c.appBindings);
+}
+
+void ProfileEngine::removeAppProfile(const QString &serial, const QString &wmClass)
+{
+    DeviceProfileContext &c = ctx(serial);
+    if (c.configDir.isEmpty() || wmClass.isEmpty()) return;
+
+    const QString profileName = c.appBindings.value(wmClass);
+    if (profileName.isEmpty()) return;
+
+    QFile::remove(c.configDir + "/" + profileName + ".conf");
+    c.cache.remove(profileName);
+    c.appBindings.remove(wmClass);
+    saveAppBindings(c.configDir + "/app-bindings.conf", c.appBindings);
+
+    if (c.displayProfile == profileName)
+        setDisplayProfile(serial, QStringLiteral("default"));
+    if (c.hardwareProfile == profileName)
+        setHardwareProfile(serial, QStringLiteral("default"));
+
+    qCDebug(lcProfile) << "removed profile" << profileName
+                       << "for app" << wmClass << "on device" << serial;
+}
+
 } // namespace logitune
