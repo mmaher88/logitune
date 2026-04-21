@@ -435,3 +435,35 @@ TEST_F(AppControllerFixture, MediaActionPerProfileSwitching) {
     EXPECT_TRUE(m_injector->hasCalled("injectKeystroke"));
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Next");
 }
+
+TEST_F(AppControllerFixture, CarouselSwitchSwapsButtonModel) {
+    // Fixture's primary device "mock-serial" is selected (index 0). Set
+    // its button 3 to a distinctive action.
+    setProfileButton("default", 3,
+                     {ButtonAction::Keystroke, QStringLiteral("Alt+Left")});
+    deviceModel().setSelectedIndex(0);
+
+    auto *secondary = addMockDevice(QStringLiteral("B"));
+    {
+        const QString serialB = QStringLiteral("mock-serial-B");
+        Profile &pB = profileEngine().cachedProfile(
+            serialB, QStringLiteral("default"));
+        pB.buttons[3] = {ButtonAction::Media, QStringLiteral("Play")};
+        profileEngine().saveProfileToDisk(
+            serialB, QStringLiteral("default"));
+    }
+
+    // Select device A explicitly and confirm ButtonModel reflects A.
+    deviceModel().setSelectedIndex(0);
+    EXPECT_EQ(buttonModel().actionTypeForButton(3),
+              QStringLiteral("keystroke"));
+
+    // Switch carousel to device B.
+    const int idxB = deviceModel().devices().indexOf(secondary);
+    ASSERT_GE(idxB, 0);
+    deviceModel().setSelectedIndex(idxB);
+
+    // ButtonModel now reflects device B.
+    EXPECT_EQ(buttonModel().actionTypeForButton(3),
+              QStringLiteral("media-controls"));
+}
