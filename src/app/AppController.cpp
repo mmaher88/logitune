@@ -118,7 +118,7 @@ void AppController::wireSignals()
     connect(&m_profileModel, &ProfileModel::profileSwitched,
             this, &AppController::onTabSwitched);
 
-    connect(&m_profileEngine, &ProfileEngine::displayProfileChanged,
+    connect(&m_profileEngine, &ProfileEngine::deviceDisplayProfileChanged,
             this, &AppController::onDisplayProfileChanged);
 
     // Physical device lifecycle — one per unique serial, survives transport
@@ -366,14 +366,17 @@ void AppController::onTabSwitched(const QString &profileName)
     m_profileEngine.setDisplayProfile(serial, profileName);
 }
 
-void AppController::onDisplayProfileChanged(const Profile &profile)
+void AppController::onDisplayProfileChanged(const QString &serial, const Profile &profile)
 {
+    if (serial != selectedSerial())
+        return;
+
     m_deviceModel.setActiveProfileName(profile.name);
 
     m_deviceModel.setDisplayValues(
         profile.dpi, profile.smartShiftEnabled, profile.smartShiftThreshold,
-        profile.hiResScroll, profile.scrollDirection == "natural", profile.thumbWheelMode,
-        profile.thumbWheelInvert);
+        profile.hiResScroll, profile.scrollDirection == "natural",
+        profile.thumbWheelMode, profile.thumbWheelInvert);
 
     restoreButtonModelFromProfile(profile);
 }

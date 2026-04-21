@@ -57,7 +57,7 @@ private slots:
     void onUserButtonChanged(int buttonId, const QString &actionName, const QString &actionType);
     void onWindowFocusChanged(const QString &wmClass, const QString &title);
     void onTabSwitched(const QString &profileName);
-    void onDisplayProfileChanged(const Profile &profile);
+    void onDisplayProfileChanged(const QString &serial, const Profile &profile);
     void onPhysicalDeviceAdded(PhysicalDevice *device);
     void onPhysicalDeviceRemoved(PhysicalDevice *device);
     void onGestureRawXY(int16_t dx, int16_t dy);

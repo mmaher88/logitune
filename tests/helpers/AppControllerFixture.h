@@ -22,6 +22,7 @@ class AppControllerFixture : public ::testing::Test {
 protected:
     void SetUp() override {
         ensureApp();
+        clearTestAppConfig();
         ASSERT_TRUE(m_tmpDir.isValid());
 
         m_desktop  = new MockDesktop();
@@ -66,10 +67,14 @@ protected:
         m_ctrl->onPhysicalDeviceAdded(m_physicalDevice);
 
         // setupProfileForDevice points the engine at AppConfigLocation
-        // (the real config dir), but tests need their temp dir. Re-register
-        // after the added flow runs so the cache reloads from m_profilesDir
-        // where the fixture wrote default.conf.
+        // (the real config dir, scoped to test mode). Tests need their
+        // temp dir instead, so re-register here and force a display
+        // profile refresh. setDisplayProfile short-circuits when the
+        // name matches its current value, so bounce through "" to make
+        // the engine re-emit with the freshly loaded cache values.
         m_ctrl->m_profileEngine.registerDevice(kSerial, m_profilesDir);
+        m_ctrl->m_profileEngine.setDisplayProfile(kSerial, QString());
+        m_ctrl->m_profileEngine.setHardwareProfile(kSerial, QString());
         m_ctrl->m_profileEngine.setDisplayProfile(kSerial, QStringLiteral("default"));
         m_ctrl->m_profileEngine.setHardwareProfile(kSerial, QStringLiteral("default"));
     }
