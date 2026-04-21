@@ -400,4 +400,51 @@ bool ProfileEngine::hasDevice(const QString &serial) const
     return m_byDevice.contains(serial);
 }
 
+Profile& ProfileEngine::cachedProfile(const QString &serial, const QString &name)
+{
+    DeviceProfileContext &c = ctx(serial);
+    if (!c.cache.contains(name)) {
+        c.cache[name] = Profile{};
+        c.cache[name].name = name;
+    }
+    return c.cache[name];
+}
+
+QStringList ProfileEngine::profileNames(const QString &serial) const
+{
+    const DeviceProfileContext &c = ctx(serial);
+    if (c.configDir.isEmpty())
+        return {};
+    QDir dir(c.configDir);
+    const QStringList files = dir.entryList({"*.conf"}, QDir::Files);
+    QStringList names;
+    names.reserve(files.size());
+    for (const QString &f : files) {
+        const QString base = QFileInfo(f).baseName();
+        if (base != QLatin1String("app-bindings"))
+            names << base;
+    }
+    return names;
+}
+
+QString ProfileEngine::displayProfile(const QString &serial) const
+{
+    return ctx(serial).displayProfile;
+}
+
+QString ProfileEngine::hardwareProfile(const QString &serial) const
+{
+    return ctx(serial).hardwareProfile;
+}
+
+QString ProfileEngine::profileForApp(const QString &serial, const QString &wmClass) const
+{
+    const DeviceProfileContext &c = ctx(serial);
+    for (auto it = c.appBindings.cbegin(); it != c.appBindings.cend(); ++it) {
+        if (it.key().compare(wmClass, Qt::CaseInsensitive) == 0)
+            return it.value();
+    }
+    return QStringLiteral("default");
+}
+
 } // namespace logitune

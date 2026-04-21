@@ -64,6 +64,12 @@ public:
     void registerDevice(const QString &serial, const QString &configDir);
     bool hasDevice(const QString &serial) const;
 
+    Profile& cachedProfile(const QString &serial, const QString &name);
+    QStringList profileNames(const QString &serial) const;
+    QString displayProfile(const QString &serial) const;
+    QString hardwareProfile(const QString &serial) const;
+    QString profileForApp(const QString &serial, const QString &wmClass) const;
+
     // --- Profile cache (Task 1) ---
     Profile& cachedProfile(const QString &name);
     QString displayProfile() const;
