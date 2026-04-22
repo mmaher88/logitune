@@ -45,7 +45,9 @@ DPI, SmartShift, scroll, gesture, and thumb wheel settings.
 %autosetup -n logitune-%{version}
 
 %build
-%cmake -DBUILD_TESTING=OFF
+# OBS builds from a source tarball with no .git, so feed the version
+# through -DLOGITUNE_VERSION; CMakeLists.txt refuses to guess.
+%cmake -DBUILD_TESTING=OFF -DLOGITUNE_VERSION=%{version}
 %cmake_build
 
 %install

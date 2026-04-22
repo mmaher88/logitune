@@ -34,7 +34,7 @@ source=()
 
 build() {
     cd "$startdir"
-    cmake -B build-pkg -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -Wno-dev
+    cmake -B build-pkg -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -DLOGITUNE_VERSION=VERSION_PLACEHOLDER -Wno-dev
     cmake --build build-pkg -j$(nproc)
 }
 
@@ -46,7 +46,7 @@ package() {
 PKGBUILD_EOF
 
 # Inject version (heredoc was single-quoted to preserve $startdir/$pkgdir)
-sed -i "s/VERSION_PLACEHOLDER/$VERSION/" "$SRCDIR/PKGBUILD"
+sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" "$SRCDIR/PKGBUILD"
 
 # Build
 cd "$SRCDIR"

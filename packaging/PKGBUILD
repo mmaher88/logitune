@@ -15,10 +15,14 @@ source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
 build() {
+    # Pass the version explicitly: the GitHub source tarball has no .git,
+    # so CMake's git-describe lookup would fail and the configure step
+    # refuses to guess. pkgver is the single source of truth here.
     cmake -B build -S "$pkgname-$pkgver" -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DBUILD_TESTING=OFF \
+        -DLOGITUNE_VERSION="$pkgver" \
         -Wno-dev
     cmake --build build
 }

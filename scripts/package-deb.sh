@@ -19,7 +19,7 @@ echo "Building .deb package v$VERSION ($ARCH)"
 
 # Build release (offscreen for headless gtest_discover_tests)
 export QT_QPA_PLATFORM=offscreen
-cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -Wno-dev > /dev/null 2>&1
+cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -DLOGITUNE_VERSION="$VERSION" -Wno-dev > /dev/null 2>&1
 cmake --build build-release -j$(nproc)
 
 # Create package structure
