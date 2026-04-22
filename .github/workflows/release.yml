@@ -258,6 +258,9 @@ jobs:
           useradd -m builder
           chown -R builder aur
           sudo -u builder bash -c 'cd aur && makepkg --printsrcinfo > .SRCINFO'
+          # Restore root ownership so subsequent git operations don't trip
+          # git's safe.directory check (dubious-ownership refusal).
+          chown -R root:root aur
 
       - name: Commit
         env:
