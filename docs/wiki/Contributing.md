@@ -34,7 +34,15 @@ Install the git pre-push hook to catch failures before they reach CI:
 make setup-hooks
 ```
 
-This copies `scripts/pre-push` into `.git/hooks/`. It runs all three test tiers (C++, tray, QML) before allowing a push.
+Since PR #97, `cmake -B build` auto-activates the tracked `hooks/` directory via `core.hooksPath` — there's no manual step. `hooks/pre-push` runs five checks before any push:
+
+1. **README devices table lint** (`scripts/generate-readme-devices.py --check`) — regenerates the table on disk and aborts if `devices/*/descriptor.json` has drifted.
+2. **C++ unit + integration tests** (`logitune-tests`).
+3. **Tray tests** (`logitune-tray-tests`).
+4. **QML tests** (`logitune-qml-tests`).
+5. **Python extractor tests** (`pytest tests/scripts/test_extractor.py`).
+
+If any stage fails the push is blocked; for the README lint the hook leaves the regenerated file in your working tree for you to amend/commit.
 
 ## Branch Workflow
 

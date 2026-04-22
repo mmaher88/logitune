@@ -96,48 +96,45 @@ private:
 
 ### Step 2: Implement focus tracking
 
-Create `src/core/desktop/GnomeDesktop.cpp`:
+> **Note — GNOME Wayland only.** The shipped `GnomeDesktop` refuses to start on X11 sessions (`XDG_SESSION_TYPE != "wayland"`). The pattern below assumes Wayland; if you want X11 support, fall back to the `GenericDesktop` polling loop.
+
+The real `GnomeDesktop` uses an event-driven approach: a small GNOME Shell extension watches `global.display::notify::focus-window` and calls back into the app via D-Bus. No polling. The app auto-installs and enables the extension on first run, then registers `com.logitune.app` / `/FocusWatcher` on the session bus for the extension to call.
+
+Key pieces (all already in-tree):
+
+- **`src/core/desktop/GnomeDesktop.{h,cpp}`** — the C++ integration class. See `GnomeDesktop::start()` for session-type check, `ensureExtensionInstalled()` for the install flow (system dir → user dir copy), `detectAppIndicatorStatus()` for tray-icon support detection via `org.kde.StatusNotifierWatcher`.
+- **`data/gnome-extension/`** — the Shell extension source, with v42 and v45 variants for the two GNOME Shell extension API generations.
+
+Create `src/core/desktop/<DE>Desktop.cpp` using the same shape:
 
 ```cpp
-#include "desktop/GnomeDesktop.h"
+#include "desktop/<DE>Desktop.h"
 #include "logging/LogManager.h"
 #include <QDBusConnection>
+#include <QDBusConnectionInterface>
 #include <QDBusMessage>
-#include <QDBusReply>
 #include <QProcessEnvironment>
-#include <QDir>
-#include <QFileInfo>
-#include <QSettings>
 
 namespace logitune {
 
-GnomeDesktop::GnomeDesktop(QObject *parent)
-    : IDesktopIntegration(parent)
+<DE>Desktop::<DE>Desktop(QObject *parent)
+    : LinuxDesktopBase(parent)
 {
 }
 
-void GnomeDesktop::start()
+void <DE>Desktop::start()
 {
-    // Check if GNOME Shell is running
-    QDBusInterface shell(
-        QStringLiteral("org.gnome.Shell"),
-        QStringLiteral("/org/gnome/Shell"),
-        QStringLiteral("org.gnome.Shell"),
-        QDBusConnection::sessionBus());
-
-    m_available = shell.isValid();
-    if (!m_available) return;
-
-    // GNOME Shell Extension approach:
-    // Install a GNOME Shell extension that sends D-Bus signals on focus change.
-    // Alternatively, use the GNOME Shell Eval API (deprecated) or
-    // the org.gnome.Shell.Introspect API for window tracking.
-
-    // For now, use polling via org.gnome.Shell.Introspect
-    m_pollTimer = new QTimer(this);
-    m_pollTimer->setInterval(500);
-    connect(m_pollTimer, &QTimer::timeout, this, &GnomeDesktop::pollActiveWindow);
-    m_pollTimer->start();
+    // 1. Sanity-check the session — bail if this DE isn't actually running
+    //    or if the session type is wrong for your focus API.
+    // 2. If you need a Shell extension / KWin script / wlr protocol,
+    //    install or activate it here.
+    // 3. Register your D-Bus callback so the DE-side agent can call
+    //    back into the app with focus events. focusChanged() is
+    //    inherited from LinuxDesktopBase and does the desktop-file
+    //    resolution + duplicate suppression.
+    //
+    // See GnomeDesktop::start() for a complete worked example.
+    m_available = true;
 }
 
 bool GnomeDesktop::available() const
@@ -160,54 +157,21 @@ QStringList GnomeDesktop::detectedCompositors() const
     return compositors;
 }
 
-void GnomeDesktop::pollActiveWindow()
+// focusChanged() is the D-Bus entry point the DE-side agent calls.
+// LinuxDesktopBase provides resolveDesktopFile() + duplicate-event
+// suppression, so subclasses only implement the DE-specific glue.
+void <DE>Desktop::focusChanged(const QString &appId, const QString &title)
 {
-    // Option 1: org.gnome.Shell.Introspect.GetWindows
-    // Option 2: GNOME Shell extension with D-Bus callback
-    // Option 3: wlr-foreign-toplevel-management (wlroots-based compositors)
-
-    // This is the scaffold — the actual implementation depends on
-    // which GNOME API is available and stable.
-
-    // Example using Shell.Introspect:
-    QDBusMessage msg = QDBusMessage::createMethodCall(
-        QStringLiteral("org.gnome.Shell"),
-        QStringLiteral("/org/gnome/Shell/Introspect"),
-        QStringLiteral("org.gnome.Shell.Introspect"),
-        QStringLiteral("GetWindows"));
-
-    QDBusReply<QVariantMap> reply = QDBusConnection::sessionBus().call(msg);
-    if (!reply.isValid()) return;
-
-    // Find the focused window and extract its app-id
-    // ... parse reply.value() ...
-
-    // QString appId = ...;
-    // if (appId != m_lastAppId) {
-    //     m_lastAppId = appId;
-    //     emit activeWindowChanged(appId, title);
-    // }
+    QString resolved = appId;
+    if (!appId.contains('.'))
+        resolved = resolveDesktopFile(appId);
+    if (resolved == m_lastAppId) return;
+    m_lastAppId = resolved;
+    emit activeWindowChanged(resolved, title);
 }
 
-void GnomeDesktop::blockGlobalShortcuts(bool block)
-{
-    // GNOME doesn't have a direct D-Bus API for this.
-    // Options:
-    // 1. Use a GNOME Shell extension
-    // 2. Temporarily grab the keyboard via libinput
-    // 3. Leave unimplemented (keystroke capture will work but may trigger shortcuts)
-    Q_UNUSED(block)
-}
-
-QVariantList GnomeDesktop::runningApplications() const
-{
-    // Same approach as KDeDesktop — scan .desktop files
-    // The KDeDesktop implementation is desktop-agnostic for this method
-    // Consider extracting it to a shared utility
-    QVariantList result;
-    // ... scan /usr/share/applications/*.desktop ...
-    return result;
-}
+// runningApplications() is inherited from LinuxDesktopBase — do not
+// reimplement unless your DE has a faster dedicated API.
 
 } // namespace logitune
 ```
@@ -263,14 +227,14 @@ The trickiest part of desktop integration is resolving a window to a stable appl
 | Hyprland | `class` | `firefox` |
 | X11 | `WM_CLASS` (instance, class) | `Navigator`, `firefox` |
 
-Logitune normalizes all of these to a `.desktop` file baseName. The `resolveDesktopFile()` method in `KDeDesktop` does this by:
+Logitune normalizes all of these to a `.desktop` file baseName. The `resolveDesktopFile()` method on `LinuxDesktopBase` (inherited by both `KDeDesktop` and `GnomeDesktop`) does this by:
 
 1. Checking `desktopFileName` if the compositor provides it directly
 2. Searching `.desktop` files for a matching filename component
 3. Searching `.desktop` files for a matching `StartupWMClass`
 4. Falling back to the raw identifier
 
-This logic is currently in `KDeDesktop` but is DE-agnostic. Consider extracting it to a shared utility if adding multiple DEs.
+This logic lives in `LinuxDesktopBase` so every Linux DE implementation inherits it for free — `runningApplications()` and `desktopDirs()` are in the same base class.
 
 ### Step 5: Register in AppController
 

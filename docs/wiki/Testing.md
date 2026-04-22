@@ -41,8 +41,8 @@ graph TB
 
 | Tier | Binary | Runs In CI | Requires Device | Count |
 |------|--------|-----------|----------------|-------|
-| C++ Mock | `logitune-tests` | Yes | No | ~35 test files |
-| QML | `logitune-qml-tests` | Yes | No | 13 test files |
+| C++ Mock | `logitune-tests` | Yes | No | ~40 test files |
+| QML | `logitune-qml-tests` | No (pre-push hook only) | No | 15 test files |
 | Tray | `logitune-tray-tests` | Yes | No | 1 test file |
 | Hardware | `logitune-hw-tests` | No | Yes (MX Master 3S) | 5 test files |
 
@@ -378,11 +378,13 @@ Qt Quick Test's `mouseClick` requires the target item to be within a `Window` or
 
 ## Pre-Push Hook
 
-The `scripts/pre-push` git hook runs all three test tiers before allowing a push:
+`hooks/pre-push` (auto-activated by `cmake -B build` via `core.hooksPath`) runs five stages before allowing a push:
 
 ```mermaid
 graph LR
-    Push[git push] --> Build{Build OK?}
+    Push[git push] --> Lint{README devices table<br/>matches descriptors?}
+    Lint -->|No| Abort0[Abort: README regenerated,<br/>amend + retry]
+    Lint -->|Yes| Build{Build OK?}
     Build -->|No| Abort1[Abort: build failed]
     Build -->|Yes| CPP{C++ tests pass?}
     CPP -->|No| Abort2[Abort: C++ tests failed]
@@ -390,14 +392,12 @@ graph LR
     Tray -->|No| Abort3[Abort: tray tests failed]
     Tray -->|Yes| QML{QML tests pass?}
     QML -->|No| Abort4[Abort: QML tests failed]
-    QML -->|Yes| Push2[Push proceeds]
+    QML -->|Yes| Py{Extractor pytest?}
+    Py -->|No| Abort5[Abort: extractor pytest failed]
+    Py -->|Yes| Push2[Push proceeds]
 ```
 
-Install the hook:
-
-```bash
-make setup-hooks
-```
+No install step needed — `cmake -B build` sets `core.hooksPath=hooks` in the repo's local git config during configure, so the tracked `hooks/pre-push` runs automatically on every `git push`.
 
 ## CI Pipeline
 

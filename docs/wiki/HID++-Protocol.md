@@ -105,11 +105,11 @@ sequenceDiagram
     participant TR as Transport
     participant Dev as Device
 
-    Note over FD: Known features: 0x0005, 0x1000, 0x1004, 0x1814, 0x1b04, 0x2110, 0x2111, 0x2121, 0x2150, 0x2201
+    Note over FD: Known features: 0x0001, 0x0003, 0x0005, 0x1000, 0x1004, 0x1814, 0x1b00, 0x1b01, 0x1b02, 0x1b03, 0x1b04, 0x2110, 0x2111, 0x2121, 0x2150, 0x2201, 0x6501
 
     FD->>TR: Root.getFeatureID(0x0005)
-    TR->>Dev: [0x11, devIdx, 0x00, 0x0A, 0x00, 0x05, ...]
-    Dev-->>TR: [0x11, devIdx, 0x00, 0x0A, 0x01, 0x00, ...]
+    TR->>Dev: [0x11, devIdx, 0x00, 0x00, 0x00, 0x05, ...]
+    Dev-->>TR: [0x11, devIdx, 0x00, 0x00, 0x01, 0x00, ...]
     Note over FD: DeviceName 0x0005 -> index 0x01
 
     FD->>TR: Root.getFeatureID(0x1004)
@@ -134,9 +134,10 @@ The feature table is stored as `std::unordered_map<FeatureId, uint8_t>`. All sub
 
 | FunctionId | Name | Params | Response |
 |-----------|------|--------|----------|
-| 0 | GetStatus | (none) | level (%), charging status |
+| 0 | GetCapabilities | (none) | capability bits, level count |
+| 1 | GetStatus | (none) | level (%), charging status |
 
-**Response parsing:**
+**Response parsing (GetStatus):**
 
 ```cpp
 // params[0] = battery level (0-100)
@@ -179,30 +180,28 @@ This feature controls button remapping (diversion). When a button is "diverted,"
 | 3 | SetControlReporting | CID_hi, CID_lo, flags | (none significant) |
 | 4 | GetControlReporting | CID_hi, CID_lo | CID, flags |
 
-**SetControlReporting flags byte:**
+**SetControlReporting flags byte (6-bit encoding):**
 
 ```
-Bit 0: divert (1 = send to software, 0 = native)
-Bit 1: dvalid (1 = divert bit is valid)
-Bit 2: rawXY (1 = also send raw XY deltas)
-Bit 3: rvalid (1 = rawXY bit is valid)
+Bits 0-1: divert — 0b00 = native, 0b11 = divert to software (dvalid + divert set together)
+Bits 2-3: persistent divert — same pattern (unused by Logitune)
+Bits 4-5: rawXY   — 0b00 = no raw, 0b11 = raw XY (rvalid + raw set together)
 ```
 
 Logitune's implementation:
 
 ```cpp
-// From hidpp/features/ReprogControls.cpp
-auto ReprogControls::buildSetDivert(uint16_t controlId, bool divert, bool rawXY)
-    -> std::array<uint8_t, 4>
+// src/core/hidpp/features/ReprogControls.cpp
+std::vector<uint8_t> ReprogControls::buildSetDivert(
+    uint16_t controlId, bool divert, bool rawXY)
 {
-    uint8_t flags = 0x02; // dvalid=1
-    if (divert) flags |= 0x01;
-    if (rawXY)  flags |= 0x0C; // rawXY=1, rvalid=1
+    uint8_t flags = 0;
+    if (divert) flags |= 0x03; // bits 0-1: divert + dvalid
+    if (rawXY)  flags |= 0x30; // bits 4-5: rawXY + rvalid
     return {
         static_cast<uint8_t>(controlId >> 8),
         static_cast<uint8_t>(controlId & 0xFF),
         flags,
-        0x00
     };
 }
 ```
@@ -285,9 +284,12 @@ This notification fires when the physical SmartShift button on the mouse is pres
 
 | FunctionId | Name | Params | Response |
 |-----------|------|--------|----------|
-| 0 | GetInfo | (none) | resolution, capabilities, defaultDirection |
-| 1 | GetStatus | (none) | divert, invert flags |
-| 2 | SetReporting | divert, invert | (confirmed) |
+| 0 | GetConfig | (none) | resolution, capabilities, defaultDirection |
+| 1 | SetConfig | divert, invert | (confirmed) |
+
+> Older docs referred to these as `GetInfo`/`SetReporting`. The header
+> (`src/core/hidpp/features/ThumbWheel.h`) names them `GetConfig`/`SetConfig`
+> per the HID++ 2.0 spec for 0x2150.
 
 **GetInfo response:**
 
@@ -327,9 +329,10 @@ int normalized = delta * m_deviceManager.thumbWheelDefaultDirection();
 
 | FunctionId | Name | Params | Response |
 |-----------|------|--------|----------|
-| 0 | GetSensorDpiList | sensorIdx | minDPI, maxDPI, stepDPI |
-| 1 | GetSensorDpi | sensorIdx | currentDPI |
-| 2 | SetSensorDpi | sensorIdx, dpi_hi, dpi_lo | (none significant) |
+| 0 | GetSensorCount | (none) | count |
+| 1 | GetSensorDpiList | sensorIdx | minDPI, maxDPI, stepDPI |
+| 2 | GetSensorDpi | sensorIdx | currentDPI |
+| 3 | SetSensorDpi | sensorIdx, dpi_hi, dpi_lo | (none significant) |
 
 The MX Master 3S has one sensor (index 0) with range 200-8000 and step 50.
 

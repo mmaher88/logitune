@@ -38,17 +38,28 @@ The UI is modeled after Logitech's Options+ application — a sidebar navigation
 
 ## Project Status
 
-Logitune is in early development. The MX Master 3S is the first and currently only supported device. The architecture is designed to make adding new devices straightforward — see [Adding a Device](Adding-a-Device).
+Logitune supports nine Logitech mice today — see the [Supported Devices](#supported-devices) table. The architecture is designed to make adding new devices straightforward: most contributions are a single JSON descriptor. See [Adding a Device](Adding-a-Device).
 
 ### Supported Devices
 
 | Device | PID | Connection | Status |
 |--------|-----|------------|--------|
-| MX Master 3S | `0xb034` | Bolt / Bluetooth | Fully supported |
+| MX Master 2S                | `0xb019`          | Bolt / Bluetooth | ✅ Verified |
+| MX Master 3S                | `0xb034`          | Bolt / Bluetooth | ✅ Verified |
+| MX Master 4                 | `0xb042`          | Bolt / Bluetooth | ✅ Verified |
+| MX Anywhere 3               | `0xb025`, `0x4090`| Bolt / Bluetooth | 🧪 Beta |
+| MX Anywhere 3 for Business  | `0xb02d`          | Bolt / Bluetooth | 🧪 Beta |
+| MX Anywhere 3S              | `0xb037`          | Bolt / Bluetooth | 🧪 Beta |
+| MX Anywhere 3S for Business | `0xb038`          | Bolt / Bluetooth | 🧪 Beta |
+| MX Vertical                 | `0xb020`, `0x407b`| Bolt / Bluetooth | 🧪 Beta |
+| MX Vertical for Business    | `0xb020`          | Bolt / Bluetooth | 🧪 Beta |
+
+The full per-feature table (Battery, DPI, SmartShift, Thumb wheel, Button remap, Gestures, Smooth scroll, Easy-Switch) lives in the [README](https://github.com/mmaher88/logitune#supported-devices) and is auto-generated from `devices/*/descriptor.json`.
 
 ### Supported Desktop Environments
 
 | DE | Compositor | Focus Tracking | Status |
 |----|-----------|----------------|--------|
-| KDE Plasma 6 | KWin | KWin script via D-Bus | Fully supported |
-| Generic (X11) | Any | Polling fallback | Basic support |
+| KDE Plasma 6        | KWin   | KWin script via D-Bus + polling fallback (KWin 6 quirk) | Fully supported |
+| GNOME 42+ (Wayland) | Mutter | GNOME Shell extension (auto-installed on first launch) via D-Bus | Fully supported |
+| Generic (other DEs) | Any    | Polling fallback                                        | Basic support — device configuration works; per-app profile switching does not |

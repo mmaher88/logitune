@@ -10,10 +10,21 @@ The MX Master 3S descriptor (`devices/mx-master-3s/`) is used as the worked exam
 
 Gather the following before you start:
 
-- **Product ID (PID):** run `lsusb | grep Logitech` and note the hex ID after `ID 046d:`, or read it from Solaar (`solaar show`). Bolt-receiver connections and Bluetooth connections often report different PIDs; include both.
-- **Control IDs (CIDs):** connect the device and run `logitune --debug 2>&1 | grep CID` to enumerate buttons from the ReprogControlsV4 feature.
-- **Features list:** same debug log line `grep feature` lists every HID++ feature the device advertises.
-- **DPI range:** look for `AdjustableDPI` output in the debug log; it prints min, max, and step.
+- **Product ID (PID):** run `lsusb | grep Logitech` and note the hex ID after `ID 046d:`, or read it from Solaar (`solaar show`). Bolt-receiver connections and Bluetooth connections often report different PIDs; include both. Use the **device WPID** (e.g. `0xb034`), not the Unifying receiver's USB PID (`0xc52b`).
+- **Control IDs (CIDs):** logging is enabled by default (toggle it in **Settings → Debug logging** if you disabled it). Launch Logitune, connect the device, then press each physical button one at a time. The log records a line per press:
+  ```
+  [logitune.device] [DEBUG] button event: CID 0xc3 pressed=true
+  ```
+  Tail the log while pressing:
+  ```bash
+  tail -f ~/.local/share/Logitune/Logitune/logs/logitune-$(date +%Y-%m-%d).log \
+    | grep 'button event'
+  ```
+- **Features list:** during device initialization the same log records every HID++ feature the firmware advertises. Scan for them with:
+  ```bash
+  grep -E 'feature 0x[0-9a-f]+' ~/.local/share/Logitune/Logitune/logs/logitune-*.log | sort -u
+  ```
+- **DPI range:** search the log for `AdjustableDPI` messages during init — min, max, and step are printed when DeviceSession reads the sensor.
 - **Device images:** front, side, and back views as PNG files with a transparent background. Placeholder files are fine for the bootstrap commit; Editor Mode can replace them later.
 
 ---
@@ -59,7 +70,7 @@ A machine-readable [JSON Schema](https://json-schema.org) for this format lives 
 | `features.adjustableDpi` | bool | no | DPI slider (HID++ 0x2201) |
 | `features.extendedDpi` | bool | no | Extended DPI range above 8000 (HID++ 0x2202) |
 | `features.smartShift` | bool | no | SmartShift ratchet/freespin toggle (HID++ 0x2110 / 0x2111) |
-| `features.hiResWheel` | bool | no | High-resolution scroll wheel (HID++ 0x2120) |
+| `features.hiResWheel` | bool | no | High-resolution scroll wheel (HID++ 0x2121) |
 | `features.hiResScrolling` | bool | no | Hi-res scrolling mode toggle |
 | `features.lowResWheel` | bool | no | Low-resolution wheel fallback |
 | `features.smoothScroll` | bool | no | Smooth-scroll animation; defaults to `true` if omitted |
@@ -90,7 +101,7 @@ A machine-readable [JSON Schema](https://json-schema.org) for this format lives 
 | `controls[].controlId` | string | yes | HID++ CID as a hex string, e.g. `"0x0050"` |
 | `controls[].buttonIndex` | int | yes | Zero-based index into the profile buttons array |
 | `controls[].defaultName` | string | yes | Display name for the control, e.g. `"Left click"` |
-| `controls[].defaultActionType` | string | yes | Default action: `"default"`, `"gesture-trigger"`, `"smartshift-toggle"`, `"keystroke"`, `"app-launch"`, `"dbus"`, `"media"` |
+| `controls[].defaultActionType` | string | yes | Default action: `"default"`, `"gesture-trigger"`, `"smartshift-toggle"`, `"dpi-cycle"`, `"keystroke"`, `"app-launch"`, `"dbus"`, `"media"` |
 | `controls[].configurable` | bool | yes | Whether the user can reassign this button |
 | `controls[].displayName` | string | no | Optional override for the label shown in the button list |
 | `hotspots` | object | yes (if verified) | Interactive overlay positions for the device image |
@@ -200,7 +211,7 @@ DeviceRegistry picks this up on next launch. This path is also useful for testin
 
 ## Step 4: Polish with Editor Mode
 
-Once the JSON parses without errors (check `logitune --debug` for warnings), open Editor Mode to refine the visual layout:
+Once the JSON parses without errors (launch Logitune normally and scan the log file at `~/.local/share/Logitune/Logitune/logs/logitune-*.log` for `JsonDevice` warnings), open Editor Mode to refine the visual layout:
 
 ```bash
 logitune --edit --simulate-all
@@ -231,7 +242,7 @@ This loads all descriptors in simulate mode, bypassing the real HID++ device. Us
 - [ ] Point & Scroll page shows scroll hotspots
 - [ ] Easy-Switch page shows three slot circles
 - [ ] DPI range and step display correctly
-- [ ] No `JsonDevice` warnings in `logitune --debug` output
+- [ ] No `JsonDevice` warnings in `~/.local/share/Logitune/Logitune/logs/logitune-*.log`
 
 ### Descriptor fixture test
 
@@ -391,7 +402,7 @@ The complete descriptor for the MX Master 3S. Copy the JSON block as-is; the fie
 - **`features.battery`** -- battery level and charging status via HID++ 0x1004 (Battery Unified). DeviceManager also handles 0x1000 (Battery Status); set `true` for either variant.
 - **`features.adjustableDpi`** -- DPI slider via HID++ 0x2201.
 - **`features.smartShift`** -- ratchet/freespin toggle via HID++ 0x2110/0x2111.
-- **`features.hiResWheel`** -- hi-res scroll wheel via HID++ 0x2120.
+- **`features.hiResWheel`** -- hi-res scroll wheel via HID++ 0x2121.
 - **`features.thumbWheel`** -- horizontal thumb wheel via HID++ 0x2150.
 - **`features.reprogControls`** -- button remapping via HID++ 0x1B04 (ReprogControlsV4).
 - **`controls` entries with `configurable: false`** (Left click, Right click) -- non-configurable buttons still need entries so the profile button array is indexed correctly.

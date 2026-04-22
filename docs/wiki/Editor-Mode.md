@@ -185,7 +185,7 @@ The modal is read-only. Close it with the Close button, then choose "Keep my edi
 5. Drag hotspot markers and callout cards to their correct positions.
 6. Upload real device images if you have them.
 7. Rename any labels that the `defaultName` values do not capture well.
-8. Click Save (or press the Save button in the toolbar).
+8. Click the Save button (✓) in the toolbar. There's no keyboard shortcut — click only.
 9. Review the diff: `git diff devices/<slug>/descriptor.json`.
 10. Commit your changes and open a PR.
 

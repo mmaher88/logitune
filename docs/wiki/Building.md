@@ -27,30 +27,43 @@ Plus these QML modules at runtime:
 - `qml6-module-qtquick-dialogs`, `qml6-module-qt5compat-graphicaleffects`
 - `qml6-module-qttest` (for QML tests)
 
+> The canonical lists live in `.github/workflows/ci.yml`. If something
+> below drifts, the CI file wins — it's what actually builds every PR.
+
 ### Ubuntu 24.04
 
 ```bash
 sudo apt-get install -y \
-    build-essential cmake ninja-build pkg-config \
+    cmake ninja-build g++ git pkg-config \
     qt6-base-dev qt6-declarative-dev qt6-svg-dev \
-    qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools \
+    qt6-base-dev-tools qt6-declarative-dev-tools \
     qml6-module-qtquick qml6-module-qtquick-controls \
     qml6-module-qtquick-layouts qml6-module-qtquick-window \
     qml6-module-qtquick-templates qml6-module-qtqml-workerscript \
     qml6-module-qtquick-dialogs qml6-module-qt5compat-graphicaleffects \
     qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev \
-    libqt6dbus6 libqt6widgets6 libxkbcommon-dev \
-    qml6-module-qttest libudev-dev libgtest-dev
+    libxkbcommon-dev qml6-module-qttest libudev-dev libgtest-dev
 
 # Build and install GTest (Ubuntu ships source only)
 cd /usr/src/googletest && sudo cmake -B build && sudo cmake --build build && sudo cmake --install build
 ```
 
+### Fedora 42
+
+```bash
+sudo dnf install -y \
+    cmake ninja-build gcc-c++ git pkgconf-pkg-config \
+    qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtsvg-devel \
+    qt6-qtshadertools systemd-devel gtest-devel
+```
+
 ### Arch Linux
 
 ```bash
-sudo pacman -S cmake ninja qt6-base qt6-declarative qt6-svg qt6-tools \
-    qt6-5compat gtest libudev0-shim pkgconf
+sudo pacman -S --needed \
+    cmake ninja gcc git pkgconf \
+    qt6-base qt6-declarative qt6-svg \
+    systemd-libs gtest
 ```
 
 ## Build from Source
@@ -91,7 +104,7 @@ The Makefile provides these targets:
 | `make install` | Install to system (`/usr/local`) |
 | `make uninstall` | Remove system install |
 | `make release` | Version bump, tag, push |
-| `make setup-hooks` | Install git pre-push hook |
+| `make setup-hooks` | Install git pre-push hook (now a no-op: `cmake -B build` auto-activates `hooks/` via `core.hooksPath`) |
 | `make clean` | Remove build artifacts |
 | `make help` | Show all targets |
 
@@ -185,7 +198,7 @@ logitune/
 │       ├── hw_test_main.cpp
 │       └── test_hw_*.cpp       # Hardware integration tests
 ├── scripts/
-│   ├── pre-push                # Git hook: run all tests before push
+│   ├── pre-push                # (moved to hooks/pre-push; see below)
 │   └── release.sh
 └── .github/workflows/
     ├── ci.yml                  # Build + test on push/PR
@@ -253,9 +266,14 @@ On container creation, `postCreateCommand` runs:
 
 ```bash
 make setup-hooks
+sudo rm -rf build
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build -j$(nproc)
 ```
+
+> The `sudo rm -rf build` clears any host-side build directory that
+> might have leaked in through the bind mount before running a fresh
+> in-container configure.
 
 So the project is fully built and ready to test immediately after the container starts.
 

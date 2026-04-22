@@ -480,11 +480,14 @@ graph LR
 Models are registered as QML singletons in `main.cpp`:
 
 ```cpp
-qmlRegisterSingletonInstance("Logitune", 1, 0, "DeviceModel",  controller.deviceModel());
-qmlRegisterSingletonInstance("Logitune", 1, 0, "ButtonModel",  controller.buttonModel());
-qmlRegisterSingletonInstance("Logitune", 1, 0, "ActionModel",  controller.actionModel());
-qmlRegisterSingletonInstance("Logitune", 1, 0, "ProfileModel", controller.profileModel());
+qmlRegisterSingletonInstance("Logitune", 1, 0, "DeviceModel",        controller.deviceModel());
+qmlRegisterSingletonInstance("Logitune", 1, 0, "ButtonModel",        controller.buttonModel());
+qmlRegisterSingletonInstance("Logitune", 1, 0, "ActionFilterModel",  controller.actionFilterModel());
+qmlRegisterSingletonInstance("Logitune", 1, 0, "ProfileModel",       controller.profileModel());
+qmlRegisterSingletonInstance("Logitune", 1, 0, "SettingsModel",      controller.settingsModel());
 ```
+
+`ActionFilterModel` wraps the raw `ActionModel` catalog and hides entries the selected device can't execute (PR #82). QML code always binds to the filter model, never to the raw catalog. `SettingsModel` exposes the persisted user prefs (dark mode, logging, autostart, minimized, bug reports) as a single Q_PROPERTY surface.
 
 ## Desktop Integration
 
@@ -503,22 +506,36 @@ classDiagram
         +activeWindowChanged(wmClass, title) signal
     }
 
+    class LinuxDesktopBase {
+        +runningApplications()
+        #resolveDesktopFile(appId) QString
+        #desktopDirs() QStringList
+    }
+
     class KDeDesktop {
         +focusChanged(resourceClass, title, desktopFileName)
-        -resolveDesktopFile(resourceClass) QString
         -m_kwin : QDBusInterface
         -m_pollTimer : QTimer
-        -m_resolveCache : QHash
+    }
+
+    class GnomeDesktop {
+        +focusChanged(appId, title)
+        -ensureExtensionInstalled() bool
+        -detectAppIndicatorStatus()
+        -m_appIndicatorStatus : AppIndicatorStatus
     }
 
     class GenericDesktop {
         +start()
-        +available() bool
     }
 
-    IDesktopIntegration <|-- KDeDesktop
+    IDesktopIntegration <|-- LinuxDesktopBase
+    LinuxDesktopBase <|-- KDeDesktop
+    LinuxDesktopBase <|-- GnomeDesktop
     IDesktopIntegration <|-- GenericDesktop
 ```
+
+`GnomeDesktop` (Wayland-only) auto-installs and enables a GNOME Shell extension on first launch that pipes focus events to a D-Bus-registered callback in-process — event-driven, no polling. It also detects AppIndicator support via `org.kde.StatusNotifierWatcher` so the tray icon can tell users when to install `gnome-shell-extension-appindicator`. `KDeDesktop` uses a KWin script + polling fallback (the KWin 6 signal quirk).
 
 ### KDE Focus Tracking
 
