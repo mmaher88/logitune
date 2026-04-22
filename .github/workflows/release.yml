@@ -180,6 +180,23 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
 
   # --------------------------------------------------------------------------
+  # Trigger the OBS source service to pull the new tarball and rebuild
+  # all repo targets (Fedora, openSUSE Ubuntu, etc.). The token is a
+  # "Run source services" token scoped to home:mmaher88:logitune/logitune,
+  # created at https://build.opensuse.org/my/tokens.
+  # --------------------------------------------------------------------------
+  trigger-obs:
+    needs: [release]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Trigger OBS source service
+        run: |
+          curl -fsSL -X POST \
+            -H "Authorization: Token ${{ secrets.OBS_TRIGGER_TOKEN }}" \
+            "https://build.opensuse.org/trigger/runservice?project=home:mmaher88:logitune&package=logitune"
+
+  # --------------------------------------------------------------------------
   # Publish the updated PKGBUILD to the AUR. Runs only for stable tags
   # (no '-' in the ref name); pre-release channels stay off the AUR.
   # --------------------------------------------------------------------------
