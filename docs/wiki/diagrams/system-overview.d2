@@ -4,82 +4,70 @@
 # Edit this file, then regenerate. The CI lint + pre-push hook
 # refuse to merge a stale SVG.
 #
-# The five layer containers are arranged in a single vertical
-# column via grid-rows=5 + grid-columns=1. D2's default layout
-# engine ignores container order when edges cross the graph,
-# which is why we saw scattered boxes on the first pass; a grid
-# forces strict stacking regardless of edge weight.
+# Organization:
+#   Five layers stacked top-to-bottom via grid-rows = 5. Each
+#   layer's grid is laid out so the single node that bridges to
+#   the layer above sits on the LEFT column, and the other
+#   components fan out to the right. That way the only
+#   cross-layer arrows are the six straight-up ones on the left
+#   edge, and nothing else crosses. Commands flow back along
+#   the same path — no need to duplicate arrows in the diagram.
 
 grid-rows: 5
 grid-columns: 1
-grid-gap: 60
+grid-gap: 70
 
+# ---------- Layer 1: QML UI ----------
 ui: "QML UI" {
   grid-columns: 3
   main: "Main.qml"
   pages: "Pages\nPointScroll · Buttons\nEasySwitch · Settings"
-  components: "Components\nDeviceRender · SideNav · ProfileBar"
+  components: "Components\nDeviceRender · SideNav\nProfileBar"
 }
 
+# ---------- Layer 2: App ----------
 app: "App library — logitune-app-lib" {
-  grid-rows: 2
-  controller: "AppController"
-  profile_engine: "ProfileEngine"
-  tray: "TrayManager"
-  editor: "EditorModel"
+  grid-columns: 4
   device_model: "DeviceModel"
   button_model: "ButtonModel"
   action_filter_model: "ActionFilterModel"
-  profile_model: "ProfileModel"
-  settings_model: "SettingsModel"
+  other_models: "ProfileModel\nSettingsModel"
+  controller: "AppController"
+  profile_engine: "ProfileEngine"
+  tray: "TrayManager"
+  editor: "EditorModel\n(--edit mode)"
 }
 
+# ---------- Layer 3: Core ----------
 core: "Core library — logitune-core" {
-  grid-rows: 2
+  grid-columns: 3
   devmgr: "DeviceManager"
   physical: "PhysicalDevice"
   session: "DeviceSession"
   hidpp: "HID++ stack\nFeatureDispatcher · CommandQueue\nTransport · HidrawDevice"
-  desktop: "Desktop integration\nKDeDesktop · GnomeDesktop · GenericDesktop"
+  desktop: "Desktop integration\nKDeDesktop · GnomeDesktop\nGenericDesktop"
   inject: "Input injection\nUinputInjector"
 }
 
+# ---------- Layer 4: Kernel ----------
 kernel: "Linux kernel" {
   grid-columns: 4
   hidraw: "/dev/hidrawN"
-  udev: "libudev"
-  dbus: "D-Bus session bus"
-  uinput: "/dev/uinput"
+  udev: "libudev\n(hot-plug)"
+  dbus: "D-Bus session bus\n(KWin / GNOME Shell)"
+  uinput: "/dev/uinput\n(keystrokes)"
 }
 
+# ---------- Layer 5: Hardware ----------
 hardware: "🖱️ Mouse hardware" {
   mice: "MX Master 3S · MX Master 4 · MX Anywhere · MX Vertical"
 }
 
-# --- data flow up (mouse -> screen) ---
+# ---------- Single upward narrative edge per layer boundary ----------
 hardware.mice -> kernel.hidraw: "HID++ reports"
 kernel.hidraw -> core.session: "read()"
-core.session -> core.physical
-core.physical -> core.devmgr
-core.devmgr -> app.controller: "Qt signals"
-app.controller -> app.device_model: "property / role updates"
-app.device_model -> ui.main: "Q_PROPERTY + model roles"
+core.devmgr -> app.controller: "Qt signals\n(stateChanged, activeWindowChanged, …)"
+app.device_model -> ui.main: "QML binding"
 
-# --- commands down (user action -> mouse) ---
-ui.main -> app.controller: "user action" {
-  style.stroke-dash: 3
-}
-app.controller -> core.devmgr: "divertButton() · setDPI()" {
-  style.stroke-dash: 3
-}
-core.hidpp -> kernel.hidraw: "write()" {
-  style.stroke-dash: 3
-}
-kernel.hidraw -> hardware.mice: "HID++ commands" {
-  style.stroke-dash: 3
-}
-
-# --- other kernel surfaces ---
-kernel.udev -> core.devmgr: "hot-plug events"
-core.desktop -> kernel.dbus: "focus signals"
-core.inject -> kernel.uinput: "keystrokes"
+# Commands flow back down along the same edges; shown in prose
+# rather than duplicated arrows to keep the diagram legible.
