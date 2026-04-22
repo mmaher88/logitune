@@ -58,6 +58,40 @@ set(LOGITUNE_VERSION "${_logitune_numeric}")
 
 project(logitune VERSION ${LOGITUNE_VERSION} LANGUAGES CXX)
 
+# ---------------------------------------------------------------------------
+# Activate the tracked hooks/ directory for anyone working in a git clone.
+# core.hooksPath is repo-local config; setting it here means every contributor
+# gets the pre-push (devices-table lint, tests) automatically after their
+# first `cmake -B build`. Skipped for source-tarball builds (AUR, OBS) that
+# have no .git, and no-ops if already pointing at hooks/.
+# ---------------------------------------------------------------------------
+if(Git_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} config --local --get core.hooksPath
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE _current_hooks_path
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+        RESULT_VARIABLE _get_rc
+    )
+    if(NOT _current_hooks_path STREQUAL "hooks")
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} config --local core.hooksPath hooks
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            RESULT_VARIABLE _set_rc
+            ERROR_QUIET
+        )
+        if(_set_rc EQUAL 0)
+            if(_current_hooks_path STREQUAL "")
+                message(STATUS "git hooks: activated tracked hooks/ directory")
+            else()
+                message(STATUS
+                    "git hooks: replaced core.hooksPath '${_current_hooks_path}' with 'hooks'")
+            endif()
+        endif()
+    endif()
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
