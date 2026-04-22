@@ -53,6 +53,19 @@ DPI, SmartShift, scroll, gesture, and thumb wheel settings.
 %install
 %cmake_install
 
+%post
+# Reload udev rules and retag /dev/uinput + hidraw nodes so keystroke
+# injection and device access work on first install without a reboot.
+# /dev/uinput exists before the package is installed, so uaccess won't
+# be applied retroactively unless we trigger a change event.
+udevadm control --reload-rules >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=misc --subsystem-match=hidraw --action=change >/dev/null 2>&1 || :
+
+%postun
+if [ $1 -eq 0 ] ; then
+    udevadm control --reload-rules >/dev/null 2>&1 || :
+fi
+
 %files
 %{_bindir}/logitune
 %{_prefix}/lib/udev/rules.d/71-logitune.rules
