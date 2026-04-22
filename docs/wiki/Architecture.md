@@ -16,27 +16,35 @@ graph TB
         AC[AppController]
         DM_model[DeviceModel]
         BM[ButtonModel]
+        AFM[ActionFilterModel]
         AM[ActionModel]
         PM[ProfileModel]
+        SM[SettingsModel]
         TM[TrayManager]
+        EM[EditorModel]
     end
 
     subgraph "Core Layer (logitune-core)"
         DevMgr[DeviceManager]
+        PD[PhysicalDevice]
+        DS[DeviceSession]
         PE[ProfileEngine]
         AE[ActionExecutor]
         DR[DeviceRegistry]
-        
+
         subgraph "HID++ Protocol"
             FD[FeatureDispatcher]
             CQ[CommandQueue]
             TR[Transport]
             HR[HidrawDevice]
+            Caps[Capability dispatch tables]
         end
 
         subgraph "Desktop Integration"
             IDesktop[IDesktopIntegration]
+            LDB[LinuxDesktopBase]
             KDE[KDeDesktop]
+            GNOME[GnomeDesktop]
             Generic[GenericDesktop]
         end
 
@@ -50,45 +58,63 @@ graph TB
         hidraw[/dev/hidrawN/]
         udev[libudev]
         dbus[D-Bus Session Bus]
+        kwin[KWin script]
+        gshell[GNOME Shell extension]
         uinputdev[/dev/uinput/]
     end
 
     Main --> DM_model
     Main --> BM
-    Main --> AM
+    Main --> AFM
     Main --> PM
+    Main --> SM
     Pages --> DM_model
     Pages --> BM
+    Pages --> AFM
 
     AC --> DM_model
     AC --> BM
+    AC --> AFM
     AC --> AM
     AC --> PM
+    AC --> SM
     AC --> DevMgr
     AC --> PE
     AC --> AE
     AC --> IDesktop
 
+    AFM -.->|filters| AM
+    DM_model -.->|rows are| PD
+
     DevMgr --> DR
-    DevMgr --> FD
-    DevMgr --> CQ
-    DevMgr --> TR
+    DevMgr --> PD
+    PD --> DS
+    DS --> FD
+    DS --> CQ
+    DS --> TR
     DevMgr --> udev
 
+    FD --> Caps
     FD --> TR
     CQ --> FD
     TR --> HR
     HR --> hidraw
 
-    KDE --> dbus
-    IDesktop -.-> KDE
+    IDesktop -.-> LDB
+    LDB -.-> KDE
+    LDB -.-> GNOME
     IDesktop -.-> Generic
+    KDE --> kwin
+    kwin --> dbus
+    GNOME --> gshell
+    gshell --> dbus
 
     AE --> IInject
     IInject -.-> Uinput
     Uinput --> uinputdev
 
     TM --> DM_model
+    EM -.->|--edit mode| AC
 ```
 
 ### Two Static Libraries
@@ -97,8 +123,8 @@ The project is split into two static libraries:
 
 | Library | Contents | Dependencies |
 |---------|----------|-------------|
-| `logitune-core` | DeviceManager, HID++ protocol, ProfileEngine, ActionExecutor, `DeviceRegistry`, `JsonDevice`, `DescriptorWriter`, desktop integration, input injection, logging | Qt6::Core, Qt6::DBus, libudev |
-| `logitune-app-lib` | AppController, `EditorModel`, models (DeviceModel, ButtonModel, ActionModel, ProfileModel), TrayManager, QML module, dialogs | logitune-core, Qt6::Quick, Qt6::Widgets |
+| `logitune-core` | DeviceManager, `PhysicalDevice`, `DeviceSession`, HID++ protocol + capability dispatch, ProfileEngine, ActionExecutor, `DeviceRegistry`, `JsonDevice`, `DescriptorWriter`, `LinuxDesktopBase` + KDE/GNOME/Generic implementations, input injection, logging | Qt6::Core, Qt6::DBus, libudev |
+| `logitune-app-lib` | AppController, `EditorModel`, models (DeviceModel, ButtonModel, ActionModel, `ActionFilterModel`, ProfileModel, `SettingsModel`), TrayManager, QML module, dialogs | logitune-core, Qt6::Quick, Qt6::Widgets |
 
 This split allows tests to link against `logitune-core` and `logitune-app-lib` without pulling in the executable's `main()`.
 
@@ -823,7 +849,9 @@ graph TB
         DM[DeviceModel]
         BM[ButtonModel]
         AM[ActionModel]
+        AFM[ActionFilterModel]
         PM[ProfileModel]
+        SM[SettingsModel]
     end
 
     subgraph "Injected (or created)"
