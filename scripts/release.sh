@@ -1,58 +1,74 @@
 #!/bin/bash
-set -e
+# Usage: scripts/release.sh [major|minor|patch]    (default: patch)
+#
+# Derives the next version from the latest stable v*-prefixed tag,
+# tags the current master SHA, and pushes the tag. That single push
+# is the release:
+#   - CMake reads the version from the tag at configure time (no
+#     CMakeLists.txt edit).
+#   - CI builds .deb/.rpm/.pkg.tar.zst, uploads them to a GitHub
+#     Release, pushes the PKGBUILD to AUR, and triggers the OBS
+#     source-service.
+#
+# Pre-flight checks: we refuse to release unless the tree is on
+# master, clean, and synced with origin. No direct commits to
+# master happen here — tagging only.
+set -euo pipefail
 
-# Usage: ./scripts/release.sh [major|minor|patch]
-# Default: patch
+BUMP="${1:-patch}"
 
-BUMP_TYPE="${1:-patch}"
-
-# Read current version from CMakeLists.txt
-CURRENT=$(grep -oP 'project\(logitune VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
-if [ -z "$CURRENT" ]; then
-    echo "❌ Could not read version from CMakeLists.txt"
-    exit 1
-fi
-
-IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-
-case "$BUMP_TYPE" in
-    major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-    minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
-    patch) PATCH=$((PATCH + 1)) ;;
-    *) echo "❌ Usage: $0 [major|minor|patch]"; exit 1 ;;
+case "$BUMP" in
+    major|minor|patch) ;;
+    *) echo "usage: $0 [major|minor|patch]" >&2; exit 1 ;;
 esac
 
-NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-echo "📦 Releasing: $CURRENT → $NEW_VERSION ($BUMP_TYPE)"
+# Latest stable (non pre-release) tag.
+LATEST=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-*' \
+    | sed 's/^v//')
+IFS='.' read -r MAJ MIN PAT <<<"$LATEST"
 
-# Check for uncommitted changes
-if [ -n "$(git status --porcelain)" ]; then
-    echo "❌ Uncommitted changes. Commit or stash first."
+case "$BUMP" in
+    major) MAJ=$((MAJ + 1)); MIN=0; PAT=0 ;;
+    minor) MIN=$((MIN + 1)); PAT=0 ;;
+    patch) PAT=$((PAT + 1)) ;;
+esac
+NEW="$MAJ.$MIN.$PAT"
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$BRANCH" != "master" ]]; then
+    echo "error: releases cut from master only (currently on $BRANCH)" >&2
     exit 1
 fi
 
-# Run tests
-echo "🔍 Running tests..."
-cmake --build build -j$(nproc) > /dev/null 2>&1
-QT_QPA_PLATFORM=offscreen ./build/tests/logitune-tests --gtest_print_time=0 > /dev/null 2>&1
-QT_QPA_PLATFORM=offscreen ./build/tests/logitune-tray-tests --gtest_print_time=0 > /dev/null 2>&1
-QT_QPA_PLATFORM=offscreen ./build/tests/qml/logitune-qml-tests > /dev/null 2>&1
-echo "✅ All tests passed"
+if [[ -n "$(git status --porcelain)" ]]; then
+    echo "error: working tree has uncommitted changes; commit or stash first" >&2
+    exit 1
+fi
 
-# Bump version in CMakeLists.txt
-sed -i "s/project(logitune VERSION $CURRENT/project(logitune VERSION $NEW_VERSION/" CMakeLists.txt
+git fetch origin master --quiet
+if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/master)" ]]; then
+    echo "error: local master is not in sync with origin/master" >&2
+    echo "       pull or push first, then retry." >&2
+    exit 1
+fi
 
-# Commit and tag
-git add CMakeLists.txt
-git commit -m "release: v$NEW_VERSION"
-git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
-echo "🏷️  Tagged v$NEW_VERSION"
+if git rev-parse "v$NEW" >/dev/null 2>&1; then
+    echo "error: tag v$NEW already exists locally" >&2
+    exit 1
+fi
+if git ls-remote --tags --exit-code origin "refs/tags/v$NEW" >/dev/null 2>&1; then
+    echo "error: tag v$NEW already exists on origin" >&2
+    exit 1
+fi
 
-# Push — CI builds packages and creates GitHub release
-git push origin master
-git push origin "v$NEW_VERSION"
-echo "🚀 Pushed to origin"
-echo "📦 CI will build packages and create GitHub release"
+echo "Tagging v$NEW   (previous stable: v$LATEST, bump: $BUMP)"
+echo "Commit:         $(git rev-parse --short HEAD)"
+read -rp "Proceed? [y/N] " reply
+[[ "$reply" =~ ^[yY]$ ]] || { echo "aborted"; exit 1; }
+
+git tag -a "v$NEW" -m "v$NEW"
+git push origin "v$NEW"
 
 echo ""
-echo "🎉 Released v$NEW_VERSION"
+echo "Tagged and pushed. Release workflow should now build + publish:"
+echo "  https://github.com/mmaher88/logitune/actions/workflows/release.yml"
