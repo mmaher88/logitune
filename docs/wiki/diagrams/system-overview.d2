@@ -3,22 +3,39 @@
 # Rendered to system-overview.svg via `make diagrams` (runs d2).
 # Edit this file, then regenerate. The CI lint + pre-push hook
 # refuse to merge a stale SVG.
+#
+# The five layer containers are arranged in a single vertical
+# column via grid-rows=5 + grid-columns=1. D2's default layout
+# engine ignores container order when edges cross the graph,
+# which is why we saw scattered boxes on the first pass; a grid
+# forces strict stacking regardless of edge weight.
 
-direction: up
+grid-rows: 5
+grid-columns: 1
+grid-gap: 60
 
-hardware: "Mouse hardware" {
-  label: "🖱️ Mouse hardware"
-  mice: "MX Master 3S · MX Master 4 · MX Anywhere · MX Vertical"
+ui: "QML UI" {
+  grid-columns: 3
+  main: "Main.qml"
+  pages: "Pages\nPointScroll · Buttons\nEasySwitch · Settings"
+  components: "Components\nDeviceRender · SideNav · ProfileBar"
 }
 
-kernel: "Linux kernel" {
-  hidraw: "/dev/hidrawN"
-  udev: "libudev"
-  dbus: "D-Bus session bus"
-  uinput: "/dev/uinput"
+app: "App library — logitune-app-lib" {
+  grid-rows: 2
+  controller: "AppController"
+  profile_engine: "ProfileEngine"
+  tray: "TrayManager"
+  editor: "EditorModel"
+  device_model: "DeviceModel"
+  button_model: "ButtonModel"
+  action_filter_model: "ActionFilterModel"
+  profile_model: "ProfileModel"
+  settings_model: "SettingsModel"
 }
 
 core: "Core library — logitune-core" {
+  grid-rows: 2
   devmgr: "DeviceManager"
   physical: "PhysicalDevice"
   session: "DeviceSession"
@@ -27,22 +44,16 @@ core: "Core library — logitune-core" {
   inject: "Input injection\nUinputInjector"
 }
 
-app: "App library — logitune-app-lib" {
-  controller: "AppController"
-  profile_engine: "ProfileEngine"
-  device_model: "DeviceModel"
-  button_model: "ButtonModel"
-  action_filter_model: "ActionFilterModel"
-  profile_model: "ProfileModel"
-  settings_model: "SettingsModel"
-  tray: "TrayManager"
-  editor: "EditorModel"
+kernel: "Linux kernel" {
+  grid-columns: 4
+  hidraw: "/dev/hidrawN"
+  udev: "libudev"
+  dbus: "D-Bus session bus"
+  uinput: "/dev/uinput"
 }
 
-ui: "QML UI" {
-  main: "Main.qml"
-  pages: "Pages\nPointScroll · Buttons\nEasySwitch · Settings"
-  components: "Components\nDeviceRender · SideNav · ProfileBar"
+hardware: "🖱️ Mouse hardware" {
+  mice: "MX Master 3S · MX Master 4 · MX Anywhere · MX Vertical"
 }
 
 # --- data flow up (mouse -> screen) ---
