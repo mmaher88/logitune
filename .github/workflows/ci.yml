@@ -96,7 +96,10 @@ jobs:
         run: cd /usr/src/googletest && cmake -B build && cmake --build build && cmake --install build
 
       - name: Configure
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=${{ matrix.run_tests && 'ON' || 'OFF' }} -Wno-dev
+        # CI builds aren't shipped; a static version string is fine. This
+        # also sidesteps git-describe inside container volumes where
+        # safe.directory can refuse to trust the mounted work tree.
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=${{ matrix.run_tests && 'ON' || 'OFF' }} -DLOGITUNE_VERSION=0.0.0+ci -Wno-dev
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
