@@ -197,12 +197,78 @@ jobs:
         (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
         || (github.event_name == 'workflow_dispatch' && inputs.trigger_obs)
       )
+    # Poll OBS for up to 30 minutes before giving up. Typical stable-tag
+    # rebuild across Fedora + xUbuntu settles in 5-15 min.
+    timeout-minutes: 40
     steps:
       - name: Trigger OBS source service
         run: |
           curl -fsSL -X POST \
             -H "Authorization: Token ${{ secrets.OBS_TRIGGER_TOKEN }}" \
             "https://build.opensuse.org/trigger/runservice?project=home:mmaher88:logitune&package=logitune"
+
+      - name: Wait for OBS builds to settle
+        run: |
+          set -u
+          MAX_WAIT=1800   # 30 min
+          SLEEP=30
+          elapsed=0
+          last_codes=""
+          result_url="https://api.opensuse.org/build/home:mmaher88:logitune/_result?package=logitune"
+
+          # Non-terminal state codes per OBS: wait until none of these
+          # appear in the result set.
+          is_busy() {
+            echo "$1" | grep -qE '<status[^>]+code="(building|blocked|scheduled|dispatching|finished|unknown|signing)"'
+          }
+
+          while [ "$elapsed" -lt "$MAX_WAIT" ]; do
+            # Tolerate a flaky OBS API: one timeout should not fail the whole wait.
+            xml=$(curl -sSf --retry 3 --retry-delay 5 "$result_url" || true)
+            if [ -z "$xml" ]; then
+              echo "[${elapsed}s] OBS result query failed; retrying"
+              sleep "$SLEEP"; elapsed=$((elapsed + SLEEP)); continue
+            fi
+            codes=$(echo "$xml" \
+              | grep -oE '<status[^>]+package="logitune"[^>]*code="[^"]+"' \
+              | grep -oE 'code="[^"]+"' | sort -u | tr '\n' ' ')
+            if [ "$codes" != "$last_codes" ]; then
+              echo "[${elapsed}s] package codes: $codes"
+              last_codes="$codes"
+            fi
+            if ! is_busy "$xml"; then
+              echo "All OBS builds settled."
+              break
+            fi
+            sleep "$SLEEP"
+            elapsed=$((elapsed + SLEEP))
+          done
+
+          echo "--- final per-target results ---"
+          echo "$xml" | grep -E '<result [^>]+>' \
+            | sed -E 's/.*repository="([^"]+)".*arch="([^"]+)".*/\1 \2/' \
+            | while read repo arch; do
+                code=$(echo "$xml" \
+                  | awk -v r="$repo" -v a="$arch" \
+                    '/<result / { match_block = ($0 ~ "repository=\""r"\"" && $0 ~ "arch=\""a"\""); }
+                     match_block && /<status[^>]+package="logitune"/ {
+                       if (match($0, /code="[^"]+"/)) {
+                         print substr($0, RSTART+6, RLENGTH-7)
+                       }
+                       match_block=0
+                     }')
+                printf '  %-24s %-12s %s\n' "$repo" "$arch" "$code"
+              done
+
+          if echo "$xml" | grep -qE '<status[^>]+package="logitune"[^>]*code="(failed|unresolvable|broken)"'; then
+            echo "::error::One or more OBS builds failed."
+            exit 1
+          fi
+          if [ "$elapsed" -ge "$MAX_WAIT" ]; then
+            echo "::error::Timed out waiting for OBS builds to settle after ${MAX_WAIT}s."
+            exit 1
+          fi
+          echo "All OBS builds succeeded."
 
   # --------------------------------------------------------------------------
   # Publish the updated PKGBUILD to the AUR. Runs only for stable tags
