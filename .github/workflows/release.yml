@@ -214,7 +214,9 @@ jobs:
           SLEEP=30
           elapsed=0
           last_codes=""
-          result_url="https://api.opensuse.org/build/home:mmaher88:logitune/_result?package=logitune"
+          # Public endpoint — no auth required for build results on public
+          # projects. The plain /build/.../_result path returns 401 anonymously.
+          result_url="https://api.opensuse.org/public/build/home:mmaher88:logitune/_result?package=logitune"
 
           # Non-terminal state codes per OBS: wait until none of these
           # appear in the result set.
