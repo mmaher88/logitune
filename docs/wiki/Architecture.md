@@ -6,79 +6,9 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 
 At a glance — one button press on the mouse turns into one row update in the QML UI. Each layer has one job:
 
-```mermaid
-%%{init: {'flowchart': {'rankSpacing': 60, 'nodeSpacing': 20}}}%%
-flowchart BT
-    subgraph UI["QML UI"]
-        direction LR
-        Main[Main.qml]
-        Pages[Pages<br/>PointScroll · Buttons<br/>EasySwitch · Settings]
-        Components[Components<br/>DeviceRender · SideNav<br/>ProfileBar]
-    end
+![System Overview](diagrams/system-overview.svg)
 
-    subgraph App["App library — <code>logitune-app-lib</code>"]
-        direction LR
-        AC[AppController]
-        DMm[DeviceModel]
-        BM[ButtonModel]
-        AFM[ActionFilterModel]
-        PM[ProfileModel]
-        SM[SettingsModel]
-        PE[ProfileEngine]
-        TM[TrayManager]
-        EM[EditorModel]
-    end
-
-    subgraph Core["Core library — <code>logitune-core</code>"]
-        direction LR
-        DM[DeviceManager]
-        PD[PhysicalDevice]
-        DS[DeviceSession]
-        Hidpp[HID++ stack<br/>FeatureDispatcher · CommandQueue<br/>Transport · HidrawDevice]
-        Desktop[Desktop integration<br/>KDeDesktop · GnomeDesktop<br/>GenericDesktop]
-        Inject[Input injection<br/>UinputInjector]
-    end
-
-    subgraph Kernel["Linux kernel"]
-        direction LR
-        hidraw["/dev/hidrawN"]
-        udev[libudev]
-        dbus[D-Bus session bus]
-        uinput["/dev/uinput"]
-    end
-
-    subgraph HW["🖱️ Mouse hardware"]
-        direction LR
-        Mouse["MX Master 3S · MX Vertical · …"]
-    end
-
-    %% --- cross-layer flow (data up) ---
-    Mouse -- "HID++ reports" --> hidraw
-    hidraw -- "read()" --> DS
-    DS --> PD --> DM
-    DM -- "Qt signals" --> AC
-    AC -- "property / role updates" --> DMm
-    DMm --> Main
-    BM --> Pages
-    AFM --> Pages
-
-    %% --- cross-layer flow (commands down) ---
-    Main -- "user action" --> AC
-    AC -- "divertButton() · setDPI()" --> DM
-    Hidpp -- "write()" --> hidraw
-    hidraw -- "HID++ commands" --> Mouse
-
-    %% --- other kernel surfaces ---
-    udev -- "hot-plug events" --> DM
-    Desktop -- "focus signals" --> dbus
-    Inject -- "keystrokes" --> uinput
-
-    %% force vertical layer ordering (BT)
-    Mouse ~~~ hidraw
-    hidraw ~~~ DS
-    DS ~~~ AC
-    AC ~~~ Main
-```
+> Source at [`docs/wiki/diagrams/system-overview.d2`](diagrams/system-overview.d2). Regenerate with `make diagrams`.
 
 Each layer below has its own detailed diagram elsewhere on this page:
 

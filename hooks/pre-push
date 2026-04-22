@@ -17,6 +17,19 @@ if ! python3 "${REPO_ROOT}/scripts/generate-readme-devices.py" --check > /dev/nu
     exit 1
 fi
 
+echo "🖼️  Checking d2 diagrams..."
+if command -v d2 >/dev/null 2>&1; then
+    if ! (cd "${REPO_ROOT}" && make diagrams-check > /dev/null 2>&1); then
+        echo "⚠️  d2 SVGs out of sync with .d2 sources. Regenerating..."
+        (cd "${REPO_ROOT}" && touch docs/wiki/diagrams/*.d2 && make diagrams > /dev/null 2>&1)
+        echo "   Review the diff, then:"
+        echo "     git add docs/wiki/diagrams/ && git commit --amend --no-edit"
+        exit 1
+    fi
+else
+    echo "   (skipped — d2 not installed. Install with: pacman -S d2 / https://d2lang.com)"
+fi
+
 echo "🔍 Running tests before push..."
 
 # Set XDG_DATA_DIRS so DeviceRegistry finds JSON descriptors in the build tree

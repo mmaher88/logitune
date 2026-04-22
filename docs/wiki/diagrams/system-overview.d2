@@ -1,0 +1,74 @@
+# System Overview
+# ---------------
+# Rendered to system-overview.svg via `make diagrams` (runs d2).
+# Edit this file, then regenerate. The CI lint + pre-push hook
+# refuse to merge a stale SVG.
+
+direction: up
+
+hardware: "Mouse hardware" {
+  label: "🖱️ Mouse hardware"
+  mice: "MX Master 3S · MX Master 4 · MX Anywhere · MX Vertical"
+}
+
+kernel: "Linux kernel" {
+  hidraw: "/dev/hidrawN"
+  udev: "libudev"
+  dbus: "D-Bus session bus"
+  uinput: "/dev/uinput"
+}
+
+core: "Core library — logitune-core" {
+  devmgr: "DeviceManager"
+  physical: "PhysicalDevice"
+  session: "DeviceSession"
+  hidpp: "HID++ stack\nFeatureDispatcher · CommandQueue\nTransport · HidrawDevice"
+  desktop: "Desktop integration\nKDeDesktop · GnomeDesktop · GenericDesktop"
+  inject: "Input injection\nUinputInjector"
+}
+
+app: "App library — logitune-app-lib" {
+  controller: "AppController"
+  profile_engine: "ProfileEngine"
+  device_model: "DeviceModel"
+  button_model: "ButtonModel"
+  action_filter_model: "ActionFilterModel"
+  profile_model: "ProfileModel"
+  settings_model: "SettingsModel"
+  tray: "TrayManager"
+  editor: "EditorModel"
+}
+
+ui: "QML UI" {
+  main: "Main.qml"
+  pages: "Pages\nPointScroll · Buttons\nEasySwitch · Settings"
+  components: "Components\nDeviceRender · SideNav · ProfileBar"
+}
+
+# --- data flow up (mouse -> screen) ---
+hardware.mice -> kernel.hidraw: "HID++ reports"
+kernel.hidraw -> core.session: "read()"
+core.session -> core.physical
+core.physical -> core.devmgr
+core.devmgr -> app.controller: "Qt signals"
+app.controller -> app.device_model: "property / role updates"
+app.device_model -> ui.main: "Q_PROPERTY + model roles"
+
+# --- commands down (user action -> mouse) ---
+ui.main -> app.controller: "user action" {
+  style.stroke-dash: 3
+}
+app.controller -> core.devmgr: "divertButton() · setDPI()" {
+  style.stroke-dash: 3
+}
+core.hidpp -> kernel.hidraw: "write()" {
+  style.stroke-dash: 3
+}
+kernel.hidraw -> hardware.mice: "HID++ commands" {
+  style.stroke-dash: 3
+}
+
+# --- other kernel surfaces ---
+kernel.udev -> core.devmgr: "hot-plug events"
+core.desktop -> kernel.dbus: "focus signals"
+core.inject -> kernel.uinput: "keystrokes"
