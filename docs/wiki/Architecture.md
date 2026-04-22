@@ -4,127 +4,40 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 
 ## System Overview
 
+At a glance — one button press on the mouse turns into one row update in the QML UI. Each layer has one job:
+
 ```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 60, 'rankSpacing': 220, 'subGraphTitleMargin': {'top': 16, 'bottom': 16}, 'padding': 24}}}%%
-graph TB
-    subgraph "QML UI"
-        Main[Main.qml]
-        Pages[Pages: PointScroll, Buttons, EasySwitch, Settings]
-        Components[Components: DeviceRender, SideNav, ProfileBar]
-    end
+flowchart TB
+    Mouse["🖱️ Mouse hardware<br/><i>MX Master 3S, MX Vertical, …</i>"]
+    Kernel["Linux kernel<br/><i>/dev/hidrawN, libudev</i>"]
+    Core["Core library — <code>logitune-core</code><br/><i>DeviceManager · PhysicalDevice · DeviceSession<br/>HID++ stack · Desktop integration · Input injection</i>"]
+    App["App library — <code>logitune-app-lib</code><br/><i>AppController · ProfileEngine<br/>DeviceModel · ButtonModel · ActionFilterModel · SettingsModel · ProfileModel<br/>TrayManager · EditorModel</i>"]
+    UI["QML UI<br/><i>Main · pages · components</i>"]
 
-    subgraph "App Layer (logitune-app-lib)"
-        AC[AppController]
-        DM_model[DeviceModel]
-        BM[ButtonModel]
-        AFM[ActionFilterModel]
-        AM[ActionModel]
-        PM[ProfileModel]
-        SM[SettingsModel]
-        TM[TrayManager]
-        EM[EditorModel]
-    end
+    Mouse  -- "HID++ reports (button press, battery, notifications)" --> Kernel
+    Kernel -- "raw bytes via hidraw read()"                          --> Core
+    Core   -- "Qt signals (stateChanged, activeWindowChanged, …)"    --> App
+    App    -- "Q_PROPERTY + QAbstractItemModel roles"                --> UI
 
-    subgraph "Core Layer (logitune-core)"
-        DevMgr[DeviceManager]
-        PD[PhysicalDevice]
-        DS[DeviceSession]
-        PE[ProfileEngine]
-        AE[ActionExecutor]
-        DR[DeviceRegistry]
+    UI   -- "user action (click, toggle, drag)"                  --> App
+    App  -- "divertButton(), setDPI(), applyProfile() …"         --> Core
+    Core -- "HID++ command reports via hidraw write()"           --> Kernel
+    Kernel -- "HID++ commands"                                   --> Mouse
 
-        subgraph "HID++ Protocol"
-            FD[FeatureDispatcher]
-            CQ[CommandQueue]
-            TR[Transport]
-            HR[HidrawDevice]
-            Caps[Capability dispatch tables]
-        end
-
-        subgraph "Desktop Integration"
-            IDesktop[IDesktopIntegration]
-            LDB[LinuxDesktopBase]
-            KDE[KDeDesktop]
-            GNOME[GnomeDesktop]
-            Generic[GenericDesktop]
-        end
-
-        subgraph "Input Injection"
-            IInject[IInputInjector]
-            Uinput[UinputInjector]
-        end
-    end
-
-    subgraph "System"
-        hidraw[/dev/hidrawN/]
-        udev[libudev]
-        dbus[D-Bus Session Bus]
-        kwin[KWin script]
-        gshell[GNOME Shell extension]
-        uinputdev[/dev/uinput/]
-    end
-
-    Main --> DM_model
-    Main --> BM
-    Main --> AFM
-    Main --> PM
-    Main --> SM
-    Pages --> DM_model
-    Pages --> BM
-    Pages --> AFM
-
-    AC --> DM_model
-    AC --> BM
-    AC --> AFM
-    AC --> AM
-    AC --> PM
-    AC --> SM
-    AC --> DevMgr
-    AC --> PE
-    AC --> AE
-    AC --> IDesktop
-
-    AFM -.->|filters| AM
-    DM_model -.->|rows are| PD
-
-    DevMgr --> DR
-    DevMgr --> PD
-    PD --> DS
-    DS --> FD
-    DS --> CQ
-    DS --> TR
-    DevMgr --> udev
-
-    FD --> Caps
-    FD --> TR
-    CQ --> FD
-    TR --> HR
-    HR --> hidraw
-
-    IDesktop -.-> LDB
-    LDB -.-> KDE
-    LDB -.-> GNOME
-    IDesktop -.-> Generic
-    KDE --> kwin
-    kwin --> dbus
-    GNOME --> gshell
-    gshell --> dbus
-
-    AE --> IInject
-    IInject -.-> Uinput
-    Uinput --> uinputdev
-
-    TM --> DM_model
-    EM -.->|--edit mode| AC
-
-    %% Invisible edges to force the four layers onto separate ranks.
-    %% Without these, the engine tries to minimize edge length and
-    %% ends up placing subgraphs side-by-side.
-    Main ~~~ AC
-    AC ~~~ DevMgr
-    HR ~~~ hidraw
-    Uinput ~~~ uinputdev
+    classDef layer fill:#1e293b,stroke:#64748b,color:#e2e8f0
+    class Mouse,Kernel,Core,App,UI layer
 ```
+
+Each layer below has its own detailed diagram elsewhere on this page:
+
+| Layer | Detail |
+|---|---|
+| Core — HID++ stack | [HID++ protocol stack](#stack), [feature discovery](#feature-discovery), [command queue](#command-queue), [async matching](#async-response-matching) |
+| Core — Desktop integration | [Interface hierarchy](#interface-hierarchy), [KDE focus tracking](#kde-focus-tracking) |
+| Core — Device lifecycle | [PhysicalDevice transport aggregation](#physicaldevice-transport-aggregation), [Discovery flow](#discovery-flow), [Disconnect and reconnect](#disconnect-and-reconnect) |
+| App — Models | [MVVM pattern](#mvvm-pattern), [Model roles](#model-roles), [Model registration](#model-registration) |
+| App — Orchestration | [AppController wiring](#appcontroller-wiring) |
+| Cross-cutting flow | [Window focus → profile switch → hardware commands](#window-focus-change---profile-switch---hardware-commands) |
 
 ### Two Static Libraries
 
@@ -524,6 +437,25 @@ qmlRegisterSingletonInstance("Logitune", 1, 0, "SettingsModel",      controller.
 
 `ActionFilterModel` wraps the raw `ActionModel` catalog and hides entries the selected device can't execute (PR #82). QML code always binds to the filter model, never to the raw catalog. `SettingsModel` exposes the persisted user prefs (dark mode, logging, autostart, minimized, bug reports) as a single Q_PROPERTY surface.
 
+```mermaid
+flowchart LR
+    QML["QML import Logitune 1.0<br/>(any .qml file)"]
+
+    DM["DeviceModel<br/><i>rows: PhysicalDevice *</i>"]
+    BM["ButtonModel<br/><i>rows: visible buttons of<br/>selected device profile</i>"]
+    AFM["ActionFilterModel<br/><i>catalog minus actions the<br/>selected device can't run</i>"]
+    PM["ProfileModel<br/><i>rows: user's profiles</i>"]
+    SM["SettingsModel<br/><i>dark mode, logging,<br/>autostart, …</i>"]
+
+    QML -->|singleton| DM
+    QML -->|singleton| BM
+    QML -->|singleton| AFM
+    QML -->|singleton| PM
+    QML -->|singleton| SM
+```
+
+All five are registered in `src/app/main.cpp` against `controller.xxxModel()` accessors — AppController owns them, QML borrows them. No other QML-visible C++ classes.
+
 ## Desktop Integration
 
 ### Interface Hierarchy
@@ -649,6 +581,22 @@ A single MX Master 3S mouse typically appears on the host as *two* hidraw nodes 
 - Emits `stateChanged` / `deviceNameChanged` / `batteryChanged` once per underlying transition, not per transport — models bind to `PhysicalDevice`, not the raw `DeviceSession`.
 
 The UI, `DeviceModel`, `ProfileEngine`, and tray all deal in `PhysicalDevice *`. `DeviceSession *` is an implementation detail of the transport layer.
+
+```mermaid
+flowchart LR
+    DM["DeviceManager<br/><i>keyed by unit serial</i>"]
+    PD["PhysicalDevice<br/><i>serial = 'ABCD…'</i>"]
+    DS1["DeviceSession<br/><i>Bolt receiver</i><br/>✅ primary"]
+    DS2["DeviceSession<br/><i>Bluetooth direct</i><br/>standby"]
+
+    DM -->|owns| PD
+    PD -->|non-owning, active| DS1
+    PD -.->|non-owning, fallback| DS2
+
+    DS1 -. "pings fail →<br/>PhysicalDevice swaps primary" .-> DS2
+```
+
+When the active transport drops (udev remove, HID++ ping timeout), `PhysicalDevice::setPrimary()` picks any remaining connected session. The UI never sees a disconnect event — `stateChanged` still fires, but `DeviceModel`'s row for this serial stays.
 
 ### Discovery Flow
 
