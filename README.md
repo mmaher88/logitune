@@ -109,17 +109,19 @@ logitune
 
 ## 🖱️ Supported Devices
 
+<!-- BEGIN DEVICES TABLE -->
 | Device | Status | Battery | DPI | SmartShift | Thumb wheel | Button remap | Gestures | Smooth scroll | Easy-Switch |
-|--------|:------:|:------:|:---:|:----------:|:-----------:|:------------:|:--------:|:-------------:|:-----------:|
-| MX Master 3S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+|--------|:------:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
 | MX Master 2S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| MX Master 4  | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ off | ✅ |
-| MX Anywhere 3S              | 🧪 Beta     | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
-| MX Anywhere 3S for Business | 🧪 Beta     | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
-| MX Anywhere 3               | 🧪 Beta     | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
-| MX Anywhere 3 for Business  | 🧪 Beta     | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
-| MX Vertical                 | 🧪 Beta     | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ |
-| MX Vertical for Business    | 🧪 Beta     | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ |
+| MX Master 3S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| MX Master 4 | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| MX Anywhere 3 | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
+| MX Anywhere 3 for Business | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
+| MX Anywhere 3S | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
+| MX Anywhere 3S for Business | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
+| MX Vertical | 🧪 Beta | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ |
+| MX Vertical for Business | 🧪 Beta | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ |
+<!-- END DEVICES TABLE -->
 
 > **MX Master 4 smooth scrolling** is disabled in the shipped descriptor: the hardware does not respond correctly to the HID++ configuration used on MX Master 2S / 3S. Regular scroll wheel and SmartShift work normally; only sub-tick smoothing is unavailable. Re-enable yourself by setting `"smoothScroll": true` in `devices/mx-master-4/descriptor.json` if your unit behaves differently; if it works we will promote the default.
 
