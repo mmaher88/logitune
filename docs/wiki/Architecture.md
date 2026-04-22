@@ -5,7 +5,7 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 ## System Overview
 
 ```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 30, 'rankSpacing': 90, 'subGraphTitleMargin': {'top': 8, 'bottom': 8}, 'padding': 12}}}%%
+%%{init: {'flowchart': {'nodeSpacing': 60, 'rankSpacing': 220, 'subGraphTitleMargin': {'top': 16, 'bottom': 16}, 'padding': 24}}}%%
 graph TB
     subgraph "QML UI"
         Main[Main.qml]
