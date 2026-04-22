@@ -1,9 +1,14 @@
 #!/usr/bin/make -f
+include /usr/share/dpkg/pkg-info.mk
+
 %:
 	dh $@
 
 override_dh_auto_configure:
-	cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -Wno-dev
+	# DEB_VERSION_UPSTREAM comes from debian/changelog (which OBS keeps in
+	# sync via the set_version service). CMakeLists.txt refuses to guess
+	# without an explicit -DLOGITUNE_VERSION, so feed it here.
+	cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DLOGITUNE_VERSION=$(DEB_VERSION_UPSTREAM) -Wno-dev
 
 override_dh_auto_build:
 	cmake --build build -j$$(nproc)
