@@ -4,118 +4,27 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 
 ## System Overview
 
+The project is four layers — UI, app, core, kernel/system — with clear ownership at each boundary:
+
 ```mermaid
 graph TB
-    subgraph "QML UI"
-        Main[Main.qml]
-        Pages[Pages: PointScroll, Buttons, EasySwitch, Settings]
-        Components[Components: DeviceRender, SideNav, ProfileBar]
-    end
+    QML["QML UI<br/>Main, pages, components"]
+    App["App Layer (logitune-app-lib)<br/>AppController · TrayManager · EditorModel<br/>Models: DeviceModel, ButtonModel, ProfileModel,<br/>ActionModel + ActionFilterModel, SettingsModel"]
+    Core["Core Layer (logitune-core)<br/>DeviceManager · PhysicalDevice · DeviceSession<br/>ProfileEngine · ActionExecutor · DeviceRegistry<br/>HID++ stack · Desktop integration · Input injection"]
+    Sys["Kernel / System<br/>/dev/hidrawN · /dev/uinput · libudev · D-Bus · KWin script · GNOME Shell extension"]
 
-    subgraph "App Layer (logitune-app-lib)"
-        AC[AppController]
-        DM_model[DeviceModel]
-        BM[ButtonModel]
-        AFM[ActionFilterModel]
-        AM[ActionModel]
-        PM[ProfileModel]
-        SM[SettingsModel]
-        TM[TrayManager]
-        EM[EditorModel]
-    end
-
-    subgraph "Core Layer (logitune-core)"
-        DevMgr[DeviceManager]
-        PD[PhysicalDevice]
-        DS[DeviceSession]
-        PE[ProfileEngine]
-        AE[ActionExecutor]
-        DR[DeviceRegistry]
-
-        subgraph "HID++ Protocol"
-            FD[FeatureDispatcher]
-            CQ[CommandQueue]
-            TR[Transport]
-            HR[HidrawDevice]
-            Caps[Capability dispatch tables]
-        end
-
-        subgraph "Desktop Integration"
-            IDesktop[IDesktopIntegration]
-            LDB[LinuxDesktopBase]
-            KDE[KDeDesktop]
-            GNOME[GnomeDesktop]
-            Generic[GenericDesktop]
-        end
-
-        subgraph "Input Injection"
-            IInject[IInputInjector]
-            Uinput[UinputInjector]
-        end
-    end
-
-    subgraph "System"
-        hidraw[/dev/hidrawN/]
-        udev[libudev]
-        dbus[D-Bus Session Bus]
-        kwin[KWin script]
-        gshell[GNOME Shell extension]
-        uinputdev[/dev/uinput/]
-    end
-
-    Main --> DM_model
-    Main --> BM
-    Main --> AFM
-    Main --> PM
-    Main --> SM
-    Pages --> DM_model
-    Pages --> BM
-    Pages --> AFM
-
-    AC --> DM_model
-    AC --> BM
-    AC --> AFM
-    AC --> AM
-    AC --> PM
-    AC --> SM
-    AC --> DevMgr
-    AC --> PE
-    AC --> AE
-    AC --> IDesktop
-
-    AFM -.->|filters| AM
-    DM_model -.->|rows are| PD
-
-    DevMgr --> DR
-    DevMgr --> PD
-    PD --> DS
-    DS --> FD
-    DS --> CQ
-    DS --> TR
-    DevMgr --> udev
-
-    FD --> Caps
-    FD --> TR
-    CQ --> FD
-    TR --> HR
-    HR --> hidraw
-
-    IDesktop -.-> LDB
-    LDB -.-> KDE
-    LDB -.-> GNOME
-    IDesktop -.-> Generic
-    KDE --> kwin
-    kwin --> dbus
-    GNOME --> gshell
-    gshell --> dbus
-
-    AE --> IInject
-    IInject -.-> Uinput
-    Uinput --> uinputdev
-
-    TM --> DM_model
-    EM -.->|--edit mode| AC
+    QML --> App
+    App --> Core
+    Core --> Sys
 ```
+
+Each subsystem has its own detailed diagram later on this page:
+
+- [HID++ protocol stack](#stack) — `DeviceManager` → `PhysicalDevice` → `DeviceSession` → `FeatureDispatcher` / `CommandQueue` / `Transport` → hidraw.
+- [MVVM layer](#mvvm-pattern) — models expose Qt roles, QML binds through `ActionFilterModel` and `SettingsModel` singletons.
+- [Desktop integration](#interface-hierarchy) — `IDesktopIntegration` → `LinuxDesktopBase` → KDE / GNOME implementations, plus `GenericDesktop` fallback.
+- [Discovery + reconnect](#device-discovery-and-connection) — udev events, Bolt receiver slot probing, transport failover.
+- [Signal flow](#signal-flow) — window focus change → profile switch → hardware commands (sequence diagram).
 
 ### Two Static Libraries
 
