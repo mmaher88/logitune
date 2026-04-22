@@ -22,6 +22,10 @@ on:
         description: "Tag to simulate for dry_run_aur (e.g. v0.3.3). Ignored otherwise."
         type: string
         default: ''
+      trigger_obs:
+        description: "Fire the OBS source-service trigger end-to-end (same call as the real tag path — re-runs the OBS service)."
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -188,7 +192,11 @@ jobs:
   trigger-obs:
     needs: [release]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: |
+      always() && (
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+        || (github.event_name == 'workflow_dispatch' && inputs.trigger_obs)
+      )
     steps:
       - name: Trigger OBS source service
         run: |
