@@ -316,3 +316,61 @@ TEST(DeviceRegistry, MxMaster3sHasNoDpiCycleRing) {
     ASSERT_NE(dev, nullptr);
     EXPECT_TRUE(dev->dpiCycleRing().empty());
 }
+
+// Every devices/*/descriptor.json must have a matching entry in kDevices[]
+// above so the parameterized suite actually validates the new descriptor.
+// Without this check, a new descriptor can be added (hardware PID, controls,
+// hotspots, gestures...) with zero test coverage — issues only surface at
+// runtime for an end user. Inverse check catches kDevices entries that no
+// longer correspond to a descriptor on disk (e.g. after a rename).
+TEST(DeviceRegistry, EveryDescriptorHasSpecCoverage) {
+    // Descriptors that share a PID with another entry can't be parameterized
+    // via kDevices because DeviceRegistry::findByPid returns the first-loaded
+    // match, so the FindsByPid assertion on the shared-PID variant would flap.
+    // They're covered by dedicated tests instead
+    // (MxVerticalDpiButtonIsNotConfigurable iterates both MX Vertical variants).
+    static const QSet<QString> kPidCollisionExemptions = {
+        QStringLiteral("MX Vertical for Business"),
+    };
+
+    QSet<QString> specNames;
+    for (const auto &s : kDevices) {
+        specNames.insert(QString::fromUtf8(s.name));
+    }
+    specNames.unite(kPidCollisionExemptions);
+
+    QSet<QString> descriptorNames;
+    const QDir devicesDir(QStringLiteral(SOURCE_ROOT "/devices"));
+    ASSERT_TRUE(devicesDir.exists()) << "devices/ dir not found at " << devicesDir.path().toStdString();
+    const auto slugs = devicesDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const QString &slug : slugs) {
+        const QString descPath = devicesDir.filePath(slug) + QStringLiteral("/descriptor.json");
+        if (!QFile::exists(descPath))
+            continue;
+        auto dev = logitune::JsonDevice::load(devicesDir.filePath(slug));
+        ASSERT_NE(dev, nullptr) << slug.toStdString();
+        descriptorNames.insert(dev->deviceName());
+    }
+
+    // Descriptors on disk with no DeviceSpec entry.
+    const QSet<QString> uncovered = descriptorNames - specNames;
+    if (!uncovered.isEmpty()) {
+        QStringList sorted = uncovered.values();
+        std::sort(sorted.begin(), sorted.end());
+        ADD_FAILURE() << "Descriptors missing a DeviceSpec entry in kDevices[]:\n"
+                      << "  " << sorted.join(QStringLiteral(", ")).toStdString() << "\n"
+                      << "  Add matching entries to tests/test_device_registry.cpp "
+                         "(kDevices[] near the top of the file).";
+    }
+
+    // DeviceSpec entries with no descriptor on disk (stale test data).
+    const QSet<QString> orphaned = specNames - descriptorNames;
+    if (!orphaned.isEmpty()) {
+        QStringList sorted = orphaned.values();
+        std::sort(sorted.begin(), sorted.end());
+        ADD_FAILURE() << "kDevices[] has entries with no descriptor on disk:\n"
+                      << "  " << sorted.join(QStringLiteral(", ")).toStdString() << "\n"
+                      << "  Remove them from tests/test_device_registry.cpp or "
+                         "restore the missing devices/<slug>/descriptor.json.";
+    }
+}
