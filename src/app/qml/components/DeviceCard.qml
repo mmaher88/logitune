@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import Logitune
 
 Item {
@@ -31,6 +32,7 @@ Item {
     }
 
     Rectangle {
+        id: statusBadge
         anchors { top: parent.top; right: parent.right; margins: -4 }
         width: 22; height: 22; radius: 11
         z: 2
@@ -54,6 +56,14 @@ Item {
                 }
             }
         }
+
+        HoverHandler { id: badgeHover }
+
+        ToolTip.visible: badgeHover.hovered
+        ToolTip.delay: 500
+        ToolTip.text: root.status === "verified"
+            ? qsTr("Verified on real hardware by the Logitune team. Full feature support.")
+            : qsTr("Beta descriptor — added but not yet verified on physical hardware. Core features should work; some may be untested.")
     }
 
     Text {
