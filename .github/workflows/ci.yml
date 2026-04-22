@@ -68,6 +68,10 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Need full history + tags so CMakeLists.txt's git-describe path
+          # can resolve LOGITUNE_VERSION. Without this, configure fails.
+          fetch-depth: 0
 
       # Ubuntu ships gtest as source-only (libgtest-dev); we compile and
       # install it ourselves. Cache the installed artifacts so subsequent
@@ -153,6 +157,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Route apt's .deb cache into a user-owned directory so actions/cache
       # can both read it on save and extract into it on restore. Caching
