@@ -189,12 +189,14 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$AUR_SSH_KEY" > ~/.ssh/aur
           chmod 600 ~/.ssh/aur
-          ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts
+          # Trust the AUR host key on first connect and persist it; subsequent
+          # connects still fail on mismatch. Avoids brittle ssh-keyscan calls
+          # inside a freshly-started container where DNS may not be settled.
           cat > ~/.ssh/config <<'EOF'
           Host aur.archlinux.org
               IdentityFile ~/.ssh/aur
               User aur
-              StrictHostKeyChecking yes
+              StrictHostKeyChecking accept-new
           EOF
 
       - name: Clone AUR repo
