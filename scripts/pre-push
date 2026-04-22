@@ -2,6 +2,21 @@
 # Pre-push hook: run all tests before allowing push
 # Install: cp scripts/pre-push .git/hooks/pre-push
 
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# README devices table must match devices/*/descriptor.json. If it has
+# drifted, regenerate it on disk so the developer just has to `git add`
+# and retry; do not push with stale docs.
+echo "📋 Checking README devices table..."
+if ! python3 "${REPO_ROOT}/scripts/generate-readme-devices.py" --check > /dev/null 2>&1; then
+    echo "⚠️  README.md device table is out of sync with devices/*/descriptor.json."
+    python3 "${REPO_ROOT}/scripts/generate-readme-devices.py" > /dev/null
+    echo "   Regenerated README.md. Review the diff, then:"
+    echo "     git add README.md && git commit --amend --no-edit   # fold into the last commit"
+    echo "   or make a fresh commit and re-push."
+    exit 1
+fi
+
 echo "🔍 Running tests before push..."
 
 # Set XDG_DATA_DIRS so DeviceRegistry finds JSON descriptors in the build tree
