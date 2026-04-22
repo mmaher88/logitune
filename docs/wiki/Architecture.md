@@ -603,6 +603,18 @@ This prevents Ctrl+Super+Left (assigned to "switch desktop left") from actually 
 
 ## Device Discovery and Connection
 
+### PhysicalDevice: transport aggregation
+
+A single MX Master 3S mouse typically appears on the host as *two* hidraw nodes when both transports are active — once via the Bolt/Unifying receiver, once via direct Bluetooth. HID++ unit serial (from `DeviceInfo.getSerial`) identifies them as the same physical unit. `src/core/PhysicalDevice.{h,cpp}` is the abstraction that collapses them:
+
+- Owned by `DeviceManager`, keyed by serial.
+- Holds a non-owning list of `DeviceSession *` transports.
+- Exposes a single `primary()` pointer — commands route there.
+- Picks primary based on connection state: if the current primary goes stale (udev remove, ping timeout), switches to any other connected transport without the UI seeing a disconnect event.
+- Emits `stateChanged` / `deviceNameChanged` / `batteryChanged` once per underlying transition, not per transport — models bind to `PhysicalDevice`, not the raw `DeviceSession`.
+
+The UI, `DeviceModel`, `ProfileEngine`, and tray all deal in `PhysicalDevice *`. `DeviceSession *` is an implementation detail of the transport layer.
+
 ### Discovery Flow
 
 ```mermaid

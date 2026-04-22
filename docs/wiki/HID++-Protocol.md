@@ -336,6 +336,26 @@ int normalized = delta * m_deviceManager.thumbWheelDefaultDirection();
 
 The MX Master 3S has one sensor (index 0) with range 200-8000 and step 50.
 
+### GestureV2 (0x6501)
+
+Newer-generation gesture feature used by MX Master 4 (and forward-looking descriptors). Superset of the older "hold thumb button + swipe" model with a richer per-direction event stream.
+
+**Functions:**
+
+| FunctionId | Name | Params | Response |
+|-----------|------|--------|----------|
+| 5 | SetGestureEnable | enable (0/1) | (confirmed) |
+
+**Notification event parsing** (`GestureV2::parseGestureEvent`):
+
+```
+params[0-1]: dx (int16, big-endian horizontal delta)
+params[2-3]: dy (int16, big-endian vertical delta)
+params[4]:   released flag — 1 when the thumb button lifts (end of gesture stream)
+```
+
+Unlike the diverted-button + rawXY approach used for ThumbWheel, GestureV2 produces coalesced dx/dy deltas while the gesture button is held and emits a single "released" event at the end. AppController accumulates deltas and thresholds them to turn continuous motion into up/down/left/right/click bindings.
+
 ### ChangeHost (0x1814)
 
 **Functions:**

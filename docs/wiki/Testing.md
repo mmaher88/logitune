@@ -445,6 +445,20 @@ All tests run with `QT_QPA_PLATFORM=offscreen` (no display server required).
 | `test_notification_filtering.cpp` | softwareId filtering, notification dispatch |
 | `test_settings_change_behavior.cpp` | DPI/SmartShift/scroll change flow |
 | `test_tray_manager.cpp` | TrayManager menu, actions, battery display |
+| `test_action_filter_model.cpp` | ActionFilterModel hides entries the selected device can't run |
+| `test_capability_dispatch.cpp` | HID++ feature-variant capability table resolution |
+| `test_descriptor_writer.cpp` | DescriptorWriter round-trip preserves unknown fields |
+| `test_editor_model.cpp` | EditorModel mutations, undo/redo, per-device stacks |
+| `test_desktop_factory.cpp` | Desktop integration selection based on XDG_CURRENT_DESKTOP |
+| `test_device_session.cpp` | Per-transport state machine, feature enumeration |
+| `test_physical_device.cpp` | Transport aggregation, primary selection on failover |
+| `test_profile_apply_behavior.cpp` | Hardware profile application sequences |
+| `test_settings_model.cpp` | SettingsModel persistence and Q_PROPERTY surface |
+| `test_json_device.cpp` | JsonDevice::load parsing, schema conformance |
+| `test_device_fetcher.cpp` | Async device info fetching (name, serial, firmware) |
+| `test_dpi_cycle_ring.cpp` | DPI cycle ring rotation + boundary handling |
+| `test_autostart_desktop.cpp` | Autostart .desktop installation (PR #69) |
+| `test_distro_detector.cpp` | Distribution detection for packaging hints |
 
 ### Crash dialog behavior
 
