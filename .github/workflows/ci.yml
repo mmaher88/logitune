@@ -153,7 +153,21 @@ jobs:
           echo "All expected files present."
 
   # --------------------------------------------------------------------------
-  # Job 2: Debian package
+  # Job 2: README device table must match devices/*/descriptor.json.
+  # Ensures the published table never drifts from the descriptors; new
+  # devices land in the same PR as the README update.
+  # --------------------------------------------------------------------------
+  devices-table-check:
+    name: README devices table
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify README.md table matches descriptors
+        run: python3 scripts/generate-readme-devices.py --check
+
+  # --------------------------------------------------------------------------
+  # Job 3: Debian package
   # --------------------------------------------------------------------------
   deb-pkg:
     name: Debian Package
