@@ -116,6 +116,14 @@ graph TB
 
     TM --> DM_model
     EM -.->|--edit mode| AC
+
+    %% Invisible edges to force the four layers onto separate ranks.
+    %% Without these, the engine tries to minimize edge length and
+    %% ends up placing subgraphs side-by-side.
+    Main ~~~ AC
+    AC ~~~ DevMgr
+    HR ~~~ hidraw
+    Uinput ~~~ uinputdev
 ```
 
 ### Two Static Libraries
