@@ -7,7 +7,7 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 At a glance — one button press on the mouse turns into one row update in the QML UI. Each layer has one job:
 
 ```mermaid
-flowchart TB
+flowchart BT
     Mouse["🖱️ Mouse hardware<br/><i>MX Master 3S, MX Vertical, …</i>"]
     Kernel["Linux kernel<br/><i>/dev/hidrawN, libudev</i>"]
     Core["Core library — <code>logitune-core</code><br/><i>DeviceManager · PhysicalDevice · DeviceSession<br/>HID++ stack · Desktop integration · Input injection</i>"]
