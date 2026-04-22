@@ -6,7 +6,22 @@ on:
   # Manual trigger lets us dry-run the packaging jobs without publishing.
   # The `release` job is skipped unless a tag was pushed, so nothing is
   # uploaded; artifacts are still attached to the run for inspection.
+  #
+  # When dry_run_aur=true and a tag is provided, the push-aur job also
+  # runs end-to-end (clone AUR, regen PKGBUILD + .SRCINFO,
+  # makepkg --printsrcinfo) but stops before the final `git push` so we
+  # can inspect the intended diff. Useful when iterating on the ssh /
+  # host-key plumbing without cutting a real release.
   workflow_dispatch:
+    inputs:
+      dry_run_aur:
+        description: "Dry-run the push-aur job (no git push to AUR). Requires 'tag'."
+        type: boolean
+        default: false
+      tag:
+        description: "Tag to simulate for dry_run_aur (e.g. v0.3.3). Ignored otherwise."
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -171,7 +186,20 @@ jobs:
   push-aur:
     needs: [release]
     runs-on: ubuntu-24.04
-    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+    # Runs on stable tag pushes after release succeeds, OR as a dry-run via
+    # workflow_dispatch. always() bypasses the default skip-when-needs-
+    # skipped behaviour so dry-run dispatches (where `release` is skipped)
+    # still reach this job.
+    if: |
+      always() && (
+        (github.event_name == 'push'
+         && startsWith(github.ref, 'refs/tags/v')
+         && !contains(github.ref_name, '-')
+         && needs.release.result == 'success')
+        || (github.event_name == 'workflow_dispatch'
+            && inputs.dry_run_aur
+            && inputs.tag != '')
+      )
     container:
       image: archlinux:latest
       options: --user root
@@ -181,6 +209,17 @@ jobs:
           pacman -Syu --noconfirm --needed base-devel git openssh sudo
 
       - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          echo "Resolved tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Write AUR SSH key
         env:
@@ -202,8 +241,10 @@ jobs:
         run: git clone ssh://aur@aur.archlinux.org/logitune.git aur
 
       - name: Stage updated PKGBUILD + install hook
+        env:
+          TAG_NAME: ${{ steps.tag.outputs.tag }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG_NAME#v}"
           TARBALL_URL="https://github.com/mmaher88/logitune/archive/v${VERSION}.tar.gz"
           SHA=$(curl -fsSL --retry 3 "$TARBALL_URL" | sha256sum | awk '{print $1}')
           cp packaging/PKGBUILD aur/PKGBUILD
@@ -218,17 +259,35 @@ jobs:
           chown -R builder aur
           sudo -u builder bash -c 'cd aur && makepkg --printsrcinfo > .SRCINFO'
 
-      - name: Commit and push
+      - name: Commit
         env:
-          GIT_SSH_COMMAND: "ssh -i /root/.ssh/aur -o UserKnownHostsFile=/root/.ssh/known_hosts -o StrictHostKeyChecking=accept-new"
+          TAG_NAME: ${{ steps.tag.outputs.tag }}
         run: |
           cd aur
           git config user.email "mina.maher88@hotmail.com"
           git config user.name "mmaher88"
           git add PKGBUILD .SRCINFO logitune.install
           if git diff --cached --quiet; then
-            echo "No AUR changes to push."
+            echo "No AUR changes to commit."
           else
-            git commit -m "Update to ${GITHUB_REF_NAME#v}"
-            git push
+            git commit -m "Update to ${TAG_NAME#v}"
           fi
+
+      - name: Push to AUR
+        if: github.event_name == 'push'
+        env:
+          GIT_SSH_COMMAND: "ssh -i /root/.ssh/aur -o UserKnownHostsFile=/root/.ssh/known_hosts -o StrictHostKeyChecking=accept-new"
+        run: |
+          cd aur
+          git push
+
+      - name: Dry-run summary (no push)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cd aur
+          echo "::group::Dry-run: what would be pushed to AUR"
+          git log -1 --stat || true
+          echo "--- PKGBUILD ---"; cat PKGBUILD
+          echo "--- .SRCINFO ---"; cat .SRCINFO
+          echo "::endgroup::"
+          echo "Dry-run complete — no git push performed."
