@@ -1,10 +1,8 @@
 #pragma once
 #include "DeviceFetcher.h"
 #include "DeviceManager.h"
-#include "DeviceSession.h"
 #include "PhysicalDevice.h"
 #include "DeviceRegistry.h"
-#include "interfaces/IDevice.h"
 #include "interfaces/IDesktopIntegration.h"
 #include "interfaces/IInputInjector.h"
 #include "ProfileEngine.h"
@@ -20,10 +18,7 @@
 #include "services/ButtonActionDispatcher.h"
 #include "services/ProfileOrchestrator.h"
 #include <QObject>
-#include <QTimer>
-#include <cstdint>
 #include <memory>
-#include <unordered_map>
 
 namespace logitune::test { class AppControllerFixture; }
 
@@ -31,6 +26,19 @@ namespace logitune {
 
 class EditorModel;
 
+/// Composition root for the Logitune application.
+///
+/// Owns long-lived singletons (ViewModels, services, engines), wires the
+/// signal graph between them at startup, and attaches PhysicalDevice
+/// instances into the graph at runtime. Exposes ViewModels via accessors
+/// for QML registration in main.cpp.
+///
+/// This class does not implement user-facing behavior. Profile flow lives
+/// in ProfileOrchestrator, input interpretation in ButtonActionDispatcher,
+/// hardware command relays in DeviceCommands, and active-device resolution
+/// in DeviceSelection. If you find yourself adding a method here that
+/// responds to a user event or mutates application state, it belongs in
+/// a service instead.
 class AppController : public QObject {
     Q_OBJECT
 public:

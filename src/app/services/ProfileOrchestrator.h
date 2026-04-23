@@ -1,13 +1,7 @@
 #pragma once
-#include "ButtonAction.h"
 #include "ProfileEngine.h"
 #include <QObject>
 #include <QString>
-
-namespace logitune::test {
-class AppControllerFixture;
-class ProfileOrchestratorFixture;
-}
 
 namespace logitune {
 
@@ -62,9 +56,6 @@ public:
         if (name == m_profileEngine->hardwareProfile(serial))
             hardwareForward();
     }
-
-    friend class test::AppControllerFixture;
-    friend class test::ProfileOrchestratorFixture;
 
 public slots:
     void saveCurrentProfile();

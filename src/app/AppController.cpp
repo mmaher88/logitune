@@ -6,11 +6,7 @@
 #include "desktop/GenericDesktop.h"
 #include "input/UinputInjector.h"
 #include "logging/LogManager.h"
-#include <QDir>
-#include <QFile>
 #include <QProcessEnvironment>
-#include <QStandardPaths>
-#include <QTimer>
 
 namespace logitune {
 
