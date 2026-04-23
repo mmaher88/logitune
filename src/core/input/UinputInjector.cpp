@@ -284,19 +284,55 @@ std::vector<int> UinputInjector::parseKeystroke(const QString &combo)
                 keys.push_back(keycode);
                 continue;
             }
-            // Punctuation / symbol keys
+            // Punctuation / symbol keys.
+            //
+            // The unshifted set (row 1) maps 1:1 to its scancode. The shifted
+            // set (row 2) also maps to the base scancode; callers are
+            // expected to have "Shift" as another token in the chord so the
+            // press-stack becomes Shift + base = the shifted char.
+            //
+            // Rationale: the UI captures chords as the characters produced,
+            // not the physical scancodes. A user pressing Shift+= saves as
+            // "Shift++" (both the modifier name and the shifted output). The
+            // split-on-'+' yields ["Shift", "", "+"] and the lone "+" must
+            // resolve to KEY_EQUAL so Shift+Equal reconstructs "+". Without
+            // these cases the shifted symbols are silently dropped, so e.g.
+            // remapping a mouse button to "+" only taps Shift with no key.
             switch (ch.toLatin1()) {
-            case '-': keys.push_back(KEY_MINUS);      continue;
-            case '=': keys.push_back(KEY_EQUAL);      continue;
-            case '[': keys.push_back(KEY_LEFTBRACE);   continue;
-            case ']': keys.push_back(KEY_RIGHTBRACE);  continue;
-            case ';': keys.push_back(KEY_SEMICOLON);   continue;
-            case ',': keys.push_back(KEY_COMMA);       continue;
-            case '.': keys.push_back(KEY_DOT);         continue;
-            case '/': keys.push_back(KEY_SLASH);       continue;
+            case '-':  keys.push_back(KEY_MINUS);      continue;
+            case '=':  keys.push_back(KEY_EQUAL);      continue;
+            case '[':  keys.push_back(KEY_LEFTBRACE);  continue;
+            case ']':  keys.push_back(KEY_RIGHTBRACE); continue;
+            case ';':  keys.push_back(KEY_SEMICOLON);  continue;
+            case ',':  keys.push_back(KEY_COMMA);      continue;
+            case '.':  keys.push_back(KEY_DOT);        continue;
+            case '/':  keys.push_back(KEY_SLASH);      continue;
             case '\\': keys.push_back(KEY_BACKSLASH);  continue;
-            case '`': keys.push_back(KEY_GRAVE);       continue;
+            case '`':  keys.push_back(KEY_GRAVE);      continue;
             case '\'': keys.push_back(KEY_APOSTROPHE); continue;
+            // Shifted symbols on US QWERTY. Valid only when the chord also
+            // contains "Shift" (which the UI captures separately).
+            case '_':  keys.push_back(KEY_MINUS);      continue;
+            case '+':  keys.push_back(KEY_EQUAL);      continue;
+            case '{':  keys.push_back(KEY_LEFTBRACE);  continue;
+            case '}':  keys.push_back(KEY_RIGHTBRACE); continue;
+            case ':':  keys.push_back(KEY_SEMICOLON);  continue;
+            case '<':  keys.push_back(KEY_COMMA);      continue;
+            case '>':  keys.push_back(KEY_DOT);        continue;
+            case '?':  keys.push_back(KEY_SLASH);      continue;
+            case '|':  keys.push_back(KEY_BACKSLASH);  continue;
+            case '~':  keys.push_back(KEY_GRAVE);      continue;
+            case '"':  keys.push_back(KEY_APOSTROPHE); continue;
+            case '!':  keys.push_back(KEY_1);          continue;
+            case '@':  keys.push_back(KEY_2);          continue;
+            case '#':  keys.push_back(KEY_3);          continue;
+            case '$':  keys.push_back(KEY_4);          continue;
+            case '%':  keys.push_back(KEY_5);          continue;
+            case '^':  keys.push_back(KEY_6);          continue;
+            case '&':  keys.push_back(KEY_7);          continue;
+            case '*':  keys.push_back(KEY_8);          continue;
+            case '(':  keys.push_back(KEY_9);          continue;
+            case ')':  keys.push_back(KEY_0);          continue;
             }
         }
 
