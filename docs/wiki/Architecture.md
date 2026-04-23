@@ -6,9 +6,13 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 
 At a glance — one button press on the mouse turns into one row update in the QML UI. Each layer has one job:
 
-![System Overview](diagrams/system-overview.svg)
-
-> Source at [`docs/wiki/diagrams/system-overview.d2`](diagrams/system-overview.d2). Regenerate with `make diagrams`.
+| Layer | Library / path | Contains |
+|-------|----------------|----------|
+| QML UI | `src/app/qml/` | `Main.qml`, pages (PointScroll, Buttons, EasySwitch, Settings), components |
+| App library | `logitune-app-lib` | `AppController`, `DeviceModel`, `ButtonModel`, `ActionFilterModel`, `ProfileModel`, `SettingsModel`, `TrayManager`, `EditorModel` |
+| Core library | `logitune-core` | `DeviceManager`, `PhysicalDevice`, `DeviceSession`, `ProfileEngine`, HID++ stack, desktop integration, input injection |
+| Linux kernel | — | `/dev/hidrawN`, `libudev`, D-Bus, `/dev/uinput` |
+| Hardware | `devices/*/descriptor.json` | MX Master 3S, MX Master 4, MX Anywhere, MX Vertical |
 
 Each layer below has its own detailed diagram elsewhere on this page:
 
