@@ -46,7 +46,8 @@ sequenceDiagram
     participant PE as ProfileEngine
     participant PM as ProfileModel
     participant DM as DeviceModel
-    participant DMgr as DeviceManager
+    participant PD as PhysicalDevice
+    participant DS as DeviceSession
     participant CQ as CommandQueue
     participant FD as FeatureDispatcher
     participant TR as Transport
@@ -54,36 +55,39 @@ sequenceDiagram
     KWin->>KDE: callDBus focusChanged(resourceClass, title, desktopFileName)
     KDE->>KDE: resolveDesktopFile(resourceClass)
     KDE->>AC: activeWindowChanged(appId, title)
-    
+
     Note over AC: Skip shell components (plasmashell, krunner)
-    
+
     AC->>DM: setActiveWmClass(wmClass)
     AC->>PE: profileForApp(wmClass)
     PE-->>AC: profileName (or "default")
-    
+
     Note over AC: Skip if same as current hardware profile
-    
+
     AC->>PE: cachedProfile(profileName)
     AC->>PE: setHardwareProfile(profileName)
     AC->>AC: applyProfileToHardware(profile)
-    
-    par Apply all settings
-        AC->>DMgr: divertButton(CID, divert, rawXY) [for each button]
-        AC->>DMgr: setDPI(value)
-        AC->>DMgr: setSmartShift(enabled, threshold)
-        AC->>DMgr: setScrollConfig(hiRes, invert)
-        AC->>DMgr: setThumbWheelMode(mode, invert)
+
+    AC->>PD: primary()
+    PD-->>AC: DeviceSession* (active transport)
+
+    par Apply all settings on the selected session
+        AC->>DS: setDPI(value)
+        AC->>DS: setSmartShift(enabled, threshold)
+        AC->>DS: setScrollConfig(hiRes, invert)
+        AC->>DS: setThumbWheelMode(mode, invert)
+        AC->>DS: divertButton(CID, divert, rawXY) [per button]
     end
-    
-    Note over DMgr: Each setter enqueues via CommandQueue
-    
+
+    Note over DS: Each setter enqueues on the session's CommandQueue
+
     loop For each enqueued command
         CQ->>FD: callAsync(feature, functionId, params)
         FD->>TR: sendRequestAsync(report)
         TR->>TR: write to hidraw fd
         Note over CQ: Wait 10ms before next command
     end
-    
+
     AC->>PM: setHwActiveByProfileName(profileName)
 ```
 
