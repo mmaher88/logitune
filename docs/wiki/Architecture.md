@@ -9,47 +9,37 @@ At a glance — one button press on the mouse turns into one row update in the Q
 ```mermaid
 flowchart TB
     subgraph ui ["QML UI"]
-        direction LR
         u1["Main.qml + pages + components"]
     end
 
     subgraph app ["App library — logitune-app-lib"]
         direction LR
-        a1["AppController"]
-        a2["Models + TrayManager"]
+        a1["AppController"] ~~~ a2["Models + TrayManager"]
     end
 
     subgraph core ["Core library — logitune-core"]
         direction TB
         subgraph coreIntegration ["Integration"]
             direction LR
-            cI1["Desktop integration"]
-            cI2["UinputInjector"]
-            cI3["ProfileEngine"]
+            cI1["Desktop integration"] ~~~ cI2["UinputInjector"] ~~~ cI3["ProfileEngine"]
         end
         subgraph coreAggregation ["Aggregation"]
             direction LR
-            cA1["PhysicalDevice"]
-            cA2["DeviceManager"]
+            cA1["PhysicalDevice"] ~~~ cA2["DeviceManager"]
         end
         subgraph coreProtocol ["Protocol"]
             direction LR
-            cP1["DeviceSession"]
-            cP2["HID++ stack"]
+            cP1["DeviceSession"] ~~~ cP2["HID++ stack"]
         end
         coreIntegration ~~~ coreAggregation ~~~ coreProtocol
     end
 
     subgraph kernel ["Linux kernel"]
         direction LR
-        k1["/dev/hidrawN"]
-        k2["libudev"]
-        k3["D-Bus"]
-        k4["/dev/uinput"]
+        k1["/dev/hidrawN"] ~~~ k2["libudev"] ~~~ k3["D-Bus"] ~~~ k4["/dev/uinput"]
     end
 
     subgraph hardware ["Hardware — devices/*/descriptor.json"]
-        direction LR
         h1["MX Master 3S / 4 / Anywhere / Vertical"]
     end
 
