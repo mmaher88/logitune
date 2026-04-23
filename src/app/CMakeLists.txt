@@ -8,6 +8,7 @@ add_library(logitune-app-lib STATIC
     models/ActionModel.cpp
     models/ProfileModel.cpp
     models/EditorModel.cpp
+    services/DeviceSelection.cpp
     dialogs/GitHubIssueBuilder.cpp
     dialogs/CrashReportDialog.cpp
     TrayManager.cpp
@@ -16,6 +17,7 @@ add_library(logitune-app-lib STATIC
 target_include_directories(logitune-app-lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/models
+    ${CMAKE_CURRENT_SOURCE_DIR}/services
 )
 
 target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widgets)

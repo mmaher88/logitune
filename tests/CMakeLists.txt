@@ -46,6 +46,7 @@ add_executable(logitune-tests
     test_dpi_cycle_ring.cpp
     test_autostart_desktop.cpp
     test_distro_detector.cpp
+    services/test_device_selection.cpp
 )
 target_include_directories(logitune-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(logitune-tests PRIVATE SOURCE_ROOT="${CMAKE_SOURCE_DIR}")

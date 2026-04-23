@@ -24,6 +24,7 @@ AppController::AppController(QObject *parent)
 AppController::AppController(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent)
     : QObject(parent)
     , m_deviceManager(&m_registry)
+    , m_deviceSelection(&m_deviceModel, this)
     , m_actionExecutor(nullptr)
 {
     if (desktop) {
@@ -125,7 +126,9 @@ void AppController::wireSignals()
             this, &AppController::onDisplayProfileChanged);
 
     connect(&m_deviceModel, &DeviceModel::selectedChanged,
-            this, &AppController::onSelectedDeviceChanged);
+            &m_deviceSelection, &DeviceSelection::onSelectionIndexChanged);
+    connect(&m_deviceSelection, &DeviceSelection::selectionChanged,
+            this, &AppController::onSelectionChanged);
 
     // Physical device lifecycle — one per unique serial, survives transport
     // switches. Per-transport events are routed through PhysicalDevice
@@ -142,13 +145,13 @@ void AppController::wireSignals()
 
     connect(&m_profileModel, &ProfileModel::profileAdded, this,
             [this](const QString &wmClass, const QString &profileName) {
-        const QString serial = selectedSerial();
+        const QString serial = m_deviceSelection.activeSerial();
         if (!serial.isEmpty())
             m_profileEngine.createProfileForApp(serial, wmClass, profileName);
     });
     connect(&m_profileModel, &ProfileModel::profileRemoved, this,
             [this](const QString &wmClass) {
-        const QString serial = selectedSerial();
+        const QString serial = m_deviceSelection.activeSerial();
         if (!serial.isEmpty())
             m_profileEngine.removeAppProfile(serial, wmClass);
     });
@@ -237,9 +240,9 @@ void AppController::onPhysicalDeviceRemoved(PhysicalDevice *device)
 // Carousel selection changed. Refresh the UI from the newly-selected
 // device's cached profile. No file I/O, no seeding, no hardware apply —
 // one-time device provisioning happens in onPhysicalDeviceAdded.
-void AppController::onSelectedDeviceChanged()
+void AppController::onSelectionChanged()
 {
-    auto *device = selectedDevice();
+    auto *device = m_deviceSelection.activeDevice();
     if (!device) return;
 
     m_currentDevice = device->descriptor();
@@ -334,27 +337,6 @@ void AppController::setupProfileForDevice(PhysicalDevice *device)
     applyProfileToHardware(p);
 }
 
-PhysicalDevice *AppController::selectedDevice() const
-{
-    int idx = m_deviceModel.selectedIndex();
-    const auto &devices = m_deviceModel.devices();
-    if (idx >= 0 && idx < devices.size())
-        return devices[idx];
-    return nullptr;
-}
-
-DeviceSession *AppController::selectedSession() const
-{
-    auto *d = selectedDevice();
-    return d ? d->primary() : nullptr;
-}
-
-QString AppController::selectedSerial() const
-{
-    auto *d = selectedDevice();
-    return d ? d->deviceSerial() : QString();
-}
-
 // Slot implementations -------------------------------------------------------
 
 void AppController::onUserButtonChanged(int buttonId, const QString &actionName, const QString &actionType)
@@ -363,13 +345,13 @@ void AppController::onUserButtonChanged(int buttonId, const QString &actionName,
 
     saveCurrentProfile();
 
-    const QString serial = selectedSerial();
+    const QString serial = m_deviceSelection.activeSerial();
     if (serial.isEmpty()) return;
     if (m_profileEngine.displayProfile(serial) != m_profileEngine.hardwareProfile(serial))
         return;
 
     if (!m_currentDevice) return;
-    auto *session = selectedSession();
+    auto *session = m_deviceSelection.activeSession();
     if (!session) return;
 
     const auto controls = m_currentDevice->controls();
@@ -386,14 +368,14 @@ void AppController::onUserButtonChanged(int buttonId, const QString &actionName,
 
 void AppController::onTabSwitched(const QString &profileName)
 {
-    const QString serial = selectedSerial();
+    const QString serial = m_deviceSelection.activeSerial();
     if (serial.isEmpty()) return;
     m_profileEngine.setDisplayProfile(serial, profileName);
 }
 
 void AppController::onDisplayProfileChanged(const QString &serial, const Profile &profile)
 {
-    if (serial != selectedSerial())
+    if (serial != m_deviceSelection.activeSerial())
         return;
 
     m_deviceModel.setActiveProfileName(profile.name);
@@ -426,7 +408,7 @@ void AppController::onWindowFocusChanged(const QString &wmClass, const QString &
 
     m_deviceModel.setActiveWmClass(wmClass);
 
-    const QString serial = selectedSerial();
+    const QString serial = m_deviceSelection.activeSerial();
     if (serial.isEmpty()) return;
 
     QString profileName = m_profileEngine.profileForApp(serial, wmClass);
@@ -528,7 +510,7 @@ void AppController::restoreButtonModelFromProfile(const Profile &p)
 
 void AppController::applyProfileToHardware(const Profile &p)
 {
-    auto *session = selectedSession();
+    auto *session = m_deviceSelection.activeSession();
     if (!session || !m_currentDevice) return;
 
     session->flushCommandQueue();
@@ -564,7 +546,7 @@ void AppController::applyProfileToHardware(const Profile &p)
 
 void AppController::saveCurrentProfile()
 {
-    const QString serial = selectedSerial();
+    const QString serial = m_deviceSelection.activeSerial();
     if (serial.isEmpty()) return;
 
     const QString name = m_profileEngine.displayProfile(serial);
@@ -603,7 +585,7 @@ void AppController::pushDisplayValues(const Profile &p)
 
 void AppController::onDpiChangeRequested(int value)
 {
-    const QString serial = selectedSerial();
+    const QString serial = m_deviceSelection.activeSerial();
     if (serial.isEmpty()) return;
     const QString name = m_profileEngine.displayProfile(serial);
     if (name.isEmpty()) return;
@@ -612,14 +594,14 @@ void AppController::onDpiChangeRequested(int value)
     m_profileEngine.saveProfileToDisk(serial, name);
     pushDisplayValues(p);
     if (name == m_profileEngine.hardwareProfile(serial)) {
-        auto *session = selectedSession();
+        auto *session = m_deviceSelection.activeSession();
         if (session) session->setDPI(value);
     }
 }
 
 void AppController::onSmartShiftChangeRequested(bool enabled, int threshold)
 {
-    const QString serial = selectedSerial();
+    const QString serial = m_deviceSelection.activeSerial();
     if (serial.isEmpty()) return;
     const QString name = m_profileEngine.displayProfile(serial);
     if (name.isEmpty()) return;
@@ -629,14 +611,14 @@ void AppController::onSmartShiftChangeRequested(bool enabled, int threshold)
     m_profileEngine.saveProfileToDisk(serial, name);
     pushDisplayValues(p);
     if (name == m_profileEngine.hardwareProfile(serial)) {
-        auto *session = selectedSession();
+        auto *session = m_deviceSelection.activeSession();
         if (session) session->setSmartShift(enabled, threshold);
     }
 }
 
 void AppController::onScrollConfigChangeRequested(bool hiRes, bool invert)
 {
-    const QString serial = selectedSerial();
+    const QString serial = m_deviceSelection.activeSerial();
     if (serial.isEmpty()) return;
     const QString name = m_profileEngine.displayProfile(serial);
     if (name.isEmpty()) return;
@@ -646,19 +628,19 @@ void AppController::onScrollConfigChangeRequested(bool hiRes, bool invert)
     m_profileEngine.saveProfileToDisk(serial, name);
     pushDisplayValues(p);
     if (name == m_profileEngine.hardwareProfile(serial)) {
-        auto *session = selectedSession();
+        auto *session = m_deviceSelection.activeSession();
         if (session) session->setScrollConfig(hiRes, invert);
     }
 }
 
 void AppController::onThumbWheelModeChangeRequested(const QString &mode)
 {
-    auto *session = selectedSession();
+    auto *session = m_deviceSelection.activeSession();
     if (session) {
         auto &state = m_perDeviceState[session->deviceId()];
         state.thumbAccum = 0;
     }
-    const QString serial = selectedSerial();
+    const QString serial = m_deviceSelection.activeSerial();
     if (serial.isEmpty()) return;
     const QString name = m_profileEngine.displayProfile(serial);
     qCDebug(lcApp) << "thumbWheelMode requested:" << mode << "for profile:" << name;
@@ -673,7 +655,7 @@ void AppController::onThumbWheelModeChangeRequested(const QString &mode)
 
 void AppController::onThumbWheelInvertChangeRequested(bool invert)
 {
-    const QString serial = selectedSerial();
+    const QString serial = m_deviceSelection.activeSerial();
     if (serial.isEmpty()) return;
     const QString name = m_profileEngine.displayProfile(serial);
     if (name.isEmpty()) return;
@@ -682,18 +664,18 @@ void AppController::onThumbWheelInvertChangeRequested(bool invert)
     m_profileEngine.saveProfileToDisk(serial, name);
     pushDisplayValues(p);
     if (name == m_profileEngine.hardwareProfile(serial)) {
-        auto *session = selectedSession();
+        auto *session = m_deviceSelection.activeSession();
         if (session) session->setThumbWheelMode(p.thumbWheelMode, invert);
     }
 }
 
 void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
 {
-    auto *session = selectedSession();
+    auto *session = m_deviceSelection.activeSession();
     if (!session) return;
     auto &state = m_perDeviceState[session->deviceId()];
 
-    const QString serial = selectedSerial();
+    const QString serial = m_deviceSelection.activeSerial();
     if (serial.isEmpty()) return;
     const Profile &hwProfile = m_profileEngine.cachedProfile(
         serial, m_profileEngine.hardwareProfile(serial));
@@ -762,7 +744,7 @@ void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
 
 void AppController::onThumbWheelRotation(int delta)
 {
-    auto *session = selectedSession();
+    auto *session = m_deviceSelection.activeSession();
     if (!session) return;
     auto &state = m_perDeviceState[session->deviceId()];
 

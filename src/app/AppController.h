@@ -15,6 +15,7 @@
 #include "models/ActionModel.h"
 #include "models/ProfileModel.h"
 #include "models/SettingsModel.h"
+#include "services/DeviceSelection.h"
 #include <QObject>
 #include <QTimer>
 #include <cstdint>
@@ -69,18 +70,15 @@ private slots:
     void onScrollConfigChangeRequested(bool hiRes, bool invert);
     void onThumbWheelModeChangeRequested(const QString &mode);
     void onThumbWheelInvertChangeRequested(bool invert);
-    void onSelectedDeviceChanged();
 
 private:
     void wireSignals();
+    void onSelectionChanged();
     void saveCurrentProfile();
     void pushDisplayValues(const Profile &p);
     void restoreButtonModelFromProfile(const Profile &p);
     void applyProfileToHardware(const Profile &p);
     void setupProfileForDevice(PhysicalDevice *device);
-    PhysicalDevice *selectedDevice() const;
-    DeviceSession *selectedSession() const;  // convenience — selectedDevice()->primary()
-    QString selectedSerial() const;  // PhysicalDevice::deviceSerial() of the selected device, or empty
     QString buttonActionToName(const ButtonAction &ba) const;
     ButtonAction buttonEntryToAction(const QString &actionType, const QString &actionName) const;
 
@@ -94,6 +92,7 @@ private:
     ActionModel    m_actionModel;
     std::unique_ptr<ActionFilterModel> m_actionFilterModel;
     ProfileModel   m_profileModel;
+    DeviceSelection m_deviceSelection;
     ProfileEngine  m_profileEngine;
     ActionExecutor m_actionExecutor;
 
