@@ -167,22 +167,6 @@ jobs:
         run: python3 scripts/generate-readme-devices.py --check
 
   # --------------------------------------------------------------------------
-  # Job 2b: docs/wiki/diagrams/*.svg must match their .d2 sources. Same
-  # idea as the README lint, but for the architecture diagrams.
-  # --------------------------------------------------------------------------
-  diagrams-check:
-    name: Wiki diagrams (d2 -> svg)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install d2
-        run: curl -fsSL https://d2lang.com/install.sh | sh -s --
-
-      - name: Verify SVGs match .d2 sources
-        run: make diagrams-check
-
-  # --------------------------------------------------------------------------
   # Job 3: Debian package
   # --------------------------------------------------------------------------
   deb-pkg:

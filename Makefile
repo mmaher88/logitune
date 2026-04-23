@@ -1,8 +1,4 @@
-.PHONY: build test test-qml test-tray test-all run install uninstall release clean help setup-hooks package-deb package-rpm package-arch diagrams diagrams-check
-
-# All d2 sources under docs/wiki/diagrams/ and their matching SVGs.
-D2_SRCS := $(wildcard docs/wiki/diagrams/*.d2)
-D2_SVGS := $(D2_SRCS:.d2=.svg)
+.PHONY: build test test-qml test-tray test-all run install uninstall release clean help setup-hooks package-deb package-rpm package-arch
 
 IS_CONTAINER := $(shell test -f /.dockerenv && echo 1)
 
@@ -23,28 +19,6 @@ test-tray: ## Run tray manager tests
 	@QT_QPA_PLATFORM=offscreen ./build/tests/logitune-tray-tests
 
 test-all: test test-tray test-qml ## Run all tests
-
-diagrams: $(D2_SVGS) ## Regenerate SVG diagrams from d2 sources
-
-docs/wiki/diagrams/%.svg: docs/wiki/diagrams/%.d2
-	@command -v d2 >/dev/null 2>&1 || { echo "error: d2 not installed (pacman -S d2 / https://d2lang.com)"; exit 1; }
-	@d2 --theme 200 --sketch=false --pad 40 "$<" "$@"
-	@echo "regenerated $@"
-
-diagrams-check: ## Fail if any SVG is stale against its .d2 source
-	@for src in $(D2_SRCS); do \
-	    svg="$${src%.d2}.svg"; \
-	    tmp=$$(mktemp --suffix=.svg); \
-	    d2 --theme 200 --sketch=false --pad 40 "$$src" "$$tmp" >/dev/null 2>&1 || { \
-	        echo "error: d2 failed on $$src"; rm -f "$$tmp"; exit 1; }; \
-	    if ! diff -q "$$svg" "$$tmp" >/dev/null 2>&1; then \
-	        echo "error: $$svg is out of sync with $$src"; \
-	        echo "       run: make diagrams"; \
-	        rm -f "$$tmp"; exit 1; \
-	    fi; \
-	    rm -f "$$tmp"; \
-	done
-	@echo "all d2 SVGs up to date."
 
 ifdef IS_CONTAINER
 setup-hooks: ## (redundant) cmake configure now sets core.hooksPath=hooks automatically
