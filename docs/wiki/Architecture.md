@@ -7,16 +7,16 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 At a glance — one button press on the mouse turns into one row update in the QML UI. Each layer has one job:
 
 ```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 10, 'rankSpacing': 0, 'padding': 6, 'subGraphTitleMargin': {'top': 0, 'bottom': 4}}}}%%
+%%{init: {'flowchart': {'nodeSpacing': 18, 'rankSpacing': 2, 'padding': 2}}}%%
 flowchart TB
     subgraph ui ["QML UI"]
         direction LR
-        uPadL:::hidden ~~~ u1["Main.qml + pages + components"] ~~~ uPadR:::hidden
+        uP1:::pad ~~~ uP2:::pad ~~~ u1["Main.qml + pages + components"] ~~~ uP3:::pad ~~~ uP4:::pad
     end
 
     subgraph app ["App library — logitune-app-lib"]
         direction LR
-        a1["AppController"] ~~~ a2["Models + TrayManager"]
+        aP1:::pad ~~~ a1["AppController"] ~~~ a2["Models + TrayManager"] ~~~ aP2:::pad
     end
 
     subgraph core ["Core library — logitune-core"]
@@ -27,11 +27,11 @@ flowchart TB
         end
         subgraph coreAggregation ["Aggregation"]
             direction LR
-            cA1["PhysicalDevice"] ~~~ cA2["DeviceManager"]
+            cAP1:::pad ~~~ cA1["PhysicalDevice"] ~~~ cA2["DeviceManager"] ~~~ cAP2:::pad
         end
         subgraph coreProtocol ["Protocol"]
             direction LR
-            cP1["DeviceSession"] ~~~ cP2["HID++ stack"]
+            cPP1:::pad ~~~ cP1["DeviceSession"] ~~~ cP2["HID++ stack"] ~~~ cPP2:::pad
         end
         coreIntegration ~~~ coreAggregation ~~~ coreProtocol
     end
@@ -43,7 +43,7 @@ flowchart TB
 
     subgraph hardware ["Hardware — devices/*/descriptor.json"]
         direction LR
-        hPadL:::hidden ~~~ h1["MX Master 3S / 4 / Anywhere / Vertical"] ~~~ hPadR:::hidden
+        hP1:::pad ~~~ hP2:::pad ~~~ h1["MX Master 3S / 4 / Anywhere / Vertical"] ~~~ hP3:::pad ~~~ hP4:::pad
     end
 
     ui ~~~ app ~~~ core ~~~ kernel ~~~ hardware
@@ -53,7 +53,7 @@ flowchart TB
     classDef coreStyle   fill:#10b98122,stroke:#10b981,color:#f8fafc
     classDef kernelStyle fill:#8b5cf622,stroke:#8b5cf6,color:#f8fafc
     classDef hwStyle     fill:#f59e0b22,stroke:#f59e0b,color:#f8fafc
-    classDef hidden fill:transparent,stroke:transparent,color:transparent
+    classDef pad fill:transparent,stroke:transparent,color:transparent
     class ui,u1 uiStyle
     class app,a1,a2 appStyle
     class core,coreIntegration,coreAggregation,coreProtocol,cI1,cI2,cI3,cA1,cA2,cP1,cP2 coreStyle
