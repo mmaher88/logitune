@@ -17,6 +17,7 @@
 #include "models/SettingsModel.h"
 #include "services/DeviceSelection.h"
 #include "services/DeviceCommands.h"
+#include "services/ButtonActionDispatcher.h"
 #include <QObject>
 #include <QTimer>
 #include <cstdint>
@@ -64,8 +65,6 @@ private slots:
     void onDisplayProfileChanged(const QString &serial, const Profile &profile);
     void onPhysicalDeviceAdded(PhysicalDevice *device);
     void onPhysicalDeviceRemoved(PhysicalDevice *device);
-    void onDivertedButtonPressed(uint16_t controlId, bool pressed);
-    void onThumbWheelRotation(int delta);
 
 private:
     void wireSignals();
@@ -92,6 +91,7 @@ private:
     DeviceCommands  m_deviceCommands;
     ProfileEngine  m_profileEngine;
     ActionExecutor m_actionExecutor;
+    ButtonActionDispatcher m_buttonDispatcher;
 
     std::unique_ptr<EditorModel>         m_editorModel;
     std::unique_ptr<IDesktopIntegration> m_ownedDesktop;
@@ -101,19 +101,6 @@ private:
 
     // Active device descriptor (set on connect)
     const IDevice *m_currentDevice = nullptr;
-
-    // Per-device gesture/thumb state
-    struct PerDeviceState {
-        int gestureAccumX = 0;
-        int gestureAccumY = 0;
-        int thumbAccum = 0;
-        bool gestureActive = false;
-        uint16_t gestureControlId = 0;
-    };
-    QMap<QString, PerDeviceState> m_perDeviceState;
-
-    static constexpr int kGestureThreshold = 50;
-    static constexpr int kThumbThreshold = 15;
 };
 
 } // namespace logitune

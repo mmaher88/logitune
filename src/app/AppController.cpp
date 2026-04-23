@@ -27,6 +27,7 @@ AppController::AppController(IDesktopIntegration *desktop, IInputInjector *injec
     , m_deviceSelection(&m_deviceModel, this)
     , m_deviceCommands(&m_deviceSelection, this)
     , m_actionExecutor(nullptr)
+    , m_buttonDispatcher(&m_profileEngine, &m_actionExecutor, &m_deviceSelection, this)
 {
     if (desktop) {
         m_desktop = desktop;
@@ -215,10 +216,8 @@ void AppController::wireSignals()
     connect(&m_deviceModel, &DeviceModel::thumbWheelModeChangeRequested, this,
         [this, applyDisplayedChange](const QString &mode) {
             auto *session = m_deviceSelection.activeSession();
-            if (session) {
-                auto &state = m_perDeviceState[session->deviceId()];
-                state.thumbAccum = 0;
-            }
+            if (session)
+                m_buttonDispatcher.onProfileApplied(session->deviceId());
             applyDisplayedChange(
                 [&](Profile &p) { p.thumbWheelMode = mode; },
                 [&]{ m_deviceCommands.requestThumbWheelMode(mode); });
@@ -244,29 +243,18 @@ void AppController::onPhysicalDeviceAdded(PhysicalDevice *device)
 {
     if (!device) return;
 
-    const QString deviceId = device->deviceSerial();
     const bool wasEmpty = m_deviceModel.count() == 0;
     m_deviceModel.addPhysicalDevice(device);
 
     // Route per-device input events. PhysicalDevice fans in signals from
     // all its underlying transports, so we connect once here regardless of
     // how many hidraws back it.
-    connect(device, &PhysicalDevice::gestureRawXY, this,
-            [this, deviceId](int16_t dx, int16_t dy) {
-        auto &state = m_perDeviceState[deviceId];
-        if (state.gestureActive) {
-            state.gestureAccumX += dx;
-            state.gestureAccumY += dy;
-        }
-    });
-    connect(device, &PhysicalDevice::divertedButtonPressed, this,
-            [this](uint16_t controlId, bool pressed) {
-        onDivertedButtonPressed(controlId, pressed);
-    });
-    connect(device, &PhysicalDevice::thumbWheelRotation, this,
-            [this](int delta) {
-        onThumbWheelRotation(delta);
-    });
+    connect(device, &PhysicalDevice::gestureRawXY,
+            &m_buttonDispatcher, &ButtonActionDispatcher::onGestureRaw);
+    connect(device, &PhysicalDevice::divertedButtonPressed,
+            &m_buttonDispatcher, &ButtonActionDispatcher::onDivertedButtonPressed);
+    connect(device, &PhysicalDevice::thumbWheelRotation,
+            &m_buttonDispatcher, &ButtonActionDispatcher::onThumbWheelRotation);
 
     // Re-apply profile whenever any transport finishes (re-)enumeration.
     // PhysicalDevice emits this from its setupComplete fan-in, which
@@ -274,6 +262,7 @@ void AppController::onPhysicalDeviceAdded(PhysicalDevice *device)
     connect(device, &PhysicalDevice::transportSetupComplete, this,
             [this, device]() {
         m_currentDevice = device->descriptor();
+        m_buttonDispatcher.onCurrentDeviceChanged(device->descriptor());
         const QString serial = device->deviceSerial();
         Profile &p = m_profileEngine.cachedProfile(serial,
                                                    m_profileEngine.hardwareProfile(serial));
@@ -293,7 +282,7 @@ void AppController::onPhysicalDeviceRemoved(PhysicalDevice *device)
     const QString deviceId = device ? device->deviceSerial() : QString();
     m_deviceModel.removePhysicalDevice(device);
     if (!deviceId.isEmpty())
-        m_perDeviceState.remove(deviceId);
+        m_buttonDispatcher.onDeviceRemoved(deviceId);
 
     if (m_deviceModel.count() > 0 && m_deviceModel.selectedIndex() < 0)
         m_deviceModel.setSelectedIndex(0);
@@ -308,6 +297,7 @@ void AppController::onSelectionChanged()
     if (!device) return;
 
     m_currentDevice = device->descriptor();
+    m_buttonDispatcher.onCurrentDeviceChanged(device->descriptor());
 
     const QString serial = device->deviceSerial();
     const QString name = m_profileEngine.displayProfile(serial);
@@ -321,6 +311,7 @@ void AppController::onSelectionChanged()
 void AppController::setupProfileForDevice(PhysicalDevice *device)
 {
     m_currentDevice = device->descriptor();
+    m_buttonDispatcher.onCurrentDeviceChanged(device->descriptor());
 
     const QString serial = device->deviceSerial();
     const QString configBase = QStandardPaths::writableLocation(
@@ -577,9 +568,9 @@ void AppController::applyProfileToHardware(const Profile &p)
 
     session->flushCommandQueue();
 
-    // Reset per-device thumb accumulator
-    auto &state = m_perDeviceState[session->deviceId()];
-    state.thumbAccum = 0;
+    // Reset per-device thumb accumulator via dispatcher (temporary direct
+    // call; becomes a signal in Task 4 when ProfileOrchestrator owns apply).
+    m_buttonDispatcher.onProfileApplied(session->deviceId());
 
     session->touchResponseTime();
     const auto controls = m_currentDevice->controls();
@@ -643,115 +634,6 @@ void AppController::pushDisplayValues(const Profile &p)
         p.dpi, p.smartShiftEnabled, p.smartShiftThreshold,
         p.hiResScroll, p.scrollDirection == "natural", p.thumbWheelMode,
         p.thumbWheelInvert);
-}
-
-void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)
-{
-    auto *session = m_deviceSelection.activeSession();
-    if (!session) return;
-    auto &state = m_perDeviceState[session->deviceId()];
-
-    const QString serial = m_deviceSelection.activeSerial();
-    if (serial.isEmpty()) return;
-    const Profile &hwProfile = m_profileEngine.cachedProfile(
-        serial, m_profileEngine.hardwareProfile(serial));
-
-    if (!pressed && state.gestureActive
-        && (controlId == 0 || controlId == state.gestureControlId)) {
-        state.gestureActive = false;
-        int dx = state.gestureAccumX;
-        int dy = state.gestureAccumY;
-
-        QString dir;
-        if (std::abs(dx) > kGestureThreshold || std::abs(dy) > kGestureThreshold) {
-            if (std::abs(dx) > std::abs(dy))
-                dir = dx > 0 ? "right" : "left";
-            else
-                dir = dy > 0 ? "down" : "up";
-        } else {
-            dir = "click";
-        }
-
-        auto it = hwProfile.gestures.find(dir);
-        if (it != hwProfile.gestures.end() && it->second.type == ButtonAction::Keystroke
-            && !it->second.payload.isEmpty()) {
-            m_actionExecutor.injectKeystroke(it->second.payload);
-        }
-        return;
-    }
-
-    if (!pressed) return;
-
-    if (!m_currentDevice) return;
-    int idx = -1;
-    for (const auto &ctrl : m_currentDevice->controls()) {
-        if (ctrl.controlId == controlId) {
-            idx = ctrl.buttonIndex;
-            break;
-        }
-    }
-    if (idx < 0) return;
-
-    const auto &ba = (static_cast<std::size_t>(idx) < hwProfile.buttons.size())
-        ? hwProfile.buttons[static_cast<std::size_t>(idx)]
-        : ButtonAction{ButtonAction::Default, {}};
-
-    qCDebug(lcApp) << "button" << idx << "action type=" << ba.type << "payload=" << ba.payload;
-
-    if (ba.type == ButtonAction::Default) return;
-
-    if (ba.type == ButtonAction::SmartShiftToggle) {
-        bool current = session->smartShiftEnabled();
-        session->setSmartShift(!current, session->smartShiftThreshold());
-    } else if (ba.type == ButtonAction::DpiCycle) {
-        session->cycleDpi();
-    } else if ((ba.type == ButtonAction::Keystroke || ba.type == ButtonAction::Media)
-               && !ba.payload.isEmpty()) {
-        m_actionExecutor.injectKeystroke(ba.payload);
-    } else if (ba.type == ButtonAction::GestureTrigger) {
-        state.gestureAccumX = 0;
-        state.gestureAccumY = 0;
-        state.gestureActive = true;
-        state.gestureControlId = controlId;
-    } else if (ba.type == ButtonAction::AppLaunch && !ba.payload.isEmpty()) {
-        m_actionExecutor.launchApp(ba.payload);
-    }
-}
-
-void AppController::onThumbWheelRotation(int delta)
-{
-    auto *session = m_deviceSelection.activeSession();
-    if (!session) return;
-    auto &state = m_perDeviceState[session->deviceId()];
-
-    const QString &mode = session->thumbWheelMode();
-    int normalized = delta * session->thumbWheelDefaultDirection();
-    qCDebug(lcInput) << "thumbWheel raw=" << delta << "normalized=" << normalized
-                      << "mode=" << mode << "invert=" << session->thumbWheelInvert();
-    state.thumbAccum += normalized;
-
-    if (std::abs(state.thumbAccum) < kThumbThreshold)
-        return;
-
-    int steps = state.thumbAccum / kThumbThreshold;
-    state.thumbAccum %= kThumbThreshold;
-
-    qCDebug(lcInput) << "thumbWheel steps=" << steps << "accum=" << state.thumbAccum;
-    for (int i = 0; i < std::abs(steps); ++i) {
-        if (mode == "scroll") {
-            int dir = steps > 0 ? 1 : -1;
-            qCDebug(lcInput) << "thumbWheel action: HScroll" << dir;
-            m_actionExecutor.injectHorizontalScroll(dir);
-        } else if (mode == "volume") {
-            QString key = steps > 0 ? "VolumeUp" : "VolumeDown";
-            qCDebug(lcInput) << "thumbWheel action:" << key;
-            m_actionExecutor.injectKeystroke(key);
-        } else if (mode == "zoom") {
-            int dir = steps > 0 ? 1 : -1;
-            qCDebug(lcInput) << "thumbWheel action: CtrlScroll" << dir;
-            m_actionExecutor.injectCtrlScroll(dir);
-        }
-    }
 }
 
 // Helper implementations -----------------------------------------------------

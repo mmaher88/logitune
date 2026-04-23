@@ -173,26 +173,19 @@ protected:
     }
 
     void pressButton(uint16_t controlId) {
-        m_ctrl->onDivertedButtonPressed(controlId, true);
+        m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(controlId, true);
     }
 
     void releaseButton(uint16_t controlId) {
-        m_ctrl->onDivertedButtonPressed(controlId, false);
+        m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(controlId, false);
     }
 
     void gestureXY(int16_t dx, int16_t dy) {
-        // Feed directly into per-device state (onGestureRawXY is handled per-session now)
-        if (m_session) {
-            auto &state = m_ctrl->m_perDeviceState[m_session->deviceId()];
-            if (state.gestureActive) {
-                state.gestureAccumX += dx;
-                state.gestureAccumY += dy;
-            }
-        }
+        m_ctrl->m_buttonDispatcher.onGestureRaw(dx, dy);
     }
 
     void thumbWheel(int delta) {
-        m_ctrl->onThumbWheelRotation(delta);
+        m_ctrl->m_buttonDispatcher.onThumbWheelRotation(delta);
     }
 
     // Adds a second mock device and registers it through the normal flow.
@@ -251,24 +244,28 @@ protected:
 
     int gestureTotalDx() const {
         if (!m_session) return 0;
-        auto it = m_ctrl->m_perDeviceState.find(m_session->deviceId());
-        return it != m_ctrl->m_perDeviceState.end() ? it->gestureAccumX : 0;
+        auto &state = m_ctrl->m_buttonDispatcher.m_state;
+        auto it = state.find(m_session->deviceId());
+        return it != state.end() ? it->gestureAccumX : 0;
     }
     int gestureTotalDy() const {
         if (!m_session) return 0;
-        auto it = m_ctrl->m_perDeviceState.find(m_session->deviceId());
-        return it != m_ctrl->m_perDeviceState.end() ? it->gestureAccumY : 0;
+        auto &state = m_ctrl->m_buttonDispatcher.m_state;
+        auto it = state.find(m_session->deviceId());
+        return it != state.end() ? it->gestureAccumY : 0;
     }
     bool gestureActive() const {
         if (!m_session) return false;
-        auto it = m_ctrl->m_perDeviceState.find(m_session->deviceId());
-        return it != m_ctrl->m_perDeviceState.end() ? it->gestureActive : false;
+        auto &state = m_ctrl->m_buttonDispatcher.m_state;
+        auto it = state.find(m_session->deviceId());
+        return it != state.end() ? it->gestureActive : false;
     }
 
     int thumbAccum() const {
         if (!m_session) return 0;
-        auto it = m_ctrl->m_perDeviceState.find(m_session->deviceId());
-        return it != m_ctrl->m_perDeviceState.end() ? it->thumbAccum : 0;
+        auto &state = m_ctrl->m_buttonDispatcher.m_state;
+        auto it = state.find(m_session->deviceId());
+        return it != state.end() ? it->thumbAccum : 0;
     }
 
     void setThumbWheelMode(const QString &mode) {
