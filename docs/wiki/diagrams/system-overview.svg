@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" width="800" font-family="ui-monospace, 'JetBrains Mono', monospace">
+  <rect x="0" y="0" width="800" height="560" fill="#0f172a"/>
+  <g font-size="11" font-weight="700" letter-spacing="1.3" fill="#94a3b8">
+    <rect x="0"   y="0"   width="800" height="80"  fill="#ec4899" fill-opacity="0.08" stroke="#ec4899" stroke-width="1.5"/>
+    <rect x="0"   y="80"  width="800" height="80"  fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-width="1.5"/>
+    <rect x="0"   y="160" width="800" height="240" fill="#10b981" fill-opacity="0.08" stroke="#10b981" stroke-width="1.5"/>
+    <rect x="0"   y="400" width="800" height="80"  fill="#8b5cf6" fill-opacity="0.08" stroke="#8b5cf6" stroke-width="1.5"/>
+    <rect x="0"   y="480" width="800" height="80"  fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="14" y="20">QML UI</text>
+    <text x="14" y="100">APP LIBRARY &#8212; LOGITUNE-APP-LIB</text>
+    <text x="14" y="180">CORE LIBRARY &#8212; LOGITUNE-CORE</text>
+    <text x="14" y="420">LINUX KERNEL</text>
+    <text x="14" y="500">HARDWARE &#8212; DEVICES/*/DESCRIPTOR.JSON</text>
+  </g>
+
+  <g fill="#0f172a" stroke-width="1">
+    <rect x="150" y="28"  width="500" height="36" stroke="#ec4899" rx="4"/>
+    <rect x="60"  y="108" width="320" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="420" y="108" width="320" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="60"  y="212" width="220" height="32" stroke="#10b981" rx="4"/>
+    <rect x="300" y="212" width="200" height="32" stroke="#10b981" rx="4"/>
+    <rect x="520" y="212" width="220" height="32" stroke="#10b981" rx="4"/>
+    <rect x="140" y="282" width="240" height="32" stroke="#10b981" rx="4"/>
+    <rect x="420" y="282" width="240" height="32" stroke="#10b981" rx="4"/>
+    <rect x="140" y="352" width="240" height="32" stroke="#10b981" rx="4"/>
+    <rect x="420" y="352" width="240" height="32" stroke="#10b981" rx="4"/>
+    <rect x="40"  y="428" width="160" height="36" stroke="#8b5cf6" rx="4"/>
+    <rect x="220" y="428" width="160" height="36" stroke="#8b5cf6" rx="4"/>
+    <rect x="400" y="428" width="160" height="36" stroke="#8b5cf6" rx="4"/>
+    <rect x="580" y="428" width="180" height="36" stroke="#8b5cf6" rx="4"/>
+    <rect x="150" y="508" width="500" height="36" stroke="#f59e0b" rx="4"/>
+  </g>
+
+  <g font-size="9" font-weight="700" letter-spacing="1.2" fill="#64748b">
+    <text x="14" y="206">INTEGRATION</text>
+    <text x="14" y="276">AGGREGATION</text>
+    <text x="14" y="346">PROTOCOL</text>
+  </g>
+
+  <g font-size="12" text-anchor="middle" fill="#e2e8f0">
+    <text x="400" y="51">Main.qml + pages + components</text>
+    <text x="220" y="131">AppController</text>
+    <text x="580" y="131">Models + TrayManager</text>
+    <text x="170" y="232">Desktop integration</text>
+    <text x="400" y="232">UinputInjector</text>
+    <text x="630" y="232">ProfileEngine</text>
+    <text x="260" y="302">PhysicalDevice</text>
+    <text x="540" y="302">DeviceManager</text>
+    <text x="260" y="372">DeviceSession</text>
+    <text x="540" y="372">HID++ stack</text>
+    <text x="120" y="451">/dev/hidrawN</text>
+    <text x="300" y="451">libudev</text>
+    <text x="480" y="451">D-Bus</text>
+    <text x="670" y="451">/dev/uinput</text>
+    <text x="400" y="531">MX Master 3S / 4 / Anywhere / Vertical</text>
+  </g>
+</svg>
