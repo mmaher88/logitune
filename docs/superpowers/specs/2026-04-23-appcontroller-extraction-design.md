@@ -1,4 +1,4 @@
-# AppController Extraction Design
+# AppController Extraction and Rename to AppRoot
 
 **Status:** Design, pending implementation
 **Issue:** [#107](https://github.com/mmaher88/logitune/issues/107)
@@ -6,13 +6,13 @@
 
 ## Goal
 
-Extract behavior out of `AppController` (currently 857 lines mixing composition root, profile orchestration, device input interpretation, and hardware command relays) into focused services, leaving a pure composition root.
+Extract behavior out of `AppController` (currently 857 lines mixing composition root, profile orchestration, device input interpretation, and hardware command relays) into focused services, and rename the resulting class to `AppRoot` to reflect its true role.
 
-This is mechanical extraction. No changes to MVVM structure, QML bindings, protocol layer, or descriptor format.
+This is mechanical extraction plus a rename. No changes to MVVM structure, QML bindings, protocol layer, or descriptor format.
 
-## Final role of `AppController` (post-refactor)
+## Final role of `AppRoot`
 
-After extraction, `AppController`'s role is:
+After extraction and rename, `AppRoot`'s role is:
 
 1. Instantiate and own long-lived singletons (ViewModels, services, engines)
 2. Accept injected interfaces (`IDesktopIntegration*`, `IInputInjector*`) and pass them down
@@ -21,9 +21,9 @@ After extraction, `AppController`'s role is:
 5. Expose ViewModels via accessors for QML registration in `main.cpp`
 6. Bootstrap via `startMonitoring()`
 
-Equivalent to a hand-written DI container plus a signal wiring layer. `AppController` does not implement any user-facing behavior after refactor.
+Equivalent to a hand-written DI container plus a signal wiring layer. `AppRoot` does not implement any user-facing behavior.
 
-The class rename to `AppRoot` (which better reflects this role) is deferred to a follow-up issue to keep the rename diff separate from the behavior-preserving refactor.
+The name `AppController` is misleading in an MVVM stack because "Controller" implies MVC-style behavior that, after this refactor, lives in `ProfileOrchestrator`, `ButtonActionDispatcher`, and `DeviceCommands`. Renaming to `AppRoot` locks in the composition-root terminology and prevents future drift of behavior back into the class.
 
 ## New architecture
 
@@ -59,19 +59,21 @@ All new service classes live in `src/app/services/`, with matching fixtures in `
 
 ### Ownership and dependency rules
 
-- `AppController` owns all ViewModels, services, engines, the `DeviceRegistry`, `DeviceManager`, and `DeviceFetcher`
+These rules apply to the final state (post-rename). During extraction commits, `AppController` holds the role; the rename in the final commit swaps the class name without changing any role boundaries.
+
+- `AppRoot` owns all ViewModels, services, engines, the `DeviceRegistry`, `DeviceManager`, and `DeviceFetcher`
 - Services hold raw (non-owning) pointers to: models they read/write, engines (`ProfileEngine`, `ActionExecutor`), and `DeviceSelection`
 - Services do not hold pointers to other services
-- Services do not call `connect()`; they expose signals and slots and are wired by `AppController`
-- Cross-service communication is via Qt signals, wired in `AppController::wireSignals()` or `onPhysicalDeviceAdded`
+- Services do not call `connect()`; they expose signals and slots and are wired by `AppRoot`
+- Cross-service communication is via Qt signals, wired in `AppRoot::wireSignals()` or `onPhysicalDeviceAdded`
 
 This is the dependency rule:
 
-> Services hold pointers only to models, engines, and `DeviceSelection`. Cross-service communication is always via signal, wired in `AppController`.
+> Services hold pointers only to models, engines, and `DeviceSelection`. Cross-service communication is always via signal, wired in `AppRoot`.
 
 ### Runtime device attach
 
-`onPhysicalDeviceAdded` stays in `AppController`. It:
+`onPhysicalDeviceAdded` stays in `AppRoot`. It:
 
 1. Adds the device to `DeviceModel`
 2. Connects `PhysicalDevice::gestureRawXY` / `divertedButtonPressed` / `thumbWheelRotation` directly to `ButtonActionDispatcher` slots
@@ -82,41 +84,41 @@ This is the dependency rule:
 
 ## Testing strategy
 
-Per-service fixtures for unit coverage, plus the existing AppController fixture for integration coverage.
+Per-service fixtures for unit coverage, plus the existing integration fixture (renamed in the final commit) for end-to-end coverage.
 
-- `DeviceSelectionFixture` — selection resolution edge cases (out-of-range index, transport switch within a `PhysicalDevice`, mid-change mutation)
+- `DeviceSelectionFixture` — selection resolution edge cases (out-of-range index, transport switch within a `PhysicalDevice`)
 - `DeviceCommandsFixture` — null session no-op, signal emission exactly once per request, clamping pass-through
 - `ButtonActionDispatcherFixture` — gesture threshold math, thumb wheel accumulation, action dispatch for each `ButtonAction` type
 - `ProfileOrchestratorFixture` — save/apply cycle, window-focus profile switch, display vs hardware profile divergence, `thumbAccum` reset signal on apply
-- `AppControllerFixture` (existing) — end-to-end integration covering the wired signal graph
+- `AppControllerFixture` (existing, renamed to `AppRootFixture` in the final commit) — end-to-end integration covering the wired signal graph
 
 Real-hardware smoke test on MX Master 3S is mandatory after each commit in the sequence. Any commit that fails to verify on hardware gets amended or reverted before proceeding.
 
 ## Commit sequence
 
-Six commits, each independently building, passing tests, and smoke-tested on hardware.
+Seven commits, each independently building, passing tests, and smoke-tested on hardware. The rename is the last commit so all extraction commits read naturally against the familiar `AppController` name.
 
 1. **Add `DeviceSelection`** — new service + fixture. Replace `AppController::selectedDevice/Session/Serial` helpers and `onSelectedDeviceChanged` with calls into `DeviceSelection`. Update any slot that used those helpers.
 2. **Add `DeviceCommands`** — new service + fixture. Move the 5 `*ChangeRequested` slots into it; delete from `AppController`. Temporarily wire `DeviceCommands::userChangedSomething` to `AppController::saveCurrentProfile` (the method still lives on AppController until commit 4; this one `connect()` call gets redirected to `ProfileOrchestrator` then).
 3. **Add `ButtonActionDispatcher`** — new service + fixture. Move `onDivertedButtonPressed`, `onThumbWheelRotation`, `PerDeviceState`, `kGestureThreshold`, `kThumbThreshold`, and the `gestureRawXY` lambda. Rewire the per-device connects in `onPhysicalDeviceAdded` to point at the dispatcher. Delete from `AppController`.
 4. **Add `ProfileOrchestrator`** — new service + fixture. Move the 9 profile-related methods and slots. Wire `profileApplied` signal into `ButtonActionDispatcher` and the `userChangedSomething` signals from `DeviceCommands` / `ButtonModel` into `ProfileOrchestrator::saveCurrentProfile`. Remove the shim from commit 2.
 5. **Move translation helpers** — `buttonActionToName` / `buttonEntryToAction` go onto `ActionModel`; update callers in `ProfileOrchestrator`.
-6. **Cleanup** — add contract docstring to `AppController` stating its composition-root role, remove now-unused `#include`s, remove dead code. Do not rename the class.
+6. **Cleanup** — add contract docstring to the class stating its composition-root role, remove now-unused `#include`s, remove dead code. Class is still named `AppController` at this point.
+7. **Rename `AppController` to `AppRoot`** — rename class, rename `src/app/AppController.{h,cpp}` to `src/app/AppRoot.{h,cpp}`, rename `AppControllerFixture` to `AppRootFixture`, update every `#include`, forward declaration, friend class, CMake source list, wiki page, diagram label, and docstring reference. Purely mechanical. No behavior changes.
 
 ## Out of scope
 
-- Rename `AppController` to `AppRoot`. Deferred to a follow-up issue because the rename diff is enormous, mostly mechanical, and bundling with the behavior-preserving refactor buries the interesting diff and hurts bisect-ability.
 - Any changes to MVVM structure or QML bindings
 - Any protocol-layer or descriptor-format changes
 - Extracting `EditorModel`-related logic into an `EditorOrchestrator` (separate concern; `EditorModel` is already `unique_ptr` on AppController)
 
 ## Risks
 
-- **Wiring regressions** — `wireSignals()` fans out to 4 new classes. Easy to wire the same signal twice or to the wrong instance. Mitigation: the AppController integration fixture covers the full signal graph end-to-end; every commit must keep it green.
+- **Wiring regressions** — `wireSignals()` fans out to 4 new classes. Easy to wire the same signal twice or to the wrong instance. Mitigation: the integration fixture covers the full signal graph end-to-end; every commit must keep it green.
 - **Lost behavior in extraction** — subtle ordering of slot execution or side effects that matter in practice but aren't covered by tests. Mitigation: smoke test on real hardware after each commit before proceeding.
+- **Rename commit touches many files** — the final commit is large but purely mechanical. Mitigation: it lands last, after every extraction commit is green. Reviewers can verify correctness by checking that the rename diff is entirely s/AppController/AppRoot/ with no incidental changes.
 - **Per-service fixtures over-invest relative to value** — not all services are complex. Accepted; the fixture per service is cheap (~20 LOC each) and documents the service contract.
 
 ## Follow-ups (issues to file after this PR merges)
 
-1. Rename `AppController` to `AppRoot` — purely mechanical; one PR, no behavior changes
-2. Extract `EditorOrchestrator` for editor-mode state (currently `EditorModel` is a `unique_ptr` stub on AppController; behavior is spread across QML and AppController bits)
+1. Extract `EditorOrchestrator` for editor-mode state (currently `EditorModel` is a `unique_ptr` stub on AppRoot; behavior is spread across QML and AppRoot bits)
