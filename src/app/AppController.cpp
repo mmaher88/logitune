@@ -25,6 +25,7 @@ AppController::AppController(IDesktopIntegration *desktop, IInputInjector *injec
     : QObject(parent)
     , m_deviceManager(&m_registry)
     , m_deviceSelection(&m_deviceModel, this)
+    , m_deviceCommands(&m_deviceSelection, this)
     , m_actionExecutor(nullptr)
 {
     if (desktop) {
@@ -164,16 +165,77 @@ void AppController::wireSignals()
     connect(&m_deviceManager, &DeviceManager::unknownDeviceDetected,
             &m_deviceFetcher, &DeviceFetcher::fetchForPid);
 
-    connect(&m_deviceModel, &DeviceModel::dpiChangeRequested,
-            this, &AppController::onDpiChangeRequested);
-    connect(&m_deviceModel, &DeviceModel::smartShiftChangeRequested,
-            this, &AppController::onSmartShiftChangeRequested);
-    connect(&m_deviceModel, &DeviceModel::scrollConfigChangeRequested,
-            this, &AppController::onScrollConfigChangeRequested);
-    connect(&m_deviceModel, &DeviceModel::thumbWheelModeChangeRequested,
-            this, &AppController::onThumbWheelModeChangeRequested);
-    connect(&m_deviceModel, &DeviceModel::thumbWheelInvertChangeRequested,
-            this, &AppController::onThumbWheelInvertChangeRequested);
+    // Temporary profile-cache bridges. The old per-request slots updated the
+    // displayed profile's cache and refreshed the UI, and only forwarded to
+    // the active session when the displayed profile matched the hardware
+    // profile. That guard must be preserved so editing a non-active profile
+    // doesn't leak changes to hardware.
+    //
+    // This logic lives here as lambdas until ProfileOrchestrator (Task 4)
+    // takes over. Each lambda updates the cache unconditionally and then
+    // asks DeviceCommands to forward to the session only when the displayed
+    // profile is the hardware-active one.
+    auto applyDisplayedChange = [this](auto mutator, auto hardwareForward) {
+        const QString serial = m_deviceSelection.activeSerial();
+        if (serial.isEmpty()) return;
+        const QString name = m_profileEngine.displayProfile(serial);
+        if (name.isEmpty()) return;
+        Profile &p = m_profileEngine.cachedProfile(serial, name);
+        mutator(p);
+        m_profileEngine.saveProfileToDisk(serial, name);
+        pushDisplayValues(p);
+        if (name == m_profileEngine.hardwareProfile(serial))
+            hardwareForward();
+    };
+    connect(&m_deviceModel, &DeviceModel::dpiChangeRequested, this,
+        [this, applyDisplayedChange](int value) {
+            applyDisplayedChange(
+                [&](Profile &p) { p.dpi = value; },
+                [&]{ m_deviceCommands.requestDpi(value); });
+        });
+    connect(&m_deviceModel, &DeviceModel::smartShiftChangeRequested, this,
+        [this, applyDisplayedChange](bool enabled, int threshold) {
+            applyDisplayedChange(
+                [&](Profile &p) {
+                    p.smartShiftEnabled = enabled;
+                    p.smartShiftThreshold = threshold;
+                },
+                [&]{ m_deviceCommands.requestSmartShift(enabled, threshold); });
+        });
+    connect(&m_deviceModel, &DeviceModel::scrollConfigChangeRequested, this,
+        [this, applyDisplayedChange](bool hiRes, bool invert) {
+            applyDisplayedChange(
+                [&](Profile &p) {
+                    p.hiResScroll = hiRes;
+                    p.scrollDirection = invert ? QStringLiteral("natural")
+                                                : QStringLiteral("standard");
+                },
+                [&]{ m_deviceCommands.requestScrollConfig(hiRes, invert); });
+        });
+    connect(&m_deviceModel, &DeviceModel::thumbWheelModeChangeRequested, this,
+        [this, applyDisplayedChange](const QString &mode) {
+            auto *session = m_deviceSelection.activeSession();
+            if (session) {
+                auto &state = m_perDeviceState[session->deviceId()];
+                state.thumbAccum = 0;
+            }
+            applyDisplayedChange(
+                [&](Profile &p) { p.thumbWheelMode = mode; },
+                [&]{ m_deviceCommands.requestThumbWheelMode(mode); });
+        });
+    connect(&m_deviceModel, &DeviceModel::thumbWheelInvertChangeRequested, this,
+        [this, applyDisplayedChange](bool invert) {
+            applyDisplayedChange(
+                [&](Profile &p) { p.thumbWheelInvert = invert; },
+                [&]{ m_deviceCommands.requestThumbWheelInvert(invert); });
+        });
+
+    // DeviceCommands::userChangedSomething has no subscriber yet. The
+    // applyDisplayedChange lambda above already persists cache changes via
+    // saveProfileToDisk, so wiring userChangedSomething -> saveCurrentProfile
+    // here would double-write to disk on every DPI / SmartShift / Scroll /
+    // ThumbWheel tick. ProfileOrchestrator (Task 4) takes over as the sole
+    // save-on-change subscriber.
 }
 
 // Physical device lifecycle -------------------------------------------------
@@ -581,92 +643,6 @@ void AppController::pushDisplayValues(const Profile &p)
         p.dpi, p.smartShiftEnabled, p.smartShiftThreshold,
         p.hiResScroll, p.scrollDirection == "natural", p.thumbWheelMode,
         p.thumbWheelInvert);
-}
-
-void AppController::onDpiChangeRequested(int value)
-{
-    const QString serial = m_deviceSelection.activeSerial();
-    if (serial.isEmpty()) return;
-    const QString name = m_profileEngine.displayProfile(serial);
-    if (name.isEmpty()) return;
-    Profile &p = m_profileEngine.cachedProfile(serial, name);
-    p.dpi = value;
-    m_profileEngine.saveProfileToDisk(serial, name);
-    pushDisplayValues(p);
-    if (name == m_profileEngine.hardwareProfile(serial)) {
-        auto *session = m_deviceSelection.activeSession();
-        if (session) session->setDPI(value);
-    }
-}
-
-void AppController::onSmartShiftChangeRequested(bool enabled, int threshold)
-{
-    const QString serial = m_deviceSelection.activeSerial();
-    if (serial.isEmpty()) return;
-    const QString name = m_profileEngine.displayProfile(serial);
-    if (name.isEmpty()) return;
-    Profile &p = m_profileEngine.cachedProfile(serial, name);
-    p.smartShiftEnabled = enabled;
-    p.smartShiftThreshold = threshold;
-    m_profileEngine.saveProfileToDisk(serial, name);
-    pushDisplayValues(p);
-    if (name == m_profileEngine.hardwareProfile(serial)) {
-        auto *session = m_deviceSelection.activeSession();
-        if (session) session->setSmartShift(enabled, threshold);
-    }
-}
-
-void AppController::onScrollConfigChangeRequested(bool hiRes, bool invert)
-{
-    const QString serial = m_deviceSelection.activeSerial();
-    if (serial.isEmpty()) return;
-    const QString name = m_profileEngine.displayProfile(serial);
-    if (name.isEmpty()) return;
-    Profile &p = m_profileEngine.cachedProfile(serial, name);
-    p.hiResScroll = hiRes;
-    p.scrollDirection = invert ? QStringLiteral("natural") : QStringLiteral("standard");
-    m_profileEngine.saveProfileToDisk(serial, name);
-    pushDisplayValues(p);
-    if (name == m_profileEngine.hardwareProfile(serial)) {
-        auto *session = m_deviceSelection.activeSession();
-        if (session) session->setScrollConfig(hiRes, invert);
-    }
-}
-
-void AppController::onThumbWheelModeChangeRequested(const QString &mode)
-{
-    auto *session = m_deviceSelection.activeSession();
-    if (session) {
-        auto &state = m_perDeviceState[session->deviceId()];
-        state.thumbAccum = 0;
-    }
-    const QString serial = m_deviceSelection.activeSerial();
-    if (serial.isEmpty()) return;
-    const QString name = m_profileEngine.displayProfile(serial);
-    qCDebug(lcApp) << "thumbWheelMode requested:" << mode << "for profile:" << name;
-    if (name.isEmpty()) return;
-    Profile &p = m_profileEngine.cachedProfile(serial, name);
-    p.thumbWheelMode = mode;
-    m_profileEngine.saveProfileToDisk(serial, name);
-    pushDisplayValues(p);
-    if (name == m_profileEngine.hardwareProfile(serial) && session)
-        session->setThumbWheelMode(mode, p.thumbWheelInvert);
-}
-
-void AppController::onThumbWheelInvertChangeRequested(bool invert)
-{
-    const QString serial = m_deviceSelection.activeSerial();
-    if (serial.isEmpty()) return;
-    const QString name = m_profileEngine.displayProfile(serial);
-    if (name.isEmpty()) return;
-    Profile &p = m_profileEngine.cachedProfile(serial, name);
-    p.thumbWheelInvert = invert;
-    m_profileEngine.saveProfileToDisk(serial, name);
-    pushDisplayValues(p);
-    if (name == m_profileEngine.hardwareProfile(serial)) {
-        auto *session = m_deviceSelection.activeSession();
-        if (session) session->setThumbWheelMode(p.thumbWheelMode, invert);
-    }
 }
 
 void AppController::onDivertedButtonPressed(uint16_t controlId, bool pressed)

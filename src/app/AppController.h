@@ -16,6 +16,7 @@
 #include "models/ProfileModel.h"
 #include "models/SettingsModel.h"
 #include "services/DeviceSelection.h"
+#include "services/DeviceCommands.h"
 #include <QObject>
 #include <QTimer>
 #include <cstdint>
@@ -65,11 +66,6 @@ private slots:
     void onPhysicalDeviceRemoved(PhysicalDevice *device);
     void onDivertedButtonPressed(uint16_t controlId, bool pressed);
     void onThumbWheelRotation(int delta);
-    void onDpiChangeRequested(int value);
-    void onSmartShiftChangeRequested(bool enabled, int threshold);
-    void onScrollConfigChangeRequested(bool hiRes, bool invert);
-    void onThumbWheelModeChangeRequested(const QString &mode);
-    void onThumbWheelInvertChangeRequested(bool invert);
 
 private:
     void wireSignals();
@@ -93,6 +89,7 @@ private:
     std::unique_ptr<ActionFilterModel> m_actionFilterModel;
     ProfileModel   m_profileModel;
     DeviceSelection m_deviceSelection;
+    DeviceCommands  m_deviceCommands;
     ProfileEngine  m_profileEngine;
     ActionExecutor m_actionExecutor;
 
