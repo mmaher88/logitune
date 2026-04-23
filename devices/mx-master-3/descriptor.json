@@ -1,4 +1,5 @@
 {
+  "$schema": "../schema.json",
   "name": "MX Master 3",
   "status": "verified",
   "productIds": ["0xc52b"],
@@ -62,5 +63,12 @@
     { "xPct": 0.325, "yPct": 0.658 },
     { "xPct": 0.384, "yPct": 0.642 },
     { "xPct": 0.443, "yPct": 0.643 }
-  ]
+  ],
+  "defaultGestures": {
+    "up":    { "type": "Default",   "payload": "" },
+    "down":  { "type": "Keystroke", "payload": "Super+D" },
+    "left":  { "type": "Keystroke", "payload": "Ctrl+Super+Left" },
+    "right": { "type": "Keystroke", "payload": "Ctrl+Super+Right" },
+    "click": { "type": "Keystroke", "payload": "Super+W" }
+  }
 }

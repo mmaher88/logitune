@@ -113,6 +113,7 @@ logitune
 | Device | Status | Battery | DPI | SmartShift | Thumb wheel | Button remap | Gestures | Smooth scroll | Easy-Switch |
 |--------|:------:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
 | MX Master 2S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| MX Master 3 | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | MX Master 3S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | MX Master 4 | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 | MX Anywhere 3 | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
