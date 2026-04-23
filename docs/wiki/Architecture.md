@@ -73,15 +73,22 @@ sequenceDiagram
 
     par Apply all settings on the selected session
         AC->>DS: setDPI(value)
+        DS->>CQ: enqueue(AdjustableDPI, setSensorDpi, params)
+    and
         AC->>DS: setSmartShift(enabled, threshold)
+        DS->>CQ: enqueue(SmartShift, setRatchetControl, params)
+    and
         AC->>DS: setScrollConfig(hiRes, invert)
+        DS->>CQ: enqueue(HiResWheel / ReprogControls, ...)
+    and
         AC->>DS: setThumbWheelMode(mode, invert)
+        DS->>CQ: enqueue(ThumbWheel, setThumbwheelReporting, params)
+    and
         AC->>DS: divertButton(CID, divert, rawXY) [per button]
+        DS->>CQ: enqueue(ReprogControlsV4, setCidReporting, params)
     end
 
-    Note over DS: Each setter enqueues on the session's CommandQueue
-
-    loop For each enqueued command
+    loop For each enqueued command (FIFO, paced)
         CQ->>FD: callAsync(feature, functionId, params)
         FD->>TR: sendRequestAsync(report)
         TR->>TR: write to hidraw fd
