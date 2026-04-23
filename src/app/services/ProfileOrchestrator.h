@@ -88,9 +88,6 @@ private:
     QString activeSerial() const;
     void pushDisplayValues(const Profile &p);
     void restoreButtonModelFromProfile(const Profile &p);
-    // Temporary — Task 5 moves these to ActionModel.
-    QString buttonActionToName(const ButtonAction &ba) const;
-    ButtonAction buttonEntryToAction(const QString &actionType, const QString &actionName) const;
 
     ProfileEngine       *m_profileEngine;
     ActionExecutor      *m_actionExecutor;

@@ -271,11 +271,11 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
             break;
         case ButtonAction::Keystroke:
             aType = QStringLiteral("keystroke");
-            aName = buttonActionToName(ba);
+            aName = m_actionModel->buttonActionToName(ba);
             break;
         case ButtonAction::AppLaunch:
             aType = QStringLiteral("app-launch");
-            aName = buttonActionToName(ba);
+            aName = m_actionModel->buttonActionToName(ba);
             break;
         case ButtonAction::Media: {
             aType = QStringLiteral("media-controls");
@@ -366,7 +366,7 @@ void ProfileOrchestrator::saveCurrentProfile()
         for (int i = 0; i < static_cast<int>(controls.size()); ++i) {
             if (controls[i].controlId == 0) continue;
             if (static_cast<std::size_t>(i) < p.buttons.size())
-                p.buttons[static_cast<std::size_t>(i)] = buttonEntryToAction(
+                p.buttons[static_cast<std::size_t>(i)] = m_actionModel->buttonEntryToAction(
                     m_buttonModel->actionTypeForButton(i),
                     m_buttonModel->actionNameForButton(i));
         }
@@ -387,64 +387,6 @@ void ProfileOrchestrator::pushDisplayValues(const Profile &p)
         p.dpi, p.smartShiftEnabled, p.smartShiftThreshold,
         p.hiResScroll, p.scrollDirection == "natural", p.thumbWheelMode,
         p.thumbWheelInvert);
-}
-
-// Helper implementations -----------------------------------------------------
-
-QString ProfileOrchestrator::buttonActionToName(const ButtonAction &ba) const
-{
-    if (ba.type == ButtonAction::Default)
-        return QString();
-    if (ba.type == ButtonAction::GestureTrigger)
-        return QStringLiteral("Gestures");
-    if (ba.type == ButtonAction::Keystroke) {
-        int count = m_actionModel->rowCount();
-        for (int i = 0; i < count; ++i) {
-            QModelIndex mi = m_actionModel->index(i);
-            if (m_actionModel->data(mi, ActionModel::ActionTypeRole).toString() == QStringLiteral("keystroke") &&
-                m_actionModel->data(mi, ActionModel::PayloadRole).toString() == ba.payload) {
-                return m_actionModel->data(mi, ActionModel::NameRole).toString();
-            }
-        }
-        return ba.payload;
-    }
-    return ba.payload;
-}
-
-ButtonAction ProfileOrchestrator::buttonEntryToAction(const QString &actionType, const QString &actionName) const
-{
-    if (actionType == QStringLiteral("default"))
-        return {ButtonAction::Default, {}};
-    if (actionType == QStringLiteral("gesture-trigger"))
-        return {ButtonAction::GestureTrigger, {}};
-    if (actionType == QStringLiteral("smartshift-toggle"))
-        return {ButtonAction::SmartShiftToggle, {}};
-    if (actionType == QStringLiteral("dpi-cycle"))
-        return {ButtonAction::DpiCycle, {}};
-    if (actionType == QStringLiteral("media-controls")) {
-        static const QHash<QString, QString> mediaKeys = {
-            {"Play/Pause",     "Play"},
-            {"Next track",     "Next"},
-            {"Previous track", "Previous"},
-            {"Stop",           "Stop"},
-            {"Mute",           "Mute"},
-            {"Volume up",      "VolumeUp"},
-            {"Volume down",    "VolumeDown"},
-        };
-        return {ButtonAction::Media, mediaKeys.value(actionName, "Play")};
-    }
-    if (actionType == QStringLiteral("keystroke")) {
-        QString payload = m_actionModel->payloadForName(actionName);
-        if (payload.isEmpty() && actionName != QStringLiteral("Keyboard shortcut"))
-            payload = actionName;
-        return {ButtonAction::Keystroke, payload};
-    }
-    if (actionType == QStringLiteral("app-launch")) {
-        QString payload = m_actionModel->payloadForName(actionName);
-        if (payload.isEmpty()) payload = actionName;
-        return {ButtonAction::AppLaunch, payload};
-    }
-    return {ButtonAction::Default, {}};
 }
 
 } // namespace logitune

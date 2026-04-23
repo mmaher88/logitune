@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 
 #include "ActionModel.h"
+#include "ButtonAction.h"
 #include "helpers/TestFixtures.h"
 
 using logitune::ActionModel;
+using logitune::ButtonAction;
 
 // ---------------------------------------------------------------------------
 // Fixture
@@ -101,4 +103,120 @@ TEST_F(ActionModelTest, RoleNamesContainExpectedKeys) {
     EXPECT_TRUE(values.contains("name"));
     EXPECT_TRUE(values.contains("description"));
     EXPECT_TRUE(values.contains("actionType"));
+}
+
+// ---------------------------------------------------------------------------
+// buttonActionToName — domain -> UI display name
+// ---------------------------------------------------------------------------
+
+TEST_F(ActionModelTest, ButtonActionToNameDefaultReturnsEmpty) {
+    ButtonAction ba{ButtonAction::Default, {}};
+    EXPECT_TRUE(model.buttonActionToName(ba).isEmpty());
+}
+
+TEST_F(ActionModelTest, ButtonActionToNameGestureTrigger) {
+    ButtonAction ba{ButtonAction::GestureTrigger, {}};
+    EXPECT_EQ(model.buttonActionToName(ba), QStringLiteral("Gestures"));
+}
+
+TEST_F(ActionModelTest, ButtonActionToNameForKeystrokeKnownPayload) {
+    // Copy has payload "Ctrl+C" — lookup should resolve back to "Copy".
+    ButtonAction ba{ButtonAction::Keystroke, QStringLiteral("Ctrl+C")};
+    EXPECT_EQ(model.buttonActionToName(ba), QStringLiteral("Copy"));
+}
+
+TEST_F(ActionModelTest, ButtonActionToNameForKeystrokeUnknownFallsBackToPayload) {
+    ButtonAction ba{ButtonAction::Keystroke, QStringLiteral("Ctrl+Alt+Unknown")};
+    EXPECT_EQ(model.buttonActionToName(ba), QStringLiteral("Ctrl+Alt+Unknown"));
+}
+
+TEST_F(ActionModelTest, ButtonActionToNameForAppLaunch) {
+    // AppLaunch branch falls through to returning the payload directly.
+    ButtonAction ba{ButtonAction::AppLaunch, QStringLiteral("kcalc")};
+    EXPECT_EQ(model.buttonActionToName(ba), QStringLiteral("kcalc"));
+}
+
+// ---------------------------------------------------------------------------
+// buttonEntryToAction — UI (type, name) -> domain
+// ---------------------------------------------------------------------------
+
+TEST_F(ActionModelTest, ButtonEntryToActionDefault) {
+    auto ba = model.buttonEntryToAction(QStringLiteral("default"), QStringLiteral("Middle click"));
+    EXPECT_EQ(ba.type, ButtonAction::Default);
+    EXPECT_TRUE(ba.payload.isEmpty());
+}
+
+TEST_F(ActionModelTest, ButtonEntryToActionGestureTrigger) {
+    auto ba = model.buttonEntryToAction(QStringLiteral("gesture-trigger"), QStringLiteral("Gestures"));
+    EXPECT_EQ(ba.type, ButtonAction::GestureTrigger);
+}
+
+TEST_F(ActionModelTest, ButtonEntryToActionSmartShiftToggle) {
+    auto ba = model.buttonEntryToAction(QStringLiteral("smartshift-toggle"), QStringLiteral("Shift wheel mode"));
+    EXPECT_EQ(ba.type, ButtonAction::SmartShiftToggle);
+}
+
+TEST_F(ActionModelTest, ButtonEntryToActionDpiCycle) {
+    auto ba = model.buttonEntryToAction(QStringLiteral("dpi-cycle"), QStringLiteral("DPI cycle"));
+    EXPECT_EQ(ba.type, ButtonAction::DpiCycle);
+}
+
+TEST_F(ActionModelTest, ButtonEntryToActionMediaControlsMapsDisplayNameToKey) {
+    auto ba = model.buttonEntryToAction(QStringLiteral("media-controls"), QStringLiteral("Next track"));
+    EXPECT_EQ(ba.type, ButtonAction::Media);
+    EXPECT_EQ(ba.payload, QStringLiteral("Next"));
+}
+
+TEST_F(ActionModelTest, ButtonEntryToActionKeystrokeResolvesPayloadFromName) {
+    auto ba = model.buttonEntryToAction(QStringLiteral("keystroke"), QStringLiteral("Copy"));
+    EXPECT_EQ(ba.type, ButtonAction::Keystroke);
+    EXPECT_EQ(ba.payload, QStringLiteral("Ctrl+C"));
+}
+
+TEST_F(ActionModelTest, ButtonEntryToActionKeystrokeFallsBackToNameWhenUnknown) {
+    // Unknown name, but type is keystroke — treat the name as the literal payload.
+    auto ba = model.buttonEntryToAction(QStringLiteral("keystroke"), QStringLiteral("Ctrl+Alt+T"));
+    EXPECT_EQ(ba.type, ButtonAction::Keystroke);
+    EXPECT_EQ(ba.payload, QStringLiteral("Ctrl+Alt+T"));
+}
+
+TEST_F(ActionModelTest, ButtonEntryToActionKeyboardShortcutHasEmptyPayload) {
+    // "Keyboard shortcut" is the placeholder entry with an intentionally empty payload;
+    // the translator should preserve that rather than echo the name back.
+    auto ba = model.buttonEntryToAction(QStringLiteral("keystroke"), QStringLiteral("Keyboard shortcut"));
+    EXPECT_EQ(ba.type, ButtonAction::Keystroke);
+    EXPECT_TRUE(ba.payload.isEmpty());
+}
+
+TEST_F(ActionModelTest, ButtonEntryToActionAppLaunchResolvesPayload) {
+    auto ba = model.buttonEntryToAction(QStringLiteral("app-launch"), QStringLiteral("Calculator"));
+    EXPECT_EQ(ba.type, ButtonAction::AppLaunch);
+    EXPECT_EQ(ba.payload, QStringLiteral("kcalc"));
+}
+
+TEST_F(ActionModelTest, ButtonEntryToActionUnknownTypeReturnsDefault) {
+    auto ba = model.buttonEntryToAction(QStringLiteral("nonsense-type"), QStringLiteral("whatever"));
+    EXPECT_EQ(ba.type, ButtonAction::Default);
+    EXPECT_TRUE(ba.payload.isEmpty());
+}
+
+// ---------------------------------------------------------------------------
+// Round trips
+// ---------------------------------------------------------------------------
+
+TEST_F(ActionModelTest, RoundTripKeystrokeCopy) {
+    ButtonAction original{ButtonAction::Keystroke, QStringLiteral("Ctrl+C")};
+    QString name = model.buttonActionToName(original);
+    auto recovered = model.buttonEntryToAction(QStringLiteral("keystroke"), name);
+    EXPECT_EQ(recovered, original);
+}
+
+TEST_F(ActionModelTest, RoundTripMediaNextTrack) {
+    // Media is serialized with display names ("Next track") in the UI, so we
+    // can't round-trip by starting from ButtonActionToName (it just returns the
+    // payload). Instead, round-trip the UI -> domain -> UI direction matters
+    // less here; ensure the domain side parses correctly for the known key.
+    auto ba = model.buttonEntryToAction(QStringLiteral("media-controls"), QStringLiteral("Play/Pause"));
+    EXPECT_EQ(ba.type, ButtonAction::Media);
+    EXPECT_EQ(ba.payload, QStringLiteral("Play"));
 }
