@@ -8,24 +8,63 @@ At a glance — one button press on the mouse turns into one row update in the Q
 
 ```mermaid
 flowchart TB
-    ui["<b>QML UI</b> — src/app/qml/<br/>Main.qml · Pages · Components"]
-    app["<b>App library</b> — logitune-app-lib<br/>AppController · ProfileEngine · Models · TrayManager"]
-    core["<b>Core library</b> — logitune-core<br/>DeviceManager · PhysicalDevice · DeviceSession · HID++ stack · Desktop integration · UinputInjector"]
-    kernel["<b>Linux kernel</b><br/>/dev/hidrawN · libudev · D-Bus · /dev/uinput"]
-    hardware["<b>Hardware</b> — devices/*/descriptor.json<br/>MX Master 3S · MX Master 4 · MX Anywhere · MX Vertical"]
+    subgraph ui ["QML UI"]
+        direction LR
+        u1["Main.qml + pages + components"]
+    end
+
+    subgraph app ["App library — logitune-app-lib"]
+        direction LR
+        a1["AppController"]
+        a2["Models + TrayManager"]
+    end
+
+    subgraph core ["Core library — logitune-core"]
+        direction TB
+        subgraph coreIntegration ["Integration"]
+            direction LR
+            cI1["Desktop integration"]
+            cI2["UinputInjector"]
+            cI3["ProfileEngine"]
+        end
+        subgraph coreAggregation ["Aggregation"]
+            direction LR
+            cA1["PhysicalDevice"]
+            cA2["DeviceManager"]
+        end
+        subgraph coreProtocol ["Protocol"]
+            direction LR
+            cP1["DeviceSession"]
+            cP2["HID++ stack"]
+        end
+        coreIntegration ~~~ coreAggregation ~~~ coreProtocol
+    end
+
+    subgraph kernel ["Linux kernel"]
+        direction LR
+        k1["/dev/hidrawN"]
+        k2["libudev"]
+        k3["D-Bus"]
+        k4["/dev/uinput"]
+    end
+
+    subgraph hardware ["Hardware — devices/*/descriptor.json"]
+        direction LR
+        h1["MX Master 3S / 4 / Anywhere / Vertical"]
+    end
 
     ui ~~~ app ~~~ core ~~~ kernel ~~~ hardware
 
-    classDef uiStyle     fill:#ec489920,stroke:#ec4899,color:#f8fafc,padding:12px
-    classDef appStyle    fill:#3b82f620,stroke:#3b82f6,color:#f8fafc,padding:12px
-    classDef coreStyle   fill:#10b98120,stroke:#10b981,color:#f8fafc,padding:12px
-    classDef kernelStyle fill:#8b5cf620,stroke:#8b5cf6,color:#f8fafc,padding:12px
-    classDef hwStyle     fill:#f59e0b20,stroke:#f59e0b,color:#f8fafc,padding:12px
-    class ui uiStyle
-    class app appStyle
-    class core coreStyle
-    class kernel kernelStyle
-    class hardware hwStyle
+    classDef uiStyle     fill:#ec489922,stroke:#ec4899,color:#f8fafc
+    classDef appStyle    fill:#3b82f622,stroke:#3b82f6,color:#f8fafc
+    classDef coreStyle   fill:#10b98122,stroke:#10b981,color:#f8fafc
+    classDef kernelStyle fill:#8b5cf622,stroke:#8b5cf6,color:#f8fafc
+    classDef hwStyle     fill:#f59e0b22,stroke:#f59e0b,color:#f8fafc
+    class ui,u1 uiStyle
+    class app,a1,a2 appStyle
+    class core,coreIntegration,coreAggregation,coreProtocol,cI1,cI2,cI3,cA1,cA2,cP1,cP2 coreStyle
+    class kernel,k1,k2,k3,k4 kernelStyle
+    class hardware,h1 hwStyle
 ```
 
 Each layer below has its own detailed diagram elsewhere on this page:
