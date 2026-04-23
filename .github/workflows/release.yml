@@ -184,13 +184,90 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
 
   # --------------------------------------------------------------------------
+  # Sync pkg/obs/* into the OBS package's own VCS. OBS stores the spec,
+  # _service, and debian packaging files in its own checkout separate from
+  # git; tar_scm only pulls source code, not these. Without this sync,
+  # changes to pkg/obs/ in git never reach the builds.
+  #
+  # Runs before trigger-obs so the rebuild that follows picks up any new
+  # spec/packaging changes. If pkg/obs/ is unchanged, osc commit is a no-op.
+  # --------------------------------------------------------------------------
+  sync-obs-spec:
+    needs: [release]
+    runs-on: ubuntu-latest
+    if: |
+      always() && (
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+        || (github.event_name == 'workflow_dispatch' && inputs.trigger_obs)
+      )
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install osc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y osc
+
+      - name: Configure osc credentials
+        env:
+          OSC_USERNAME: ${{ secrets.OSC_USERNAME }}
+          OSC_PASSWORD: ${{ secrets.OSC_PASSWORD }}
+        run: |
+          mkdir -p ~/.config/osc
+          umask 077
+          cat > ~/.config/osc/oscrc <<EOF
+          [general]
+          apiurl = https://api.opensuse.org
+
+          [https://api.opensuse.org]
+          user = ${OSC_USERNAME}
+          pass = ${OSC_PASSWORD}
+          EOF
+
+      - name: Checkout OBS package
+        # osc checkout always nests <project>/<package>/ under PWD,
+        # regardless of any trailing positional arg. Work inside a known
+        # parent dir and reference the nested path explicitly.
+        run: |
+          mkdir -p /tmp/obs-workdir
+          cd /tmp/obs-workdir
+          osc checkout home:mmaher88:logitune logitune
+          test -d "/tmp/obs-workdir/home:mmaher88:logitune/logitune/.osc" \
+            || { echo "::error::osc checkout produced no working copy"; exit 1; }
+
+      - name: Sync pkg/obs/ into OBS checkout
+        run: |
+          # Mirror pkg/obs/ into the OBS checkout, keeping osc's .osc/
+          # metadata. --delete removes files deleted from git. osc addremove
+          # then stages additions + deletions for commit.
+          rsync -av --delete --exclude '.osc' \
+            pkg/obs/ "/tmp/obs-workdir/home:mmaher88:logitune/logitune/"
+
+      - name: Commit to OBS (triggers service + rebuild if files changed)
+        run: |
+          cd "/tmp/obs-workdir/home:mmaher88:logitune/logitune"
+          osc addremove
+          echo "--- osc status ---"
+          osc status || true
+          echo "--- osc diff ---"
+          osc diff || true
+          if [ -n "$(osc status)" ]; then
+            osc commit -m "sync packaging from git ${GITHUB_SHA}"
+          else
+            echo "OBS package already in sync with git; nothing to commit."
+          fi
+
+  # --------------------------------------------------------------------------
   # Trigger the OBS source service to pull the new tarball and rebuild
   # all repo targets (Fedora, openSUSE Ubuntu, etc.). The token is a
   # "Run source services" token scoped to home:mmaher88:logitune/logitune,
   # created at https://build.opensuse.org/my/tokens.
+  #
+  # Runs after sync-obs-spec so any spec changes committed by that job
+  # are already live before this rebuild fires.
   # --------------------------------------------------------------------------
   trigger-obs:
-    needs: [release]
+    needs: [release, sync-obs-spec]
     runs-on: ubuntu-latest
     if: |
       always() && (
