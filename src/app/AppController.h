@@ -18,6 +18,7 @@
 #include "services/DeviceSelection.h"
 #include "services/DeviceCommands.h"
 #include "services/ButtonActionDispatcher.h"
+#include "services/ProfileOrchestrator.h"
 #include <QObject>
 #include <QTimer>
 #include <cstdint>
@@ -59,25 +60,26 @@ public:
     EditorModel    *editorModel() const { return m_editorModel.get(); }
 
 private slots:
-    void onUserButtonChanged(int buttonId, const QString &actionName, const QString &actionType);
-    void onWindowFocusChanged(const QString &wmClass, const QString &title);
-    void onTabSwitched(const QString &profileName);
-    void onDisplayProfileChanged(const QString &serial, const Profile &profile);
     void onPhysicalDeviceAdded(PhysicalDevice *device);
     void onPhysicalDeviceRemoved(PhysicalDevice *device);
 
 private:
     void wireSignals();
     void onSelectionChanged();
-    void saveCurrentProfile();
-    void pushDisplayValues(const Profile &p);
-    void restoreButtonModelFromProfile(const Profile &p);
-    void applyProfileToHardware(const Profile &p);
-    void setupProfileForDevice(PhysicalDevice *device);
-    QString buttonActionToName(const ButtonAction &ba) const;
-    ButtonAction buttonEntryToAction(const QString &actionType, const QString &actionName) const;
 
-    // Subsystems
+    static std::unique_ptr<IDesktopIntegration> makeOwnedDesktop(IDesktopIntegration *provided);
+    static std::unique_ptr<IInputInjector>      makeOwnedInjector(IInputInjector *provided);
+
+    // Subsystems. Declaration order is the construction order for
+    // subobjects, so things that are handed as pointers into other
+    // subobjects' ctors must be declared first. m_ownedDesktop /
+    // m_desktop / m_injector precede the services that reference them
+    // (m_profileOrchestrator needs the desktop pointer).
+    std::unique_ptr<IDesktopIntegration> m_ownedDesktop;
+    std::unique_ptr<IInputInjector>      m_ownedInjector;
+    IDesktopIntegration *m_desktop  = nullptr;
+    IInputInjector      *m_injector = nullptr;
+
     DeviceRegistry m_registry;
     DeviceManager  m_deviceManager;
     DeviceFetcher  m_deviceFetcher;
@@ -92,15 +94,9 @@ private:
     ProfileEngine  m_profileEngine;
     ActionExecutor m_actionExecutor;
     ButtonActionDispatcher m_buttonDispatcher;
+    ProfileOrchestrator    m_profileOrchestrator;
 
     std::unique_ptr<EditorModel>         m_editorModel;
-    std::unique_ptr<IDesktopIntegration> m_ownedDesktop;
-    std::unique_ptr<IInputInjector>      m_ownedInjector;
-    IDesktopIntegration *m_desktop  = nullptr;
-    IInputInjector      *m_injector = nullptr;
-
-    // Active device descriptor (set on connect)
-    const IDevice *m_currentDevice = nullptr;
 };
 
 } // namespace logitune

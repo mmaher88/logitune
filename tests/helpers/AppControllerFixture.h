@@ -240,8 +240,6 @@ protected:
     ActionModel   &actionModel()   { return m_ctrl->m_actionModel; }
     ActionExecutor &actionExecutor() { return m_ctrl->m_actionExecutor; }
 
-    const IDevice *currentDevice() const { return m_ctrl->m_currentDevice; }
-
     int gestureTotalDx() const {
         if (!m_session) return 0;
         auto &state = m_ctrl->m_buttonDispatcher.m_state;
