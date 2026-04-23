@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560"
+     font-family="ui-monospace, 'JetBrains Mono', monospace">
+  <style>
+    .layer-title  { font-size: 11px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; fill: #94a3b8; }
+    .sub-title    { font-size:  9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; fill: #64748b; }
+    .block-label  { font-size: 12px; text-anchor: middle; dominant-baseline: middle; fill: #e2e8f0; }
+    rect.layer    { fill-opacity: 0.08; stroke-width: 1.5; }
+    rect.block    { fill: #0f172a; stroke-width: 1; rx: 4; ry: 4; }
+  </style>
+
+  <!-- QML UI ---------------------------------------------------------- -->
+  <g>
+    <rect class="layer" x="0" y="0" width="800" height="80" fill="#ec4899" stroke="#ec4899"/>
+    <text class="layer-title" x="14" y="20">QML UI</text>
+    <rect class="block" x="150" y="28" width="500" height="36" stroke="#ec4899"/>
+    <text class="block-label" x="400" y="46">Main.qml + pages + components</text>
+  </g>
+
+  <!-- App library ----------------------------------------------------- -->
+  <g transform="translate(0, 80)">
+    <rect class="layer" x="0" y="0" width="800" height="80" fill="#3b82f6" stroke="#3b82f6"/>
+    <text class="layer-title" x="14" y="20">App library &#8212; logitune-app-lib</text>
+    <rect class="block" x="60"  y="28" width="320" height="36" stroke="#3b82f6"/>
+    <text class="block-label" x="220" y="46">AppController</text>
+    <rect class="block" x="420" y="28" width="320" height="36" stroke="#3b82f6"/>
+    <text class="block-label" x="580" y="46">Models + TrayManager</text>
+  </g>
+
+  <!-- Core library ---------------------------------------------------- -->
+  <g transform="translate(0, 160)">
+    <rect class="layer" x="0" y="0" width="800" height="240" fill="#10b981" stroke="#10b981"/>
+    <text class="layer-title" x="14" y="20">Core library &#8212; logitune-core</text>
+
+    <!-- Integration -->
+    <g transform="translate(0, 30)">
+      <text class="sub-title" x="14" y="16">Integration</text>
+      <rect class="block" x="60"  y="22" width="220" height="32" stroke="#10b981"/>
+      <text class="block-label" x="170" y="38">Desktop integration</text>
+      <rect class="block" x="300" y="22" width="200" height="32" stroke="#10b981"/>
+      <text class="block-label" x="400" y="38">UinputInjector</text>
+      <rect class="block" x="520" y="22" width="220" height="32" stroke="#10b981"/>
+      <text class="block-label" x="630" y="38">ProfileEngine</text>
+    </g>
+
+    <!-- Aggregation -->
+    <g transform="translate(0, 100)">
+      <text class="sub-title" x="14" y="16">Aggregation</text>
+      <rect class="block" x="140" y="22" width="240" height="32" stroke="#10b981"/>
+      <text class="block-label" x="260" y="38">PhysicalDevice</text>
+      <rect class="block" x="420" y="22" width="240" height="32" stroke="#10b981"/>
+      <text class="block-label" x="540" y="38">DeviceManager</text>
+    </g>
+
+    <!-- Protocol -->
+    <g transform="translate(0, 170)">
+      <text class="sub-title" x="14" y="16">Protocol</text>
+      <rect class="block" x="140" y="22" width="240" height="32" stroke="#10b981"/>
+      <text class="block-label" x="260" y="38">DeviceSession</text>
+      <rect class="block" x="420" y="22" width="240" height="32" stroke="#10b981"/>
+      <text class="block-label" x="540" y="38">HID++ stack</text>
+    </g>
+  </g>
+
+  <!-- Linux kernel ---------------------------------------------------- -->
+  <g transform="translate(0, 400)">
+    <rect class="layer" x="0" y="0" width="800" height="80" fill="#8b5cf6" stroke="#8b5cf6"/>
+    <text class="layer-title" x="14" y="20">Linux kernel</text>
+    <rect class="block" x="40"  y="28" width="160" height="36" stroke="#8b5cf6"/>
+    <text class="block-label" x="120" y="46">/dev/hidrawN</text>
+    <rect class="block" x="220" y="28" width="160" height="36" stroke="#8b5cf6"/>
+    <text class="block-label" x="300" y="46">libudev</text>
+    <rect class="block" x="400" y="28" width="160" height="36" stroke="#8b5cf6"/>
+    <text class="block-label" x="480" y="46">D-Bus</text>
+    <rect class="block" x="580" y="28" width="180" height="36" stroke="#8b5cf6"/>
+    <text class="block-label" x="670" y="46">/dev/uinput</text>
+  </g>
+
+  <!-- Hardware -------------------------------------------------------- -->
+  <g transform="translate(0, 480)">
+    <rect class="layer" x="0" y="0" width="800" height="80" fill="#f59e0b" stroke="#f59e0b"/>
+    <text class="layer-title" x="14" y="20">Hardware &#8212; devices/*/descriptor.json</text>
+    <rect class="block" x="150" y="28" width="500" height="36" stroke="#f59e0b"/>
+    <text class="block-label" x="400" y="46">MX Master 3S / 4 / Anywhere / Vertical</text>
+  </g>
+</svg>

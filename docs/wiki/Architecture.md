@@ -6,65 +6,9 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 
 At a glance — one button press on the mouse turns into one row update in the QML UI. Each layer has one job:
 
-```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 18, 'rankSpacing': 2, 'padding': 2}}}%%
-flowchart TB
-    subgraph shell [" "]
-        direction TB
-        subgraph ui ["QML UI"]
-            direction LR
-            uP1:::pad ~~~ uP2:::pad ~~~ u1["Main.qml + pages + components"] ~~~ uP3:::pad ~~~ uP4:::pad
-        end
+![System Overview](diagrams/system-overview.svg)
 
-        subgraph app ["App library — logitune-app-lib"]
-            direction LR
-            aP1:::pad ~~~ a1["AppController"] ~~~ a2["Models + TrayManager"] ~~~ aP2:::pad
-        end
-
-        subgraph core ["Core library — logitune-core"]
-            direction TB
-            subgraph coreIntegration ["Integration"]
-                direction LR
-                cI1["Desktop integration"] ~~~ cI2["UinputInjector"] ~~~ cI3["ProfileEngine"]
-            end
-            subgraph coreAggregation ["Aggregation"]
-                direction LR
-                cAP1:::pad ~~~ cA1["PhysicalDevice"] ~~~ cA2["DeviceManager"] ~~~ cAP2:::pad
-            end
-            subgraph coreProtocol ["Protocol"]
-                direction LR
-                cPP1:::pad ~~~ cP1["DeviceSession"] ~~~ cP2["HID++ stack"] ~~~ cPP2:::pad
-            end
-            coreIntegration ~~~ coreAggregation ~~~ coreProtocol
-        end
-
-        subgraph kernel ["Linux kernel"]
-            direction LR
-            k1["/dev/hidrawN"] ~~~ k2["libudev"] ~~~ k3["D-Bus"] ~~~ k4["/dev/uinput"]
-        end
-
-        subgraph hardware ["Hardware — devices/*/descriptor.json"]
-            direction LR
-            hP1:::pad ~~~ hP2:::pad ~~~ h1["MX Master 3S / 4 / Anywhere / Vertical"] ~~~ hP3:::pad ~~~ hP4:::pad
-        end
-
-        ui ~~~ app ~~~ core ~~~ kernel ~~~ hardware
-    end
-
-    classDef uiStyle     fill:#ec489922,stroke:#ec4899,color:#f8fafc
-    classDef appStyle    fill:#3b82f622,stroke:#3b82f6,color:#f8fafc
-    classDef coreStyle   fill:#10b98122,stroke:#10b981,color:#f8fafc
-    classDef kernelStyle fill:#8b5cf622,stroke:#8b5cf6,color:#f8fafc
-    classDef hwStyle     fill:#f59e0b22,stroke:#f59e0b,color:#f8fafc
-    classDef shellStyle  fill:transparent,stroke:transparent,color:transparent
-    classDef pad fill:transparent,stroke:transparent,color:transparent
-    class shell shellStyle
-    class ui,u1 uiStyle
-    class app,a1,a2 appStyle
-    class core,coreIntegration,coreAggregation,coreProtocol,cI1,cI2,cI3,cA1,cA2,cP1,cP2 coreStyle
-    class kernel,k1,k2,k3,k4 kernelStyle
-    class hardware,h1 hwStyle
-```
+> Source: [`docs/wiki/diagrams/system-overview.svg`](diagrams/system-overview.svg) (hand-authored; edit directly).
 
 Each layer below has its own detailed diagram elsewhere on this page:
 
