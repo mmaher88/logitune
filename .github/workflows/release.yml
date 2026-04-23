@@ -225,18 +225,27 @@ jobs:
           EOF
 
       - name: Checkout OBS package
-        run: osc checkout home:mmaher88:logitune logitune /tmp/obs-pkg
+        # osc checkout always nests <project>/<package>/ under PWD,
+        # regardless of any trailing positional arg. Work inside a known
+        # parent dir and reference the nested path explicitly.
+        run: |
+          mkdir -p /tmp/obs-workdir
+          cd /tmp/obs-workdir
+          osc checkout home:mmaher88:logitune logitune
+          test -d "/tmp/obs-workdir/home:mmaher88:logitune/logitune/.osc" \
+            || { echo "::error::osc checkout produced no working copy"; exit 1; }
 
       - name: Sync pkg/obs/ into OBS checkout
         run: |
           # Mirror pkg/obs/ into the OBS checkout, keeping osc's .osc/
           # metadata. --delete removes files deleted from git. osc addremove
           # then stages additions + deletions for commit.
-          rsync -av --delete --exclude '.osc' pkg/obs/ /tmp/obs-pkg/
+          rsync -av --delete --exclude '.osc' \
+            pkg/obs/ "/tmp/obs-workdir/home:mmaher88:logitune/logitune/"
 
       - name: Commit to OBS (triggers service + rebuild if files changed)
         run: |
-          cd /tmp/obs-pkg
+          cd "/tmp/obs-workdir/home:mmaher88:logitune/logitune"
           osc addremove
           echo "--- osc status ---"
           osc status || true
