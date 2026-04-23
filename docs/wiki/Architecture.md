@@ -18,7 +18,7 @@ Each layer below has its own detailed diagram elsewhere on this page:
 | Core — Desktop integration | [Interface hierarchy](#interface-hierarchy), [KDE focus tracking](#kde-focus-tracking) |
 | Core — Device lifecycle | [PhysicalDevice transport aggregation](#physicaldevice-transport-aggregation), [Discovery flow](#discovery-flow), [Disconnect and reconnect](#disconnect-and-reconnect) |
 | App — Models | [MVVM pattern](#mvvm-pattern), [Model roles](#model-roles), [Model registration](#model-registration) |
-| App — Orchestration | [AppController wiring](#appcontroller-wiring) |
+| App — Orchestration | [AppRoot wiring](#appcontroller-wiring) |
 | Cross-cutting flow | [Window focus → profile switch → hardware commands](#window-focus-change---profile-switch---hardware-commands) |
 
 ### Two Static Libraries
@@ -28,7 +28,7 @@ The project is split into two static libraries:
 | Library | Contents | Dependencies |
 |---------|----------|-------------|
 | `logitune-core` | DeviceManager, `PhysicalDevice`, `DeviceSession`, HID++ protocol + capability dispatch, ProfileEngine, ActionExecutor, `DeviceRegistry`, `JsonDevice`, `DescriptorWriter`, `LinuxDesktopBase` + KDE/GNOME/Generic implementations, input injection, logging | Qt6::Core, Qt6::DBus, libudev |
-| `logitune-app-lib` | AppController, `EditorModel`, models (DeviceModel, ButtonModel, ActionModel, `ActionFilterModel`, ProfileModel, `SettingsModel`), TrayManager, QML module, dialogs | logitune-core, Qt6::Quick, Qt6::Widgets |
+| `logitune-app-lib` | AppRoot, `EditorModel`, models (DeviceModel, ButtonModel, ActionModel, `ActionFilterModel`, ProfileModel, `SettingsModel`), TrayManager, QML module, dialogs | logitune-core, Qt6::Quick, Qt6::Widgets |
 
 This split allows tests to link against `logitune-core` and `logitune-app-lib` without pulling in the executable's `main()`.
 
@@ -42,7 +42,7 @@ This is the central flow of the application. When the user switches to a differe
 sequenceDiagram
     participant KWin as KWin Script
     participant KDE as KDeDesktop
-    participant AC as AppController
+    participant AC as AppRoot
     participant PE as ProfileEngine
     participant PM as ProfileModel
     participant DM as DeviceModel
@@ -315,7 +315,7 @@ graph TB
 3. **Profile load** — `setDeviceConfigDir()` scans the directory for `.conf` files and loads them into the in-memory cache
 4. **Focus change** — `profileForApp(wmClass)` looks up the app binding; if none found, returns "default"
 5. **Hardware apply** — `applyProfileToHardware()` sends all profile settings via CommandQueue
-6. **User edit** — UI changes go through DeviceModel -> AppController -> ProfileEngine cache -> disk save
+6. **User edit** — UI changes go through DeviceModel -> AppRoot -> ProfileEngine cache -> disk save
 7. **Cache vs disk** — the cache is the source of truth during runtime; saves to disk are immediate but loads only happen at startup
 
 ### ProfileDelta
@@ -370,7 +370,7 @@ graph LR
     ProfileBar --> PM
 
     DM --> DMgr
-    BM --> AC[AppController]
+    BM --> AC[AppRoot]
     AM --> AC
     PM --> AC
     AC --> DMgr
@@ -447,7 +447,7 @@ flowchart LR
     QML -->|singleton| SM
 ```
 
-All five are registered in `src/app/main.cpp` against `controller.xxxModel()` accessors — AppController owns them, QML borrows them. No other QML-visible C++ classes.
+All five are registered in `src/app/main.cpp` against `controller.xxxModel()` accessors — AppRoot owns them, QML borrows them. No other QML-visible C++ classes.
 
 ## Desktop Integration
 
@@ -507,7 +507,7 @@ sequenceDiagram
     participant Script as Focus Watcher Script
     participant DBus as D-Bus Session Bus
     participant KDE as KDeDesktop
-    participant AC as AppController
+    participant AC as AppRoot
 
     Note over KDE: On start, register D-Bus service com.logitune.app
     KDE->>KWin: loadScript(logitune_focus_watcher.js)
@@ -785,9 +785,9 @@ When diverted, the device sends thumb wheel rotation events with raw delta value
 
 The MX Master 3S reports `defaultDirection = 0` (positive when left/back), so `thumbWheelDefaultDirection = -1`. Multiplying raw deltas by -1 makes clockwise = positive, which is the natural direction for zoom-in and volume-up.
 
-## AppController Wiring
+## AppRoot Wiring
 
-AppController is the central orchestrator. It owns all subsystems and wires them together:
+AppRoot is the central orchestrator. It owns all subsystems and wires them together:
 
 ```mermaid
 graph TB
@@ -831,14 +831,14 @@ graph TB
 
 ### Dependency Injection
 
-AppController accepts optional `IDesktopIntegration*` and `IInputInjector*` in its constructor:
+AppRoot accepts optional `IDesktopIntegration*` and `IInputInjector*` in its constructor:
 
 ```cpp
-AppController(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent = nullptr);
+AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent = nullptr);
 ```
 
 - If `nullptr` is passed (production), it creates `KDeDesktop` and `UinputInjector` internally
 - In tests, `MockDesktop` and `MockInjector` are injected for deterministic behavior
-- The injected pointers are **not owned** by AppController (raw pointers); internally created ones are held in `unique_ptr`
+- The injected pointers are **not owned** by AppRoot (raw pointers); internally created ones are held in `unique_ptr`
 
-This is the sole DI point — the rest of the subsystems are value members of AppController, which simplifies lifetime management.
+This is the sole DI point — the rest of the subsystems are value members of AppRoot, which simplifies lifetime management.

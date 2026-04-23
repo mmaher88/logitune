@@ -317,7 +317,7 @@ params[0-1]: rotation delta (int16, signed, big-endian)
 The MX Master 3S has `defaultDirection = 0`, meaning positive deltas correspond to leftward/backward rotation. Logitune normalizes this:
 
 ```cpp
-// In AppController::onThumbWheelRotation:
+// In AppRoot::onThumbWheelRotation:
 int normalized = delta * m_deviceManager.thumbWheelDefaultDirection();
 // defaultDirection=0 -> thumbWheelDefaultDirection=-1
 // Multiplying by -1 makes clockwise = positive
@@ -354,7 +354,7 @@ params[2-3]: dy (int16, big-endian vertical delta)
 params[4]:   released flag — 1 when the thumb button lifts (end of gesture stream)
 ```
 
-Unlike the diverted-button + rawXY approach used for ThumbWheel, GestureV2 produces coalesced dx/dy deltas while the gesture button is held and emits a single "released" event at the end. AppController accumulates deltas and thresholds them to turn continuous motion into up/down/left/right/click bindings.
+Unlike the diverted-button + rawXY approach used for ThumbWheel, GestureV2 produces coalesced dx/dy deltas while the gesture button is held and emits a single "released" event at the end. AppRoot accumulates deltas and thresholds them to turn continuous motion into up/down/left/right/click bindings.
 
 ### ChangeHost (0x1814)
 

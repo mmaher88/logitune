@@ -155,7 +155,7 @@ void DeviceModel::addPhysicalDevice(PhysicalDevice *device)
             insertRow(device);
         } else if (!now && was) {
             // connected -> disconnected: hide the row. PhysicalDevice is
-            // still alive in DeviceManager; AppController keeps per-device
+            // still alive in DeviceManager; AppRoot keeps per-device
             // state. We just don't paint a carousel card for an offline
             // mouse.
             removeRow(device);

@@ -206,14 +206,14 @@ For the full walkthrough, see [Editor Mode](Editor-Mode) and
 | Add a new device | `devices/<slug>/` at the repo root: see [Adding a Device](Adding-a-Device) |
 | Edit a wiki page | `docs/wiki/*.md` in this repo. Wiki is one-way synced from master; edits on the GitHub wiki itself are overwritten on next sync. |
 | Add a new desktop environment | `src/core/desktop/` — see [Adding a Desktop Environment](Adding-a-Desktop-Environment) |
-| Add a new button action type | `src/core/ButtonAction.h` and `src/app/AppController.cpp` (onDivertedButtonPressed) |
+| Add a new button action type | `src/core/ButtonAction.h` and `src/app/AppRoot.cpp` (onDivertedButtonPressed) |
 | Add a new QML page | `src/app/qml/pages/` and register in `src/app/CMakeLists.txt` |
 | Add a new QML component | `src/app/qml/components/` and register in `src/app/CMakeLists.txt` |
 | Add a new model | `src/app/models/` — create class, register in `main.cpp` as QML singleton |
 | Add a new test | `tests/test_*.cpp` and add to `tests/CMakeLists.txt` |
 | Add a new QML test | `tests/qml/tst_*.qml` and add to `tests/qml/CMakeLists.txt` |
 | Change the protocol layer | `src/core/hidpp/` — Transport, FeatureDispatcher, CommandQueue |
-| Change signal wiring | `src/app/AppController.cpp` — `wireSignals()` method |
+| Change signal wiring | `src/app/AppRoot.cpp` — `wireSignals()` method |
 | Change the UI layout | `src/app/qml/Main.qml` (sidebar + page switcher) |
 | Debug device communication | Run with `--debug`, check `lcHidpp` and `lcDevice` log categories |
 
@@ -231,9 +231,9 @@ These are intentional choices — please don't "fix" them:
 
 5. **softwareId for response matching**: HID++ responses use rotating softwareId (1-15) to distinguish from notifications. Without this, async responses get misinterpreted as input events.
 
-6. **Friend classes for test access**: `AppControllerFixture` and `test::AppControllerFixture` are friends of `AppController` and `DeviceManager`. This is intentional — it enables behavioral tests without adding test-only public methods.
+6. **Friend classes for test access**: `AppRootFixture` and `test::AppRootFixture` are friends of `AppRoot` and `DeviceManager`. This is intentional — it enables behavioral tests without adding test-only public methods.
 
-7. **Value members, not heap**: AppController owns its subsystems as value members (not pointers). DeviceRegistry, DeviceManager, ProfileEngine, models — they are all stack-allocated inside AppController. Only desktop integration and input injection use pointer indirection (for DI).
+7. **Value members, not heap**: AppRoot owns its subsystems as value members (not pointers). DeviceRegistry, DeviceManager, ProfileEngine, models — they are all stack-allocated inside AppRoot. Only desktop integration and input injection use pointer indirection (for DI).
 
 8. **KWin script, not polling**: On KDE, focus tracking uses a KWin script that calls back via D-Bus, not polling. The poll timer is only a fallback that installs the script on first tick, then stops.
 

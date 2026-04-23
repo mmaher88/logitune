@@ -1,6 +1,6 @@
-# ── Static library: models + AppController + QML module (linkable from tests) ─
+# ── Static library: models + AppRoot + QML module (linkable from tests) ─
 add_library(logitune-app-lib STATIC
-    AppController.cpp
+    AppRoot.cpp
     models/DeviceModel.cpp
     models/SettingsModel.cpp
     models/ButtonModel.cpp

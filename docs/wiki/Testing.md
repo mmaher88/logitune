@@ -6,7 +6,7 @@ Logitune tests are **behavioral, not structural**. Tests verify that features wo
 
 This means:
 
-- Tests exercise `AppController` through its real signal connections (not mocked)
+- Tests exercise `AppRoot` through its real signal connections (not mocked)
 - Tests simulate user actions (focus changes, button presses, UI interactions) and verify the observable results (mock injector calls, profile state, model data)
 - The only mocked components are hardware boundaries: `MockDesktop`, `MockInjector`, `MockTransport`, `MockDevice`
 - Internal implementation details can change freely without breaking tests
@@ -17,7 +17,7 @@ This means:
 graph TB
     subgraph "Tier 1: C++ Mock Tests (CI)"
         UnitTests[Unit Tests<br/>Profile, Action, Button, Transport, Features]
-        IntegTests[Integration Tests<br/>AppController, ProfileSwitching, ThumbWheel]
+        IntegTests[Integration Tests<br/>AppRoot, ProfileSwitching, ThumbWheel]
         ModelTests[Model Tests<br/>DeviceModel, ButtonModel, ProfileModel, ActionModel]
     end
 
@@ -98,17 +98,17 @@ Note: `QT_QPA_PLATFORM=offscreen` is required when running without a display (CI
 
 ## Test Infrastructure
 
-### AppControllerFixture
+### AppRootFixture
 
-`tests/helpers/AppControllerFixture.h` is the primary integration test fixture. It provides:
+`tests/helpers/AppRootFixture.h` is the primary integration test fixture. It provides:
 
 ```mermaid
 classDiagram
-    class AppControllerFixture {
+    class AppRootFixture {
         #MockDesktop* m_desktop
         #MockInjector* m_injector
         #MockDevice m_device
-        #unique_ptr~AppController~ m_ctrl
+        #unique_ptr~AppRoot~ m_ctrl
         #QString m_profilesDir
         #QTemporaryDir m_tmpDir
         
@@ -132,8 +132,8 @@ classDiagram
 
 **SetUp** creates:
 
-1. `MockDesktop` and `MockInjector` (raw pointers, not owned by AppController)
-2. `AppController` with injected mocks
+1. `MockDesktop` and `MockInjector` (raw pointers, not owned by AppRoot)
+2. `AppRoot` with injected mocks
 3. Temporary profile directory with a seeded `default.conf`
 4. `MockDevice` with MX Master 3S controls
 5. Sets `thumbWheelDefaultDirection = 1` (neutral, no direction normalization)
@@ -151,7 +151,7 @@ classDiagram
 | `gestureXY(dx, dy)` | Feeds raw gesture deltas |
 | `thumbWheel(delta)` | Feeds a thumb wheel rotation |
 
-**Friend access**: AppControllerFixture is a `friend` of `AppController`, giving it access to private members for state inspection and direct manipulation (e.g., setting `m_thumbWheelDefaultDirection`).
+**Friend access**: AppRootFixture is a `friend` of `AppRoot`, giving it access to private members for state inspection and direct manipulation (e.g., setting `m_thumbWheelDefaultDirection`).
 
 ### MockDesktop
 
@@ -181,7 +181,7 @@ Implements `ITransport` with:
 
 ### MockDevice
 
-Implements `IDevice` with all fields as public member variables for direct manipulation. Used by `AppControllerFixture` to supply a synthetic device to the controller under test; it is not used for device-descriptor tests (those load real JSON fixtures via `DeviceRegistry`).
+Implements `IDevice` with all fields as public member variables for direct manipulation. Used by `AppRootFixture` to supply a synthetic device to the controller under test; it is not used for device-descriptor tests (those load real JSON fixtures via `DeviceRegistry`).
 
 ### ProfileFixture
 
@@ -199,15 +199,15 @@ Suppose you've added a new "DPI shift" button action that temporarily sets DPI t
 
 #### 1. Choose the right fixture
 
-Since this involves AppController signal flow (button press -> action execution), use `AppControllerFixture`:
+Since this involves AppRoot signal flow (button press -> action execution), use `AppRootFixture`:
 
 ```cpp
 // tests/test_dpi_shift.cpp
-#include "helpers/AppControllerFixture.h"
+#include "helpers/AppRootFixture.h"
 
 namespace logitune::test {
 
-class DpiShiftTest : public AppControllerFixture {};
+class DpiShiftTest : public AppRootFixture {};
 
 TEST_F(DpiShiftTest, HoldDpiShiftLowersDpi) {
     // Set up: assign DPI shift to button 2 (middle click, CID 0x0052)
@@ -436,7 +436,7 @@ All tests run with `QT_QPA_PLATFORM=offscreen` (no display server required).
 | `test_action_model.cpp` | ActionModel catalog, indexForName, payloadForName |
 | `test_device_model.cpp` | DeviceModel display values, settings relay |
 | `test_wmclass_resolution.cpp` | Desktop file resolution logic |
-| `test_app_controller.cpp` | AppController init, wireSignals, device setup |
+| `test_app_controller.cpp` | AppRoot init, wireSignals, device setup |
 | `test_profile_switching.cpp` | Focus change triggers profile switch |
 | `test_profile_persistence.cpp` | Profile save/load round-trip |
 | `test_device_reconnect.cpp` | Disconnect/reconnect handling |

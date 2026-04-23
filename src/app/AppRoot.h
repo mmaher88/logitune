@@ -20,7 +20,7 @@
 #include <QObject>
 #include <memory>
 
-namespace logitune::test { class AppControllerFixture; }
+namespace logitune::test { class AppRootFixture; }
 
 namespace logitune {
 
@@ -39,12 +39,12 @@ class EditorModel;
 /// in DeviceSelection. If you find yourself adding a method here that
 /// responds to a user event or mutates application state, it belongs in
 /// a service instead.
-class AppController : public QObject {
+class AppRoot : public QObject {
     Q_OBJECT
 public:
-    explicit AppController(QObject *parent = nullptr);
-    AppController(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent = nullptr);
-    ~AppController() override;
+    explicit AppRoot(QObject *parent = nullptr);
+    AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent = nullptr);
+    ~AppRoot() override;
 
     void init();
 
@@ -57,7 +57,7 @@ public:
     /// without needing physical hardware.
     void startMonitoring(bool simulateAll = false, bool editMode = false);
 
-    friend class test::AppControllerFixture;
+    friend class test::AppRootFixture;
 
     DeviceModel    *deviceModel()    { return &m_deviceModel; }
     ButtonModel    *buttonModel()    { return &m_buttonModel; }

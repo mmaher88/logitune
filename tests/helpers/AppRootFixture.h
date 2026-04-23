@@ -5,7 +5,7 @@
 #include <QTemporaryDir>
 #include <memory>
 
-#include "AppController.h"
+#include "AppRoot.h"
 #include "DeviceSession.h"
 #include "PhysicalDevice.h"
 #include "ProfileEngine.h"
@@ -18,7 +18,7 @@
 
 namespace logitune::test {
 
-class AppControllerFixture : public ::testing::Test {
+class AppRootFixture : public ::testing::Test {
 protected:
     void SetUp() override {
         ensureApp();
@@ -28,7 +28,7 @@ protected:
         m_desktop  = new MockDesktop();
         m_injector = new MockInjector();
 
-        m_ctrl = std::make_unique<AppController>(m_desktop, m_injector);
+        m_ctrl = std::make_unique<AppRoot>(m_desktop, m_injector);
         m_ctrl->init();
 
         m_profilesDir = m_tmpDir.path() + QStringLiteral("/profiles");
@@ -55,7 +55,7 @@ protected:
         m_session->m_connected = true;
         m_session->m_deviceName = QStringLiteral("Mock Device");
         // PhysicalDevice::descriptor() forwards to its primary session's
-        // descriptor(). onPhysicalDeviceAdded writes that into AppController's
+        // descriptor(). onPhysicalDeviceAdded writes that into AppRoot's
         // m_currentDevice, so the mock session must already know which
         // IDevice it's backing before we drive the added flow.
         m_session->m_activeDevice = &m_device;
@@ -282,7 +282,7 @@ protected:
     MockDevice    m_device;
     DeviceSession *m_session = nullptr;
     PhysicalDevice *m_physicalDevice = nullptr;
-    std::unique_ptr<AppController> m_ctrl;
+    std::unique_ptr<AppRoot> m_ctrl;
     QString       m_profilesDir;
     QTemporaryDir m_tmpDir;
 };

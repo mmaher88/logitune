@@ -14,7 +14,7 @@
 #include <optional>
 #include <vector>
 
-namespace logitune::test { class AppControllerFixture; }
+namespace logitune::test { class AppRootFixture; }
 
 namespace logitune {
 
@@ -23,7 +23,7 @@ class IDevice;
 
 class DeviceSession : public QObject {
     Q_OBJECT
-    friend class test::AppControllerFixture;
+    friend class test::AppRootFixture;
 
 public:
     DeviceSession(std::unique_ptr<hidpp::HidrawDevice> device,

@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
 #include <QSignalSpy>
-#include "helpers/AppControllerFixture.h"
+#include "helpers/AppRootFixture.h"
 
 using namespace logitune;
 using namespace logitune::test;
 
-TEST_F(AppControllerFixture, DpiChangeSavesToDisplayedProfileOnly) {
+TEST_F(AppRootFixture, DpiChangeSavesToDisplayedProfileOnly) {
     createAppProfile("chrome", "Chrome", 1600, "scroll", false);
     focusApp("unregistered");  // hardware=default
     profileModel().selectTab(1);  // display=Chrome
@@ -19,7 +19,7 @@ TEST_F(AppControllerFixture, DpiChangeSavesToDisplayedProfileOnly) {
     EXPECT_EQ(def.dpi, 1000);  // unchanged
 }
 
-TEST_F(AppControllerFixture, SmartShiftToggleSavesAndUpdatesDisplay) {
+TEST_F(AppRootFixture, SmartShiftToggleSavesAndUpdatesDisplay) {
     deviceModel().setSmartShift(false, 50);
 
     Profile &def = profileEngine().cachedProfile(QStringLiteral("mock-serial"), "default");
@@ -30,7 +30,7 @@ TEST_F(AppControllerFixture, SmartShiftToggleSavesAndUpdatesDisplay) {
     EXPECT_EQ(deviceModel().smartShiftThreshold(), 50);
 }
 
-TEST_F(AppControllerFixture, ScrollDirectionChangeSaves) {
+TEST_F(AppRootFixture, ScrollDirectionChangeSaves) {
     deviceModel().setScrollConfig(true, true);  // hiRes=true, invert=true (natural)
 
     Profile &def = profileEngine().cachedProfile(QStringLiteral("mock-serial"), "default");
@@ -38,7 +38,7 @@ TEST_F(AppControllerFixture, ScrollDirectionChangeSaves) {
     EXPECT_TRUE(def.hiResScroll);
 }
 
-TEST_F(AppControllerFixture, ThumbWheelInvertChangeSaves) {
+TEST_F(AppRootFixture, ThumbWheelInvertChangeSaves) {
     deviceModel().setThumbWheelInvert(true);
 
     Profile &def = profileEngine().cachedProfile(QStringLiteral("mock-serial"), "default");
@@ -46,7 +46,7 @@ TEST_F(AppControllerFixture, ThumbWheelInvertChangeSaves) {
     EXPECT_TRUE(deviceModel().thumbWheelInvert());
 }
 
-TEST_F(AppControllerFixture, ThumbWheelInvertDoesNotAffectOtherProfile) {
+TEST_F(AppRootFixture, ThumbWheelInvertDoesNotAffectOtherProfile) {
     createAppProfile("chrome", "Chrome", 1000, "volume", false);
 
     deviceModel().setThumbWheelInvert(true);

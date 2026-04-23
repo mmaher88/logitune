@@ -8,7 +8,7 @@ class DeviceSelection;
 
 /// Routes UI change requests (from DeviceModel signals) to the active
 /// DeviceSession. Emits userChangedSomething() after each mutation so
-/// ProfileOrchestrator (wired in AppController) can trigger a save.
+/// ProfileOrchestrator (wired in AppRoot) can trigger a save.
 ///
 /// No-op if there is no active session (DeviceSelection returns null).
 class DeviceCommands : public QObject {

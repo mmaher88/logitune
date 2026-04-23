@@ -25,10 +25,10 @@
 
 namespace logitune::test {
 
-/// Fixture for ProfileOrchestrator tests. Clones the AppControllerFixture
+/// Fixture for ProfileOrchestrator tests. Clones the AppRootFixture
 /// shape (mock desktop/injector/session, seeded default profile in a temp
 /// dir, real ProfileEngine + models) but constructs a ProfileOrchestrator
-/// directly instead of an AppController. Wires only the signals the
+/// directly instead of an AppRoot. Wires only the signals the
 /// orchestrator cares about (from the engine and desktop); the cross-
 /// service bridges to ButtonActionDispatcher / DeviceCommands are not
 /// wired here because the orchestrator is the subject under test.
@@ -70,7 +70,7 @@ protected:
 
         // Wire the DeviceModel -> DeviceSelection -> selectionChanged chain
         // and the engine's display-profile signal. These are normally wired
-        // by AppController::wireSignals(); tests need the same plumbing to
+        // by AppRoot::wireSignals(); tests need the same plumbing to
         // exercise the orchestrator's slots the way production code does.
         QObject::connect(m_deviceModel.get(), &DeviceModel::selectedChanged,
                          m_selection.get(), &DeviceSelection::onSelectionIndexChanged);

@@ -26,7 +26,7 @@ signals:
 
 | Method | Purpose | When Called |
 |--------|---------|------------|
-| `start()` | Initialize focus tracking (install scripts, connect signals, start polling) | Once, after AppController::init() |
+| `start()` | Initialize focus tracking (install scripts, connect signals, start polling) | Once, after AppRoot::init() |
 | `available()` | Return true if this DE is detected and usable | Checked before relying on DE features |
 | `desktopName()` | Human-readable name (e.g., "KDE", "GNOME") | Logging and UI |
 | `detectedCompositors()` | List of detected compositor names | Diagnostics |
@@ -236,12 +236,12 @@ Logitune normalizes all of these to a `.desktop` file baseName. The `resolveDesk
 
 This logic lives in `LinuxDesktopBase` so every Linux DE implementation inherits it for free — `runningApplications()` and `desktopDirs()` are in the same base class.
 
-### Step 5: Register in AppController
+### Step 5: Register in AppRoot
 
-Edit `src/app/AppController.cpp` to select the right desktop integration:
+Edit `src/app/AppRoot.cpp` to select the right desktop integration:
 
 ```cpp
-AppController::AppController(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent)
+AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent)
     : QObject(parent)
     , m_deviceManager(&m_registry)
     , m_actionExecutor(nullptr)

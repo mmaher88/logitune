@@ -5,7 +5,7 @@
 #include <cstdint>
 
 namespace logitune::test {
-class AppControllerFixture;
+class AppRootFixture;
 class ButtonActionDispatcherFixture;
 }
 
@@ -31,7 +31,7 @@ public:
 
     void onDeviceRemoved(const QString &serial);
 
-    friend class test::AppControllerFixture;
+    friend class test::AppRootFixture;
     friend class test::ButtonActionDispatcherFixture;
 
 public slots:

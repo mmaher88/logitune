@@ -3,11 +3,11 @@
 ///   - Thumb wheel accumulator resets on profile switch
 ///   - Command queue is flushed before applying a new profile
 ///   - Settings are applied before button diversions
-#include "helpers/AppControllerFixture.h"
+#include "helpers/AppRootFixture.h"
 
 namespace logitune::test {
 
-class ProfileApplyBehaviorTest : public AppControllerFixture {};
+class ProfileApplyBehaviorTest : public AppRootFixture {};
 
 // ---------------------------------------------------------------------------
 // Non-divertable button skip

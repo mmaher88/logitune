@@ -1,4 +1,4 @@
-#include "AppController.h"
+#include "AppRoot.h"
 #include "devices/JsonDevice.h"
 #include "models/EditorModel.h"
 #include "desktop/KDeDesktop.h"
@@ -12,7 +12,7 @@ namespace logitune {
 
 // Construction / init --------------------------------------------------------
 
-std::unique_ptr<IDesktopIntegration> AppController::makeOwnedDesktop(IDesktopIntegration *provided)
+std::unique_ptr<IDesktopIntegration> AppRoot::makeOwnedDesktop(IDesktopIntegration *provided)
 {
     if (provided) return {};
     const QString xdgDesktop = QProcessEnvironment::systemEnvironment()
@@ -24,18 +24,18 @@ std::unique_ptr<IDesktopIntegration> AppController::makeOwnedDesktop(IDesktopInt
     return std::make_unique<GenericDesktop>();
 }
 
-std::unique_ptr<IInputInjector> AppController::makeOwnedInjector(IInputInjector *provided)
+std::unique_ptr<IInputInjector> AppRoot::makeOwnedInjector(IInputInjector *provided)
 {
     if (provided) return {};
     return std::make_unique<UinputInjector>();
 }
 
-AppController::AppController(QObject *parent)
-    : AppController(nullptr, nullptr, parent)
+AppRoot::AppRoot(QObject *parent)
+    : AppRoot(nullptr, nullptr, parent)
 {
 }
 
-AppController::AppController(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent)
+AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent)
     : QObject(parent)
     , m_ownedDesktop(makeOwnedDesktop(desktop))
     , m_ownedInjector(makeOwnedInjector(injector))
@@ -56,9 +56,9 @@ AppController::AppController(IDesktopIntegration *desktop, IInputInjector *injec
     m_actionFilterModel->setSourceModel(&m_actionModel);
 }
 
-AppController::~AppController() = default;
+AppRoot::~AppRoot() = default;
 
-void AppController::init()
+void AppRoot::init()
 {
     m_deviceModel.setDesktopIntegration(m_desktop);
     qCInfo(lcApp) << "creating UinputInjector...";
@@ -77,7 +77,7 @@ void AppController::init()
     wireSignals();
 }
 
-void AppController::startMonitoring(bool simulateAll, bool editMode)
+void AppRoot::startMonitoring(bool simulateAll, bool editMode)
 {
     if (editMode) {
         m_editorModel = std::make_unique<EditorModel>(&m_registry, &m_deviceModel, true, this);
@@ -113,7 +113,7 @@ void AppController::startMonitoring(bool simulateAll, bool editMode)
 
 // Signal wiring --------------------------------------------------------------
 
-void AppController::wireSignals()
+void AppRoot::wireSignals()
 {
     // User edits in the UI (button reassignments, focus-follow from desktop,
     // tab selection, engine-driven display refresh) route to the orchestrator.
@@ -132,15 +132,15 @@ void AppController::wireSignals()
     connect(&m_deviceModel, &DeviceModel::selectedChanged,
             &m_deviceSelection, &DeviceSelection::onSelectionIndexChanged);
     connect(&m_deviceSelection, &DeviceSelection::selectionChanged,
-            this, &AppController::onSelectionChanged);
+            this, &AppRoot::onSelectionChanged);
 
     // Physical device lifecycle — one per unique serial, survives transport
     // switches. Per-transport events are routed through PhysicalDevice
     // (which fans in signals from all its transports).
     connect(&m_deviceManager, &DeviceManager::physicalDeviceAdded,
-            this, &AppController::onPhysicalDeviceAdded);
+            this, &AppRoot::onPhysicalDeviceAdded);
     connect(&m_deviceManager, &DeviceManager::physicalDeviceRemoved,
-            this, &AppController::onPhysicalDeviceRemoved);
+            this, &AppRoot::onPhysicalDeviceRemoved);
 
     // Gesture keystroke edits in the UI. saveCurrentProfile re-serializes
     // the displayed profile; the orchestrator's own userChangedSomething
@@ -188,7 +188,7 @@ void AppController::wireSignals()
             &m_buttonDispatcher, &ButtonActionDispatcher::onCurrentDeviceChanged);
 
     // DeviceModel *ChangeRequested -> cache + disk + UI + (if active)
-    // hardware. The orchestrator owns the guard logic; AppController
+    // hardware. The orchestrator owns the guard logic; AppRoot
     // only supplies the mutator / forwarder pair for each control.
     connect(&m_deviceModel, &DeviceModel::dpiChangeRequested, this,
         [this](int value) {
@@ -231,7 +231,7 @@ void AppController::wireSignals()
 
 // Physical device lifecycle -------------------------------------------------
 
-void AppController::onPhysicalDeviceAdded(PhysicalDevice *device)
+void AppRoot::onPhysicalDeviceAdded(PhysicalDevice *device)
 {
     if (!device) return;
 
@@ -261,7 +261,7 @@ void AppController::onPhysicalDeviceAdded(PhysicalDevice *device)
     m_profileOrchestrator.setupProfileForDevice(device);
 }
 
-void AppController::onPhysicalDeviceRemoved(PhysicalDevice *device)
+void AppRoot::onPhysicalDeviceRemoved(PhysicalDevice *device)
 {
     const QString deviceId = device ? device->deviceSerial() : QString();
     m_deviceModel.removePhysicalDevice(device);
@@ -275,7 +275,7 @@ void AppController::onPhysicalDeviceRemoved(PhysicalDevice *device)
 // Carousel selection changed. Refresh the UI from the newly-selected
 // device's cached profile. No file I/O, no seeding, no hardware apply —
 // one-time device provisioning happens in onPhysicalDeviceAdded.
-void AppController::onSelectionChanged()
+void AppRoot::onSelectionChanged()
 {
     auto *device = m_deviceSelection.activeDevice();
     if (!device) return;

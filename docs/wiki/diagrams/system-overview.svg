@@ -39,7 +39,7 @@
 
   <g font-size="12" text-anchor="middle" fill="#e2e8f0">
     <text x="400" y="51">Main.qml + pages + components</text>
-    <text x="220" y="131">AppController</text>
+    <text x="220" y="131">AppRoot</text>
     <text x="580" y="131">Models + TrayManager</text>
     <text x="170" y="232">Desktop integration</text>
     <text x="400" y="232">UinputInjector</text>

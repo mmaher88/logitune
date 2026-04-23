@@ -28,7 +28,7 @@ add_executable(logitune-tests
     test_action_model.cpp
     test_device_model.cpp
     test_wmclass_resolution.cpp
-    test_app_controller.cpp
+    test_app_root.cpp
     test_profile_switching.cpp
     test_profile_persistence.cpp
     test_device_reconnect.cpp

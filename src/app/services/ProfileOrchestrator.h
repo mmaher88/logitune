@@ -20,7 +20,7 @@ class ProfileModel;
 /// models and engines, writes to them, and emits profileApplied(serial)
 /// after every hardware apply.
 ///
-/// Zero `connect()` calls in the .cpp — AppController wires the inbound
+/// Zero `connect()` calls in the .cpp — AppRoot wires the inbound
 /// signals (from models, ProfileEngine, desktop, DeviceCommands) and the
 /// outbound signals (to ButtonActionDispatcher).
 class ProfileOrchestrator : public QObject {

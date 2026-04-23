@@ -32,7 +32,7 @@ int proxyCountByName(ActionFilterModel &proxy, const QString &name) {
 
 // Build a PhysicalDevice + DeviceSession pair backed by a MockDevice
 // with the given FeatureSupport flags. Added to the DeviceModel and
-// selected, but NOT driven through AppController::onPhysicalDeviceAdded
+// selected, but NOT driven through AppRoot::onPhysicalDeviceAdded
 // because this test does not exercise the profile engine.
 //
 // DeviceSession's m_connected / m_deviceName / m_activeDevice are

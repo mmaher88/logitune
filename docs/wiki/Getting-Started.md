@@ -182,7 +182,7 @@ Debug logging can also be toggled at runtime from the Settings page.
 1. **Single-instance check** — attempts to acquire `logitune.lock`
 2. **Log manager init** — sets up Qt logging categories, optional file output
 3. **Crash recovery** — checks for previous unclean shutdown, offers to file a bug report
-4. **AppController init** — creates DeviceManager, ProfileEngine, models, wires signals
+4. **AppRoot init** — creates DeviceManager, ProfileEngine, models, wires signals
 5. **QML engine load** — registers model singletons, loads `Main.qml`
 6. **Start monitoring** — DeviceManager begins udev scanning and KDE desktop starts focus tracking
 7. **Device connect** — on first hidraw match, enumerates HID++ features, reads state, creates command queue
