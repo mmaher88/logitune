@@ -799,22 +799,22 @@ graph TB
     end
 
     subgraph "Signal Connections (wireSignals)"
-        S1["ButtonModel::userActionChanged -> onUserButtonChanged"]
-        S2["IDesktopIntegration::activeWindowChanged -> onWindowFocusChanged"]
-        S3["ProfileModel::profileSwitched -> onTabSwitched"]
-        S4["ProfileEngine::displayProfileChanged -> onDisplayProfileChanged"]
-        S5["DeviceManager::deviceSetupComplete -> onDeviceSetupComplete"]
-        S6["DeviceModel::userGestureChanged -> saveCurrentProfile"]
-        S7["ProfileModel::profileAdded -> ProfileEngine::createProfileForApp"]
-        S8["ProfileModel::profileRemoved -> ProfileEngine::removeAppProfile"]
-        S9["DeviceManager::gestureRawXY -> onGestureRawXY"]
-        S10["DeviceManager::divertedButtonPressed -> onDivertedButtonPressed"]
-        S11["DeviceManager::thumbWheelRotation -> onThumbWheelRotation"]
-        S12["DeviceModel::dpiChangeRequested -> onDpiChangeRequested"]
-        S13["DeviceModel::smartShiftChangeRequested -> onSmartShiftChangeRequested"]
-        S14["DeviceModel::scrollConfigChangeRequested -> onScrollConfigChangeRequested"]
-        S15["DeviceModel::thumbWheelModeChangeRequested -> onThumbWheelModeChangeRequested"]
-        S16["DeviceModel::thumbWheelInvertChangeRequested -> onThumbWheelInvertChangeRequested"]
+        S1["ButtonModel::userActionChanged<br/>→ onUserButtonChanged"]
+        S2["IDesktopIntegration::activeWindowChanged<br/>→ onWindowFocusChanged"]
+        S3["ProfileModel::profileSwitched<br/>→ onTabSwitched"]
+        S4["ProfileEngine::displayProfileChanged<br/>→ onDisplayProfileChanged"]
+        S5["DeviceManager::deviceSetupComplete<br/>→ onDeviceSetupComplete"]
+        S6["DeviceModel::userGestureChanged<br/>→ saveCurrentProfile"]
+        S7["ProfileModel::profileAdded<br/>→ ProfileEngine::createProfileForApp"]
+        S8["ProfileModel::profileRemoved<br/>→ ProfileEngine::removeAppProfile"]
+        S9["DeviceManager::gestureRawXY<br/>→ onGestureRawXY"]
+        S10["DeviceManager::divertedButtonPressed<br/>→ onDivertedButtonPressed"]
+        S11["DeviceManager::thumbWheelRotation<br/>→ onThumbWheelRotation"]
+        S12["DeviceModel::dpiChangeRequested<br/>→ onDpiChangeRequested"]
+        S13["DeviceModel::smartShiftChangeRequested<br/>→ onSmartShiftChangeRequested"]
+        S14["DeviceModel::scrollConfigChangeRequested<br/>→ onScrollConfigChangeRequested"]
+        S15["DeviceModel::thumbWheelModeChangeRequested<br/>→ onThumbWheelModeChangeRequested"]
+        S16["DeviceModel::thumbWheelInvertChangeRequested<br/>→ onThumbWheelInvertChangeRequested"]
     end
 ```
 
