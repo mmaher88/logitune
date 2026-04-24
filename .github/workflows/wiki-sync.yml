@@ -37,16 +37,26 @@ jobs:
           set -euo pipefail
 
           # Absolute URL base for image references. GitHub wiki pages cannot
-          # reach into the main repo via relative paths, so rewrite every
-          # ../images/X.png to the canonical raw URL instead.
-          RAW_BASE="${GITHUB_SERVER_URL/github.com/raw.githubusercontent.com}/${GITHUB_REPOSITORY}/master/docs/images"
+          # reach into the main repo via relative paths, so rewrite image
+          # refs to canonical raw URLs. Two roots:
+          #   ../images/X.png       -> docs/images/ (app screenshots)
+          #   diagrams/X.png|svg    -> docs/wiki/diagrams/ (wiki diagrams)
+          RAW_IMAGES="${GITHUB_SERVER_URL/github.com/raw.githubusercontent.com}/${GITHUB_REPOSITORY}/master/docs/images"
+          RAW_DIAGRAMS="${GITHUB_SERVER_URL/github.com/raw.githubusercontent.com}/${GITHUB_REPOSITORY}/master/docs/wiki/diagrams"
 
           # Copy each wiki page, rewriting image paths. The wiki repo is flat:
           # every .md lives at the root, Home.md is the landing page.
+          # Only rewrite diagrams/ when it is the start of a URL (src="..."
+          # or ](...)) so references inside code spans like `docs/wiki/diagrams/...`
+          # are left alone.
           shopt -s nullglob
           for src in docs/wiki/*.md; do
             name=$(basename "$src")
-            sed "s|\.\./images/|${RAW_BASE//|/\\|}/|g" "$src" > "wiki/$name"
+            sed \
+              -e "s|\.\./images/|${RAW_IMAGES//|/\\|}/|g" \
+              -e "s|src=\"diagrams/|src=\"${RAW_DIAGRAMS//|/\\|}/|g" \
+              -e "s|](diagrams/|](${RAW_DIAGRAMS//|/\\|}/|g" \
+              "$src" > "wiki/$name"
           done
 
       - name: Commit and push
