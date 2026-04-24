@@ -47,6 +47,7 @@ add_executable(logitune-tests
     test_autostart_desktop.cpp
     test_distro_detector.cpp
     core/actions/test_action_preset.cpp
+    core/actions/test_action_preset_registry.cpp
     services/test_active_device_resolver.cpp
     services/test_device_command_handler.cpp
     services/test_button_action_dispatcher.cpp
