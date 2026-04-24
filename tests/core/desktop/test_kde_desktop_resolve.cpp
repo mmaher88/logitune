@@ -108,3 +108,51 @@ TEST(KdeDesktopResolve, ResolveReturnsNulloptForUnknownId) {
 
     EXPECT_FALSE(d.resolveNamedAction("not-a-real-preset").has_value());
 }
+
+TEST(KdeDesktopResolve, ResolveKglobalaccelMissingComponentReturnsNullopt) {
+    const QByteArray cat = R"([
+        { "id": "x", "label": "X",
+          "variants": { "kde": { "kglobalaccel": { "name": "Foo" } } } }
+    ])";
+    KDeDesktop d;
+    ActionPresetRegistry reg;
+    reg.loadFromJson(cat);
+    d.setPresetRegistry(&reg);
+    EXPECT_FALSE(d.resolveNamedAction("x").has_value());
+}
+
+TEST(KdeDesktopResolve, ResolveKglobalaccelMissingNameReturnsNullopt) {
+    const QByteArray cat = R"([
+        { "id": "x", "label": "X",
+          "variants": { "kde": { "kglobalaccel": { "component": "kwin" } } } }
+    ])";
+    KDeDesktop d;
+    ActionPresetRegistry reg;
+    reg.loadFromJson(cat);
+    d.setPresetRegistry(&reg);
+    EXPECT_FALSE(d.resolveNamedAction("x").has_value());
+}
+
+TEST(KdeDesktopResolve, ResolveAppLaunchMissingBinaryReturnsNullopt) {
+    const QByteArray cat = R"([
+        { "id": "x", "label": "X",
+          "variants": { "kde": { "app-launch": { } } } }
+    ])";
+    KDeDesktop d;
+    ActionPresetRegistry reg;
+    reg.loadFromJson(cat);
+    d.setPresetRegistry(&reg);
+    EXPECT_FALSE(d.resolveNamedAction("x").has_value());
+}
+
+TEST(KdeDesktopResolve, ResolveUnknownVariantKindReturnsNullopt) {
+    const QByteArray cat = R"([
+        { "id": "x", "label": "X",
+          "variants": { "kde": { "future-kind": { "whatever": "value" } } } }
+    ])";
+    KDeDesktop d;
+    ActionPresetRegistry reg;
+    reg.loadFromJson(cat);
+    d.setPresetRegistry(&reg);
+    EXPECT_FALSE(d.resolveNamedAction("x").has_value());
+}
