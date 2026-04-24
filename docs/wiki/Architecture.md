@@ -352,6 +352,8 @@ This enables future optimizations where only changed settings are sent to hardwa
 
 Logitune uses a Model-View-ViewModel pattern where C++ models serve as the ViewModel layer between QML views and core logic.
 
+Services do not all sit in the same MVVM stratum. `DeviceSelection` is a VM-side query helper, `DeviceCommands` bridges VM intent to Model operations, `ButtonActionDispatcher` is Model-side (reacts to hardware events), and `ProfileOrchestrator` is a coordinator that spans the whole stack. The diagram splits these visually.
+
 ```mermaid
 graph LR
     subgraph "View (QML)"
@@ -369,12 +371,13 @@ graph LR
         PM[ProfileModel]
     end
 
-    subgraph "Services"
+    subgraph "Services (VM to Model bridges)"
         DSel[DeviceSelection]
         DCmd[DeviceCommands]
         BAD[ButtonActionDispatcher]
-        PO[ProfileOrchestrator]
     end
+
+    PO[ProfileOrchestrator<br/>Coordinator]
 
     subgraph "Model (Core)"
         DMgr[DeviceManager]
@@ -393,24 +396,31 @@ graph LR
     DM -->|ChangeRequested| DCmd
     BM -->|userActionChanged| PO
     PM -->|profileSwitched| PO
+
     DSel --> DM
-    DSel --> DMgr
     DCmd --> DSel
+    DCmd --> DMgr
     BAD --> DSel
     BAD --> PE
     BAD --> AE
+
     PO --> DSel
     PO --> PE
     PO --> AE
+    PO -->|pushDisplayValues| DM
+    PO -->|restoreButtons| BM
+    PO -->|setHwActive| PM
 
     classDef view fill:#831843,stroke:#f472b6,color:#fce7f3
     classDef vm fill:#1e3a8a,stroke:#60a5fa,color:#dbeafe
     classDef service fill:#064e3b,stroke:#34d399,color:#d1fae5
+    classDef coord fill:#4c1d95,stroke:#a78bfa,color:#ede9fe
     classDef core fill:#78350f,stroke:#fbbf24,color:#fef3c7
 
     class PointScroll,Buttons,EasySwitch,Settings,ProfileBar view
     class DM,BM,AM,PM vm
-    class DSel,DCmd,BAD,PO service
+    class DSel,DCmd,BAD service
+    class PO coord
     class DMgr,PE,AE core
 ```
 
