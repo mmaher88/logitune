@@ -1136,8 +1136,10 @@ Key edges wired in `AppRoot::wireSignals()` and `AppRoot::onPhysicalDeviceAdded(
 | 13 | DeviceManager | `physicalDeviceAdded` / `physicalDeviceRemoved` | AppRoot::`onPhysicalDeviceAdded` / `onPhysicalDeviceRemoved` | c |
 | 14 | PhysicalDevice | `gestureRawXY` / `divertedButtonPressed` / `thumbWheelRotation` | ButtonActionDispatcher equivalents | c |
 | 15 | PhysicalDevice | `transportSetupComplete` | lambda → ProfileOrchestrator::`onTransportSetupComplete` | c |
+| 16 | DeviceManager | `unknownDeviceDetected` | DeviceFetcher::`fetchForPid` | a |
+| 17 | DeviceFetcher | `descriptorsUpdated` | lambda → DeviceRegistry::`reloadAll` | a |
 
-Rows 13 to 15 are per-device runtime wiring in `onPhysicalDeviceAdded`; the rest are startup wiring in `wireSignals()`. Row 11 is a single `applyDisplayedChange` bridge reused for all five `*ChangeRequested` signals; it persists the cached profile, refreshes the UI, and only forwards to hardware via `DeviceCommandHandler` when the displayed profile is also the active hardware profile.
+Rows 13 to 15 are per-device runtime wiring in `onPhysicalDeviceAdded`; the rest are startup wiring in `wireSignals()`. Row 11 is a single `applyDisplayedChange` bridge reused for all five `*ChangeRequested` signals; it persists the cached profile, refreshes the UI, and only forwards to hardware via `DeviceCommandHandler` when the displayed profile is also the active hardware profile. Rows 16 to 17 are the device-database integration path: an unknown PID triggers a targeted fetch, and a successful fetch reloads the local descriptor registry so the new device appears on the next enumeration without a restart.
 
 ### Dependency Injection
 
