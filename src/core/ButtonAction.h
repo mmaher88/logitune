@@ -13,6 +13,7 @@ struct ButtonAction {
         AppLaunch,
         DBus,
         Media,
+        PresetRef,
     };
 
     Type type = Default;
