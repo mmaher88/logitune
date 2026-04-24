@@ -6,7 +6,7 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 
 At a glance, one button press on the mouse turns into one row update in the QML UI. Each layer has one job, and `AppRoot` is a thin composition root that wires them together (not a place where behavior lives):
 
-<img src="diagrams/system-overview.png" alt="Logitune system overview: QML UI on top, then the app library band showing AppRoot, the four services (ActiveDeviceResolver, DeviceCommandHandler, ButtonActionDispatcher, ProfileOrchestrator), and Models + TrayManager; below that the core library with three sub-bands (integration, aggregation, protocol), then Linux kernel and hardware at the bottom" width="800"/>
+<img src="diagrams/system-overview.png" alt="Logitune system overview: QML UI on top, then the app library band showing AppRoot, the four services (ActiveDeviceResolver, DeviceCommandHandler, ButtonActionDispatcher, ProfileOrchestrator), and Models + TrayManager; below that the core library with four sub-bands (integration, domain with ProfileEngine/DeviceRegistry/ActionPresetRegistry, aggregation, protocol), then Linux kernel and hardware at the bottom" width="800"/>
 
 > Source: `docs/wiki/diagrams/system-overview.svg`. Re-render with `rsvg-convert -w 1600 -h 1240 docs/wiki/diagrams/system-overview.svg -o docs/wiki/diagrams/system-overview.png` after edits.
 
