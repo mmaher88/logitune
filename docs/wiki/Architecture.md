@@ -1105,13 +1105,32 @@ The wiring falls into three groups:
 - **(b) Service → Service.** Cross-service communication, always via a signal emitted by one service and a slot on another, with the edge living in `wireSignals()`.
 - **(c) Hardware → AppRoot → Service.** Per-device runtime wiring in `onPhysicalDeviceAdded`: each new `PhysicalDevice` gets its input signals (`gestureRawXY`, `divertedButtonPressed`, `thumbWheelRotation`, `transportSetupComplete`) hooked into the appropriate service slots.
 
-### Signal wiring reference
+### AppRoot signal wiring
 
-Each row is a single signal-to-slot connection wired either in `AppRoot::wireSignals()` or in `AppRoot::onPhysicalDeviceAdded()`. Where one signal lands in a lambda that has two distinct effects (the `*ChangeRequested` fan-outs), each effect gets its own row so both the cache-update path and the hardware-forward path are visible.
+**Scope of this table:** the `connect()` calls AppRoot performs. Not every signal in the app.
 
-**Most signals have only one sink because this graph is deliberately linear.** Qt signals natively support one-to-many emission, but in this codebase each signal typically has exactly one `connect()` call wiring it to a specific slot. The one AppRoot-level exception is `DeviceModel::selectedChanged`, which has two sinks: `ActiveDeviceResolver` at startup (always) and an `EditorModel` path in `startMonitoring` (editor mode only). TrayManager, PhysicalDevice, and DeviceSession each wire additional listeners inside their own classes, but those are internal to each subsystem and not part of AppRoot's top-level graph.
+AppRoot wires the signal graph between services, ViewModels, engines, and interfaces at startup (inside `wireSignals()` and `startMonitoring()`), plus the per-device runtime wiring that fires when a `PhysicalDevice` is attached (inside `onPhysicalDeviceAdded()`). Other subsystems wire their own internal listeners:
 
-Rows are ordered by group: **a** = startup wiring in `wireSignals()` or `startMonitoring()`, **b** = cross-service signal chains wired at startup, **c** = per-device runtime wiring in `onPhysicalDeviceAdded()`.
+- `PhysicalDevice` wires its attached `DeviceSession` transports as they come and go (dynamic fan-in, not startable from AppRoot)
+- `TrayManager` wires its own `DeviceModel::countChanged` and `PhysicalDevice::stateChanged` subscriptions inside its constructor (it is a UI shell, not one of the four services subject to the "no `connect()` in services" rule)
+- `DeviceModel` wires internal property cascades between its own members
+- `DeviceFetcher`, `KDeDesktop`, `GnomeDesktop`, `DeviceSession`, `CommandProcessor`, `EditorModel` wire their own Qt framework plumbing: `QNetworkReply`, D-Bus proxies, `QTimer`, `QFileSystemWatcher`, `QSocketNotifier`. These are implementation details of each class.
+
+The table below covers only AppRoot's wiring. Each row is one `connect()` call. Where one signal lands in a lambda that has two distinct effects (the `*ChangeRequested` fan-outs), each effect gets its own row so both the cache-update path and the hardware-forward path are visible.
+
+**Most signals have only one sink because AppRoot's graph is deliberately linear.** Qt supports one-to-many emission; AppRoot simply rarely needs it. The one AppRoot-level exception is `DeviceModel::selectedChanged`, which has two sinks: `ActiveDeviceResolver` at startup (always) and an `EditorModel` path in `startMonitoring` (editor mode only).
+
+**Groups (ordering the rows below):**
+
+- **a** — **startup wiring**. `connect()` calls in `wireSignals()` or `startMonitoring()` where the source is a ViewModel, engine, manager, or interface. These are the "ordinary" wires: a user event or domain event in, a service slot out.
+- **b** — **cross-service chains**, also wired at startup. Source is one of the four services or `ActiveDeviceResolver`; sink is another service or AppRoot itself. These are the signal paths that make the service mesh cooperate (e.g. `ProfileOrchestrator::profileApplied` → `ButtonActionDispatcher::onProfileApplied`).
+- **c** — **per-device runtime wiring**. `connect()` calls in `onPhysicalDeviceAdded()`. These fire every time a new `PhysicalDevice` attaches and tear down on detach. The source is always a `PhysicalDevice` instance.
+
+How to decide the group for a new row:
+
+1. Is the `connect()` inside `onPhysicalDeviceAdded()` or a method it calls? → **c**.
+2. Else: is the source one of the four services or `ActiveDeviceResolver`? → **b**.
+3. Else (source is a ViewModel / engine / manager / interface, and the wire is made at startup): → **a**.
 
 | # | Source | Signal | Sink | Group |
 |---|--------|--------|------|-------|
