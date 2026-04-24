@@ -1,0 +1,90 @@
+digraph G {
+    rankdir=LR;
+    bgcolor="#0f172a";
+    splines=true;
+    nodesep=0.35;
+    ranksep=1.8;
+    newrank=true;
+    compound=true;
+    node [shape=plain, fontname="Inter, Segoe UI, sans-serif", fontsize=11, margin=0];
+    edge [fontname="Inter, Segoe UI, sans-serif", fontsize=10, fontcolor="#cbd5e1"];
+
+    // ============ Services column ============
+    subgraph cluster_svc {
+        label=<<font color="#c4b5fd" point-size="12"><b>  Services  </b></font>>;
+        bgcolor="#1e293b";
+        color="#475569";
+        penwidth=1;
+        style="rounded,filled";
+
+        BAD [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">ButtonActionDispatcher</font></b></td></tr>
+                <tr><td bgcolor="#3f3a5e" port="onDivertedButtonPressed"><font color="#c4b5fd" point-size="9">slot  </font><font color="#e2e8f0">onDivertedButtonPressed</font></td></tr>
+                <tr><td bgcolor="#3f3a5e" port="onGestureRaw"><font color="#c4b5fd" point-size="9">slot  </font><font color="#e2e8f0">onGestureRaw</font></td></tr>
+                <tr><td bgcolor="#3f3a5e" port="onThumbWheelRotation"><font color="#c4b5fd" point-size="9">slot  </font><font color="#e2e8f0">onThumbWheelRotation</font></td></tr>
+            </table>
+        >];
+
+        AR [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">AppRoot</font></b></td></tr>
+                <tr><td bgcolor="#3f3a5e" port="initInjector"><font color="#c4b5fd" point-size="9">method  </font><font color="#e2e8f0">setInjector (DI)</font></td></tr>
+            </table>
+        >];
+
+        { rank=same; BAD; AR; }
+    }
+
+    // ============ Core column ============
+    subgraph cluster_core {
+        label=<<font color="#fcd34d" point-size="12"><b>  Core  </b></font>>;
+        bgcolor="#1e293b";
+        color="#475569";
+        penwidth=1;
+        style="rounded,filled";
+
+        AE  [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="6" bgcolor="#334155" color="#8b5cf6">
+              <tr><td bgcolor="#334155" border="0"><b><font point-size="14" color="#f1f5f9">ActionExecutor</font></b></td></tr>
+              <tr><td bgcolor="#334155" border="0"><font color="#c4b5fd" point-size="10"><b>Methods</b></font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="executeAction"><font color="#e2e8f0">executeAction</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="injectKeystroke"><font color="#e2e8f0">injectKeystroke</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="injectCtrlScroll"><font color="#e2e8f0">injectCtrlScroll</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="injectHorizontalScroll"><font color="#e2e8f0">injectHorizontalScroll</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="executeDBusCall"><font color="#e2e8f0">executeDBusCall</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="launchApp"><font color="#e2e8f0">launchApp</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="setInjector"><font color="#e2e8f0">setInjector</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="gestureDetector"><font color="#e2e8f0">gestureDetector</font></td></tr>
+            </table>
+        >];
+
+        II [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">IInputInjector</font></b></td></tr>
+                <tr><td bgcolor="#3f301e" port="injectKeystroke"><font color="#fcd34d" point-size="9">method  </font><font color="#e2e8f0">injectKeystroke</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="injectCtrlScroll"><font color="#fcd34d" point-size="9">method  </font><font color="#e2e8f0">injectCtrlScroll</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="injectHorizontalScroll"><font color="#fcd34d" point-size="9">method  </font><font color="#e2e8f0">injectHorizontalScroll</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="sendDBusCall"><font color="#fcd34d" point-size="9">method  </font><font color="#e2e8f0">sendDBusCall</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="launchApp"><font color="#fcd34d" point-size="9">method  </font><font color="#e2e8f0">launchApp</font></td></tr>
+            </table>
+        >];
+
+        { rank=same; AE; II; }
+    }
+
+    // ============ Signals ============
+    // Services call ActionExecutor directly (no Qt signals).
+    BAD:onDivertedButtonPressed:e -> AE:executeAction:w          [color="#c4b5fd", style=dashed, label=<<font color="#94a3b8">call</font>>];
+    BAD:onGestureRaw:e            -> AE:gestureDetector:w        [color="#c4b5fd", style=dashed];
+    BAD:onThumbWheelRotation:e    -> AE:injectCtrlScroll:w       [color="#c4b5fd", style=dashed];
+    BAD:onThumbWheelRotation:e    -> AE:injectHorizontalScroll:w [color="#c4b5fd", style=dashed];
+    AR:initInjector:e             -> AE:setInjector:w            [color="#c4b5fd", style=dashed];
+
+    // ActionExecutor forwards to IInputInjector (owned pointer).
+    AE:injectKeystroke:e        -> II:injectKeystroke:w        [color="#fcd34d", style=dashed, label=<<font color="#94a3b8">forward</font>>];
+    AE:injectCtrlScroll:e       -> II:injectCtrlScroll:w       [color="#fcd34d", style=dashed];
+    AE:injectHorizontalScroll:e -> II:injectHorizontalScroll:w [color="#fcd34d", style=dashed];
+    AE:executeDBusCall:e        -> II:sendDBusCall:w           [color="#fcd34d", style=dashed];
+    AE:launchApp:e              -> II:launchApp:w              [color="#fcd34d", style=dashed];
+}

@@ -1,0 +1,118 @@
+digraph G {
+    rankdir=LR;
+    bgcolor="#0f172a";
+    splines=true;
+    nodesep=0.35;
+    ranksep=1.8;
+    newrank=true;
+    compound=true;
+    node [shape=plain, fontname="Inter, Segoe UI, sans-serif", fontsize=11, margin=0];
+    edge [fontname="Inter, Segoe UI, sans-serif", fontsize=10, fontcolor="#cbd5e1"];
+
+    // ============ ViewModel column ============
+    subgraph cluster_vm {
+        label=<<font color="#7dd3fc" point-size="12"><b>  ViewModel  </b></font>>;
+        bgcolor="#1e293b";
+        color="#475569";
+        penwidth=1;
+        style="rounded,filled";
+
+        DM [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">DeviceModel</font></b></td></tr>
+                <tr><td bgcolor="#1e3a5f" port="onStateChanged"><font color="#7dd3fc" point-size="9">slot  </font><font color="#e2e8f0">onStateChanged (dataChanged)</font></td></tr>
+                <tr><td bgcolor="#1e3a5f" port="onBatteryChanged"><font color="#7dd3fc" point-size="9">slot  </font><font color="#e2e8f0">onBatteryChanged</font></td></tr>
+            </table>
+        >];
+    }
+
+    // ============ Services column ============
+    subgraph cluster_svc {
+        label=<<font color="#c4b5fd" point-size="12"><b>  Services  </b></font>>;
+        bgcolor="#1e293b";
+        color="#475569";
+        penwidth=1;
+        style="rounded,filled";
+
+        BAD [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">ButtonActionDispatcher</font></b></td></tr>
+                <tr><td bgcolor="#3f3a5e" port="onGestureRaw"><font color="#c4b5fd" point-size="9">slot  </font><font color="#e2e8f0">onGestureRaw</font></td></tr>
+                <tr><td bgcolor="#3f3a5e" port="onDivertedButtonPressed"><font color="#c4b5fd" point-size="9">slot  </font><font color="#e2e8f0">onDivertedButtonPressed</font></td></tr>
+                <tr><td bgcolor="#3f3a5e" port="onThumbWheelRotation"><font color="#c4b5fd" point-size="9">slot  </font><font color="#e2e8f0">onThumbWheelRotation</font></td></tr>
+            </table>
+        >];
+
+        PO [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">ProfileOrchestrator</font></b></td></tr>
+                <tr><td bgcolor="#3f3a5e" port="onTransportSetupComplete"><font color="#c4b5fd" point-size="9">slot  </font><font color="#e2e8f0">onTransportSetupComplete</font></td></tr>
+            </table>
+        >];
+
+        { rank=same; BAD; PO; }
+    }
+
+    // ============ Core column ============
+    subgraph cluster_core {
+        label=<<font color="#fcd34d" point-size="12"><b>  Core  </b></font>>;
+        bgcolor="#1e293b";
+        color="#475569";
+        penwidth=1;
+        style="rounded,filled";
+
+        DS [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">DeviceSession</font></b></td></tr>
+                <tr><td bgcolor="#3f301e" port="setupComplete"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">setupComplete</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="gestureRawXY"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">gestureRawXY</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="divertedButtonPressed"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">divertedButtonPressed</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="thumbWheelRotation"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">thumbWheelRotation</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="batteryChanged"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">batteryChanged</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="smartShiftChanged"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">smartShiftChanged</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="disconnected"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">disconnected</font></td></tr>
+            </table>
+        >];
+
+        PD  [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="6" bgcolor="#334155" color="#8b5cf6">
+              <tr><td bgcolor="#334155" border="0"><b><font point-size="14" color="#f1f5f9">PhysicalDevice</font></b></td></tr>
+              <tr><td bgcolor="#334155" border="0"><font color="#c4b5fd" point-size="10"><b>Methods</b></font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#e2e8f0">attachTransport</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#e2e8f0">detachTransport</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#e2e8f0">primary</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#e2e8f0">transports</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#e2e8f0">deviceSerial</font></td></tr>
+              <tr><td bgcolor="#334155" border="0"><font color="#c4b5fd" point-size="10"><b>Signals</b></font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="transportSetupComplete"><font color="#e2e8f0">transportSetupComplete</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="gestureRawXY"><font color="#e2e8f0">gestureRawXY</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="divertedButtonPressed"><font color="#e2e8f0">divertedButtonPressed</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="thumbWheelRotation"><font color="#e2e8f0">thumbWheelRotation</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="stateChanged"><font color="#e2e8f0">stateChanged</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="smartShiftChanged"><font color="#e2e8f0">smartShiftChanged</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="scrollConfigChanged"><font color="#e2e8f0">scrollConfigChanged</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="thumbWheelModeChanged"><font color="#e2e8f0">thumbWheelModeChanged</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="currentDPIChanged"><font color="#e2e8f0">currentDPIChanged</font></td></tr>
+            </table>
+        >];
+
+        { rank=same; DS; PD; }
+    }
+
+    // ============ Signals ============
+    // Fan-in: DeviceSession -> PhysicalDevice
+    DS:setupComplete:e         -> PD:transportSetupComplete:w [color="#fcd34d"];
+    DS:gestureRawXY:e          -> PD:gestureRawXY:w           [color="#fcd34d"];
+    DS:divertedButtonPressed:e -> PD:divertedButtonPressed:w  [color="#fcd34d"];
+    DS:thumbWheelRotation:e    -> PD:thumbWheelRotation:w     [color="#fcd34d"];
+    DS:batteryChanged:e        -> PD:stateChanged:w           [color="#fcd34d"];
+    DS:smartShiftChanged:e     -> PD:smartShiftChanged:w      [color="#fcd34d"];
+    DS:disconnected:e          -> PD:stateChanged:w           [color="#fcd34d"];
+
+    // Fan-out: PhysicalDevice -> consumers
+    PD:gestureRawXY:w          -> BAD:onGestureRaw:w            [color="#c4b5fd", constraint=false];
+    PD:divertedButtonPressed:w -> BAD:onDivertedButtonPressed:w [color="#c4b5fd", constraint=false];
+    PD:thumbWheelRotation:w    -> BAD:onThumbWheelRotation:w    [color="#c4b5fd", constraint=false];
+    PD:transportSetupComplete:w -> PO:onTransportSetupComplete:w [color="#c4b5fd", constraint=false];
+    PD:stateChanged:w          -> DM:onStateChanged:e            [color="#7dd3fc"];
+}

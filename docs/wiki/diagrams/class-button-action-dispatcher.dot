@@ -1,0 +1,93 @@
+digraph G {
+    rankdir=LR;
+    bgcolor="#0f172a";
+    splines=true;
+    nodesep=0.35;
+    ranksep=1.8;
+    newrank=true;
+    compound=true;
+    node [shape=plain, fontname="Inter, Segoe UI, sans-serif", fontsize=11, margin=0];
+    edge [fontname="Inter, Segoe UI, sans-serif", fontsize=10, fontcolor="#cbd5e1"];
+
+    // ============ Services / Coordinator column ============
+    subgraph cluster_svc {
+        label=<<font color="#c4b5fd" point-size="12"><b>  Services  </b></font>>;
+        bgcolor="#1e293b";
+        color="#475569";
+        penwidth=1;
+        style="rounded,filled";
+
+        PO [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">ProfileOrchestrator</font></b></td></tr>
+                <tr><td bgcolor="#3f3a5e" port="profileApplied"><font color="#c4b5fd" point-size="9">signal  </font><font color="#e2e8f0">profileApplied</font></td></tr>
+                <tr><td bgcolor="#3f3a5e" port="currentDeviceChanged"><font color="#c4b5fd" point-size="9">signal  </font><font color="#e2e8f0">currentDeviceChanged</font></td></tr>
+            </table>
+        >];
+
+        BAD [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="6" bgcolor="#334155" color="#8b5cf6">
+              <tr><td bgcolor="#334155" border="0"><b><font point-size="14" color="#f1f5f9">ButtonActionDispatcher</font></b></td></tr>
+              <tr><td bgcolor="#334155" border="0"><font color="#c4b5fd" point-size="10"><b>Methods</b></font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#e2e8f0">onDeviceRemoved</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#94a3b8">kGestureThreshold = 50</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#94a3b8">kThumbThreshold = 15</font></td></tr>
+              <tr><td bgcolor="#334155" border="0"><font color="#c4b5fd" point-size="10"><b>Slots</b></font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onGestureRaw"><font color="#e2e8f0">onGestureRaw</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onDivertedButtonPressed"><font color="#e2e8f0">onDivertedButtonPressed</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onThumbWheelRotation"><font color="#e2e8f0">onThumbWheelRotation</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onProfileApplied"><font color="#e2e8f0">onProfileApplied</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onCurrentDeviceChanged"><font color="#e2e8f0">onCurrentDeviceChanged</font></td></tr>
+            </table>
+        >];
+
+        { rank=same; PO; BAD; }
+    }
+
+    // ============ Core column ============
+    subgraph cluster_core {
+        label=<<font color="#fcd34d" point-size="12"><b>  Core  </b></font>>;
+        bgcolor="#1e293b";
+        color="#475569";
+        penwidth=1;
+        style="rounded,filled";
+
+        PD [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">PhysicalDevice</font></b></td></tr>
+                <tr><td bgcolor="#3f301e" port="gestureRawXY"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">gestureRawXY</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="divertedButtonPressed"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">divertedButtonPressed</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="thumbWheelRotation"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">thumbWheelRotation</font></td></tr>
+            </table>
+        >];
+
+        AE [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">ActionExecutor</font></b></td></tr>
+                <tr><td bgcolor="#3f301e" port="executeAction"><font color="#fcd34d" point-size="9">method  </font><font color="#e2e8f0">executeAction</font></td></tr>
+                <tr><td bgcolor="#3f301e" port="injectCtrlScroll"><font color="#fcd34d" point-size="9">method  </font><font color="#e2e8f0">injectCtrlScroll</font></td></tr>
+            </table>
+        >];
+
+        PE [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">ProfileEngine</font></b></td></tr>
+                <tr><td bgcolor="#3f301e" port="cachedProfile"><font color="#fcd34d" point-size="9">method  </font><font color="#e2e8f0">cachedProfile</font></td></tr>
+            </table>
+        >];
+
+        { rank=same; PD; AE; PE; }
+    }
+
+    // ============ Signals ============
+    BAD:onGestureRaw:e             -> PD:gestureRawXY:w          [color="#fcd34d", dir=back];
+    BAD:onDivertedButtonPressed:e  -> PD:divertedButtonPressed:w [color="#fcd34d", dir=back];
+    BAD:onThumbWheelRotation:e     -> PD:thumbWheelRotation:w    [color="#fcd34d", dir=back];
+
+    PO:profileApplied:w         -> BAD:onProfileApplied:w       [color="#c4b5fd", constraint=false];
+    PO:currentDeviceChanged:w   -> BAD:onCurrentDeviceChanged:w [color="#c4b5fd", constraint=false];
+
+    BAD:onDivertedButtonPressed:e -> AE:executeAction:w          [color="#fcd34d", style=dashed, label=<<font color="#94a3b8">direct call</font>>];
+    BAD:onThumbWheelRotation:e    -> AE:injectCtrlScroll:w       [color="#fcd34d", style=dashed, label=<<font color="#94a3b8">direct call</font>>];
+    BAD:onProfileApplied:e        -> PE:cachedProfile:w          [color="#fcd34d", style=dashed, label=<<font color="#94a3b8">direct read</font>>];
+}

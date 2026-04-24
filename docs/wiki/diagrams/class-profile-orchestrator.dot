@@ -1,0 +1,128 @@
+digraph G {
+    rankdir=LR;
+    bgcolor="#0f172a";
+    splines=true;
+    nodesep=0.35;
+    ranksep=1.8;
+    newrank=true;
+    compound=true;
+    node [shape=plain, fontname="Inter, Segoe UI, sans-serif", fontsize=11, margin=0];
+    edge [fontname="Inter, Segoe UI, sans-serif", fontsize=10, fontcolor="#cbd5e1"];
+
+    // ============ ViewModel column ============
+    subgraph cluster_vm {
+        label=<<font color="#7dd3fc" point-size="12"><b>  ViewModel  </b></font>>;
+        bgcolor="#1e293b";
+        color="#475569";
+        penwidth=1;
+        style="rounded,filled";
+
+        BM [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">ButtonModel</font></b></td></tr>
+                <tr><td bgcolor="#1e3a5f" port="userActionChanged"><font color="#7dd3fc" point-size="9">signal  </font><font color="#e2e8f0">userActionChanged</font></td></tr>
+            </table>
+        >];
+        PM [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">ProfileModel</font></b></td></tr>
+                <tr><td bgcolor="#1e3a5f" port="profileSwitched"><font color="#7dd3fc" point-size="9">signal  </font><font color="#e2e8f0">profileSwitched</font></td></tr>
+            </table>
+        >];
+        DM [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">DeviceModel</font></b></td></tr>
+                <tr><td bgcolor="#1e3a5f" port="userGestureChanged"><font color="#7dd3fc" point-size="9">signal  </font><font color="#e2e8f0">userGestureChanged</font></td></tr>
+            </table>
+        >];
+    }
+
+    // ============ Services column ============
+    subgraph cluster_svc {
+        label=<<font color="#c4b5fd" point-size="12"><b>  Services  </b></font>>;
+        bgcolor="#1e293b";
+        color="#475569";
+        penwidth=1;
+        style="rounded,filled";
+
+        BAD [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">ButtonActionDispatcher</font></b></td></tr>
+                <tr><td bgcolor="#1e3a2f" port="onProfileApplied"><font color="#6ee7b7" point-size="9">slot  </font><font color="#e2e8f0">onProfileApplied</font></td></tr>
+                <tr><td bgcolor="#1e3a2f" port="onCurrentDeviceChanged"><font color="#6ee7b7" point-size="9">slot  </font><font color="#e2e8f0">onCurrentDeviceChanged</font></td></tr>
+            </table>
+        >];
+
+        PO  [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="6" bgcolor="#334155" color="#8b5cf6">
+              <tr><td bgcolor="#334155" border="0"><b><font point-size="14" color="#f1f5f9">ProfileOrchestrator</font></b></td></tr>
+              <tr><td bgcolor="#334155" border="0"><font color="#c4b5fd" point-size="10"><b>Methods</b></font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#e2e8f0">applyProfileToHardware</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#e2e8f0">setupProfileForDevice</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left"><font color="#e2e8f0">applyDisplayedChange</font></td></tr>
+              <tr><td bgcolor="#334155" border="0"><font color="#c4b5fd" point-size="10"><b>Slots</b></font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onWindowFocusChanged"><font color="#e2e8f0">onWindowFocusChanged</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onUserButtonChanged"><font color="#e2e8f0">onUserButtonChanged</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onTabSwitched"><font color="#e2e8f0">onTabSwitched</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onDisplayProfileChanged"><font color="#e2e8f0">onDisplayProfileChanged</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onTransportSetupComplete"><font color="#e2e8f0">onTransportSetupComplete</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="onCurrentDeviceChanged"><font color="#e2e8f0">onCurrentDeviceChanged</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="saveCurrentProfile"><font color="#e2e8f0">saveCurrentProfile</font></td></tr>
+              <tr><td bgcolor="#334155" border="0"><font color="#c4b5fd" point-size="10"><b>Signals</b></font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="profileApplied"><font color="#e2e8f0">profileApplied(serial)</font></td></tr>
+              <tr><td bgcolor="#3f3a5e" align="left" port="currentDeviceChanged"><font color="#e2e8f0">currentDeviceChanged(dev)</font></td></tr>
+            </table>
+        >];
+
+        DCH [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">DeviceCommandHandler</font></b></td></tr>
+                <tr><td bgcolor="#1e3a2f" port="userChangedSomething"><font color="#6ee7b7" point-size="9">signal  </font><font color="#e2e8f0">userChangedSomething</font></td></tr>
+            </table>
+        >];
+
+        { rank=same; BAD; PO; DCH; }
+    }
+
+    // ============ Core column ============
+    subgraph cluster_core {
+        label=<<font color="#fcd34d" point-size="12"><b>  Core  </b></font>>;
+        bgcolor="#1e293b";
+        color="#475569";
+        penwidth=1;
+        style="rounded,filled";
+
+        PE [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">ProfileEngine</font></b></td></tr>
+                <tr><td bgcolor="#3f301e" port="deviceDisplayProfileChanged"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">deviceDisplayProfileChanged</font></td></tr>
+            </table>
+        >];
+        PD [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">PhysicalDevice</font></b></td></tr>
+                <tr><td bgcolor="#3f301e" port="transportSetupComplete"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">transportSetupComplete</font></td></tr>
+            </table>
+        >];
+        DSK [label=<
+            <table border="0" cellborder="1" cellspacing="0" cellpadding="7" bgcolor="#334155" color="#475569">
+                <tr><td bgcolor="#334155" border="0"><b><font color="#f1f5f9">IDesktopIntegration</font></b></td></tr>
+                <tr><td bgcolor="#3f301e" port="activeWindowChanged"><font color="#fcd34d" point-size="9">signal  </font><font color="#e2e8f0">activeWindowChanged</font></td></tr>
+            </table>
+        >];
+    }
+
+    // ============ Signals ============
+    BM:userActionChanged:e    -> PO:onUserButtonChanged:w      [color="#7dd3fc"];
+    PM:profileSwitched:e      -> PO:onTabSwitched:w            [color="#7dd3fc"];
+    DM:userGestureChanged:e   -> PO:saveCurrentProfile:w       [color="#7dd3fc"];
+
+    DCH:userChangedSomething:w -> PO:saveCurrentProfile:w      [color="#6ee7b7", constraint=false];
+
+    PO:onDisplayProfileChanged:e  -> PE:deviceDisplayProfileChanged:w  [color="#fcd34d", dir=back];
+    PO:onTransportSetupComplete:e -> PD:transportSetupComplete:w       [color="#fcd34d", dir=back];
+    PO:onWindowFocusChanged:e     -> DSK:activeWindowChanged:w         [color="#fcd34d", dir=back];
+
+    PO:profileApplied:w       -> BAD:onProfileApplied:w        [color="#c4b5fd", constraint=false];
+    PO:currentDeviceChanged:w -> BAD:onCurrentDeviceChanged:w  [color="#c4b5fd", constraint=false];
+}

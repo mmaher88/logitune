@@ -338,6 +338,8 @@ struct Profile {
 
 `ProfileEngine` is the profile domain layer. It owns every `Profile` known to the app, persists them to disk, and answers two questions: "which profile should the UI show for this device?" and "which profile is currently applied to this device's hardware?" Services read and write through its API; no other class touches profile files directly.
 
+<img src="diagrams/class-profile-engine.svg" alt="Signal graph for ProfileEngine" width="900"/>
+
 ```mermaid
 graph TB
     subgraph "ProfileEngine"
@@ -714,6 +716,8 @@ Key emission in `injectKeystroke` presses all resolved keycodes in order (`emitK
 
 `DeviceManager` is the hardware-facing entry point of the core library. Its job is to detect Logitech HID++ devices on the system, open transports to them, group transports that belong to the same physical unit, and notify the rest of the app when a device appears or disappears.
 
+<img src="diagrams/class-device-manager.svg" alt="Signal graph for DeviceManager" width="900"/>
+
 **Responsibilities:**
 
 - **Hidraw enumeration.** On `start()`, scans `/sys/class/hidraw/` for nodes matching Logitech vendor IDs (direct + Bolt/Unifying receiver variants). For each candidate, probes whether the device speaks HID++ (report descriptor check) and which feature set it advertises.
@@ -738,6 +742,8 @@ Key emission in `injectKeystroke` presses all resolved keycodes in order (`emitK
 ### PhysicalDevice: transport aggregation
 
 A single MX Master 3S mouse typically appears on the host as *two* hidraw nodes when both transports are active — once via the Bolt/Unifying receiver, once via direct Bluetooth. HID++ unit serial (from `DeviceInfo.getSerial`) identifies them as the same physical unit. `src/core/PhysicalDevice.{h,cpp}` is the abstraction that collapses them:
+
+<img src="diagrams/class-physical-device.svg" alt="Signal graph for PhysicalDevice" width="900"/>
 
 - Owned by `DeviceManager`, keyed by serial.
 - Holds a non-owning list of `DeviceSession *` transports.
@@ -766,6 +772,8 @@ When the active transport drops (udev remove, HID++ ping timeout), `PhysicalDevi
 ### DeviceSession
 
 `DeviceSession` (`src/core/DeviceSession.{h,cpp}`) is the per-transport object: one hidraw fd, one HID++ conversation, one set of per-device runtime state. A `PhysicalDevice` owns one or more of these; everything that writes to hardware eventually calls setter methods here.
+
+<img src="diagrams/class-device-session.svg" alt="Signal graph for DeviceSession" width="900"/>
 
 **Responsibilities:**
 
@@ -1024,6 +1032,8 @@ The MX Master 3S reports `defaultDirection = 0` (positive when left/back), so `t
 
 `ActionExecutor` (`src/core/ActionExecutor.{h,cpp}`) is the bridge between `ButtonActionDispatcher` deciding "this button press should inject Ctrl+C" and an actual uinput / D-Bus / exec call reaching the system. It holds a non-owning `IInputInjector*` and delegates every side-effecting call to it, so swapping `UinputInjector` for `MockInjector` in tests is a one-line constructor change.
 
+<img src="diagrams/class-action-executor.svg" alt="Signal graph for ActionExecutor" width="900"/>
+
 **Responsibilities:**
 
 - **Action dispatch.** `executeAction(const ButtonAction&)` switches on `action.type`: `Keystroke` and `Media` both forward to `injectKeystroke(payload)`; `DBus` to `executeDBusCall(payload)`; `AppLaunch` to `launchApp(payload)`. `Default`, `GestureTrigger`, and `SmartShiftToggle` are handled upstream in `ButtonActionDispatcher` and fall through to a no-op here.
@@ -1050,6 +1060,8 @@ The dependency rule, enforced at the code level:
 
 Resolves the currently selected `PhysicalDevice` / `DeviceSession` / serial from `DeviceModel`'s selection index and its ordered device list. This is the single source of truth for "who is selected", so every other service asks here rather than re-deriving it.
 
+<img src="diagrams/class-active-device-resolver.svg" alt="Signal graph for ActiveDeviceResolver" width="900"/>
+
 - **Constructor dependencies:** `DeviceModel*`
 - **Public accessors:** `activeDevice()`, `activeSession()`, `activeSerial()`
 - **Public slots:** `onSelectionIndexChanged()`
@@ -1059,6 +1071,8 @@ Resolves the currently selected `PhysicalDevice` / `DeviceSession` / serial from
 ### DeviceCommandHandler
 
 Routes UI change requests (slider drag, toggle click) to the active `DeviceSession`. Every mutator is a no-op when there is no active session, which makes the service safe to invoke before any device attaches.
+
+<img src="diagrams/class-device-command-handler.svg" alt="Signal graph for DeviceCommandHandler" width="900"/>
 
 - **Constructor dependencies:** `ActiveDeviceResolver*`
 - **Public slots:** `requestDpi(int)`, `requestSmartShift(bool, int)`, `requestScrollConfig(bool, bool)`, `requestThumbWheelMode(QString)`, `requestThumbWheelInvert(bool)`
@@ -1070,6 +1084,8 @@ Routes UI change requests (slider drag, toggle click) to the active `DeviceSessi
 
 Interprets raw HID++ input events (`gestureRawXY`, `divertedButtonPressed`, `thumbWheelRotation`) and dispatches high-level actions: keystroke injection, app launch, DPI cycle, SmartShift toggle, gesture direction resolution, and thumb-wheel-mode actions. Owns the per-device gesture + thumb-wheel accumulator state.
 
+<img src="diagrams/class-button-action-dispatcher.svg" alt="Signal graph for ButtonActionDispatcher" width="900"/>
+
 - **Constructor dependencies:** `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceResolver*`
 - **Public slots:** `onGestureRaw(int16_t, int16_t)`, `onDivertedButtonPressed(uint16_t, bool)`, `onThumbWheelRotation(int)`, `onProfileApplied(QString)`, `onCurrentDeviceChanged(const IDevice*)`
 - **Public methods:** `onDeviceRemoved(QString)` to drop per-device state
@@ -1078,6 +1094,8 @@ Interprets raw HID++ input events (`gestureRawXY`, `divertedButtonPressed`, `thu
 ### ProfileOrchestrator
 
 Owns the save, apply, push, and window-focus flow. Holds no device state beyond a current `IDevice*` pointer; reads from models and engines, writes to them, and emits `profileApplied(serial)` after every hardware apply so the dispatcher can reset its thumb accumulator.
+
+<img src="diagrams/class-profile-orchestrator.svg" alt="Signal graph for ProfileOrchestrator" width="900"/>
 
 - **Constructor dependencies:** `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceResolver*`, `DeviceModel*`, `ButtonModel*`, `ActionModel*`, `ProfileModel*`, `IDesktopIntegration*`
 - **Public methods:** `setupProfileForDevice(PhysicalDevice*)`, `applyProfileToHardware(const Profile&)`, `applyDisplayedChange<Mutator, HardwareForward>(...)` (the templated bridge used by `AppRoot` for the five `DeviceModel` `*ChangeRequested` signals)
@@ -1088,6 +1106,8 @@ Owns the save, apply, push, and window-focus flow. Holds no device state beyond 
 ## AppRoot Wiring
 
 `AppRoot` is the composition root. It owns the long-lived singletons (ViewModels, services, engines, `DeviceRegistry`, `DeviceManager`, `DeviceFetcher`), wires the signal graph between them at startup, attaches `PhysicalDevice` instances into the graph at runtime, and exposes ViewModels via accessors for QML registration in `main.cpp`. It does not implement user-facing behavior; every `connect()` call in the app library lives either in `wireSignals()` or in `onPhysicalDeviceAdded()`.
+
+<img src="diagrams/class-app-root.svg" alt="Signal graph for AppRoot" width="900"/>
 
 The wiring falls into three groups:
 
