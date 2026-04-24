@@ -122,3 +122,32 @@ TEST(ActionPresetRegistry, EmptyArrayReturnsZero) {
     EXPECT_EQ(r.loadFromJson("[]"), 0);
     EXPECT_TRUE(r.all().empty());
 }
+
+TEST(ActionPresetRegistry, LoadsFromBundledResource) {
+    ActionPresetRegistry r;
+    int n = r.loadFromResource();
+    EXPECT_GE(n, 7);
+    EXPECT_NE(r.preset("show-desktop"), nullptr);
+    EXPECT_NE(r.preset("task-switcher"), nullptr);
+    EXPECT_NE(r.preset("switch-desktop-left"), nullptr);
+    EXPECT_NE(r.preset("switch-desktop-right"), nullptr);
+    EXPECT_NE(r.preset("screenshot"), nullptr);
+    EXPECT_NE(r.preset("close-window"), nullptr);
+    EXPECT_NE(r.preset("calculator"), nullptr);
+}
+
+TEST(ActionPresetRegistry, ShippedShowDesktopHasKdeAndGnomeVariants) {
+    ActionPresetRegistry r;
+    r.loadFromResource();
+    EXPECT_TRUE(r.supportedBy("show-desktop", "kde"));
+    EXPECT_TRUE(r.supportedBy("show-desktop", "gnome"));
+}
+
+TEST(ActionPresetRegistry, ShippedCalculatorUsesAppLaunch) {
+    ActionPresetRegistry r;
+    r.loadFromResource();
+    QJsonObject gnome = r.variantData("calculator", "gnome");
+    ASSERT_TRUE(gnome.contains("app-launch"));
+    EXPECT_EQ(gnome.value("app-launch").toObject().value("binary").toString(),
+              "gnome-calculator");
+}
