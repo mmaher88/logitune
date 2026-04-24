@@ -317,8 +317,8 @@ params[0-1]: rotation delta (int16, signed, big-endian)
 The MX Master 3S has `defaultDirection = 0`, meaning positive deltas correspond to leftward/backward rotation. Logitune normalizes this:
 
 ```cpp
-// In AppRoot::onThumbWheelRotation:
-int normalized = delta * m_deviceManager.thumbWheelDefaultDirection();
+// In ButtonActionDispatcher::onThumbWheelRotation:
+int normalized = delta * session->thumbWheelDefaultDirection();
 // defaultDirection=0 -> thumbWheelDefaultDirection=-1
 // Multiplying by -1 makes clockwise = positive
 ```

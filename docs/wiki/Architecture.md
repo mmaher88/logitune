@@ -4,21 +4,22 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 
 ## System Overview
 
-At a glance — one button press on the mouse turns into one row update in the QML UI. Each layer has one job:
+At a glance, one button press on the mouse turns into one row update in the QML UI. Each layer has one job, and `AppRoot` is a thin composition root that wires them together (not a place where behavior lives):
 
-<img src="diagrams/system-overview.png" alt="Logitune system overview: QML UI on top, app library below, core library in the middle with three sub-bands (integration, aggregation, protocol), Linux kernel layer, and hardware at the bottom" width="800"/>
+<img src="diagrams/system-overview.png" alt="Logitune system overview: QML UI on top, then the app library band showing AppRoot, the four services (DeviceSelection, DeviceCommands, ButtonActionDispatcher, ProfileOrchestrator), and Models + TrayManager; below that the core library with three sub-bands (integration, aggregation, protocol), then Linux kernel and hardware at the bottom" width="800"/>
 
-> Source: `docs/wiki/diagrams/system-overview.svg`. Re-render with `rsvg-convert -w 1600 -h 1120 docs/wiki/diagrams/system-overview.svg -o docs/wiki/diagrams/system-overview.png` after edits.
+> Source: `docs/wiki/diagrams/system-overview.svg`. Re-render with `rsvg-convert -w 1600 -h 1240 docs/wiki/diagrams/system-overview.svg -o docs/wiki/diagrams/system-overview.png` after edits.
 
-Each layer below has its own detailed diagram elsewhere on this page:
+The app-lib band contains AppRoot plus four focused services (`DeviceSelection`, `DeviceCommands`, `ButtonActionDispatcher`, `ProfileOrchestrator`) that sit between the QML UI / ViewModels and the core library's engines + HID++ stack. Each layer below has its own detailed diagram elsewhere on this page:
 
 | Layer | Detail |
 |---|---|
 | Core — HID++ stack | [HID++ protocol stack](#stack), [feature discovery](#feature-discovery), [command queue](#command-queue), [async matching](#async-response-matching) |
 | Core — Desktop integration | [Interface hierarchy](#interface-hierarchy), [KDE focus tracking](#kde-focus-tracking) |
 | Core — Device lifecycle | [PhysicalDevice transport aggregation](#physicaldevice-transport-aggregation), [Discovery flow](#discovery-flow), [Disconnect and reconnect](#disconnect-and-reconnect) |
+| App — Services | [Services](#services) |
 | App — Models | [MVVM pattern](#mvvm-pattern), [Model roles](#model-roles), [Model registration](#model-registration) |
-| App — Orchestration | [AppRoot wiring](#appcontroller-wiring) |
+| App — Composition root | [AppRoot wiring](#approot-wiring) |
 | Cross-cutting flow | [Window focus → profile switch → hardware commands](#window-focus-change---profile-switch---hardware-commands) |
 
 ### Two Static Libraries
@@ -42,50 +43,59 @@ This is the central flow of the application. When the user switches to a differe
 sequenceDiagram
     participant KWin as KWin Script
     participant KDE as KDeDesktop
-    participant AC as AppRoot
+    participant AR as AppRoot
+    participant PO as ProfileOrchestrator
+    participant DS as DeviceSelection
     participant PE as ProfileEngine
-    participant PM as ProfileModel
     participant DM as DeviceModel
-    participant PD as PhysicalDevice
-    participant DS as DeviceSession
+    participant DSess as DeviceSession
     participant CQ as CommandQueue
     participant FD as FeatureDispatcher
     participant TR as Transport
+    participant PM as ProfileModel
+    participant BM as ButtonModel
 
     KWin->>KDE: callDBus focusChanged(resourceClass, title, desktopFileName)
     KDE->>KDE: resolveDesktopFile(resourceClass)
-    KDE->>AC: activeWindowChanged(appId, title)
+    KDE->>AR: activeWindowChanged(appId, title)
 
-    Note over AC: Skip shell components (plasmashell, krunner)
+    Note over AR: wireSignals routes the signal to ProfileOrchestrator
+    AR->>PO: onWindowFocusChanged(wmClass, title)
 
-    AC->>DM: setActiveWmClass(wmClass)
-    AC->>PE: profileForApp(wmClass)
-    PE-->>AC: profileName (or "default")
+    Note over PO: Skip shell components (plasmashell, krunner, gnome-shell)
 
-    Note over AC: Skip if same as current hardware profile
+    PO->>DM: setActiveWmClass(wmClass)
+    PO->>DS: activeSerial()
+    DS-->>PO: serial
+    PO->>PE: profileForApp(serial, wmClass)
+    PE-->>PO: profileName (or "default")
 
-    AC->>PE: cachedProfile(profileName)
-    AC->>PE: setHardwareProfile(profileName)
-    AC->>AC: applyProfileToHardware(profile)
+    Note over PO: Skip if profileName matches hardware profile
 
-    AC->>PD: primary()
-    PD-->>AC: DeviceSession* (active transport)
+    PO->>PE: cachedProfile(serial, profileName)
+    PO->>PE: setHardwareProfile(serial, profileName)
+    PO->>PO: applyProfileToHardware(profile)
+
+    PO->>DS: activeSession()
+    DS-->>PO: DeviceSession* (active transport)
+
+    Note over PO: applyProfileToHardware calls the session directly. DeviceCommands is only used for user UI changes.
 
     par Apply all settings on the selected session
-        AC->>DS: setDPI(value)
-        DS->>CQ: enqueue(AdjustableDPI, setSensorDpi, params)
+        PO->>DSess: setDPI(value)
+        DSess->>CQ: enqueue(AdjustableDPI, setSensorDpi, params)
     and
-        AC->>DS: setSmartShift(enabled, threshold)
-        DS->>CQ: enqueue(SmartShift, setRatchetControl, params)
+        PO->>DSess: setSmartShift(enabled, threshold)
+        DSess->>CQ: enqueue(SmartShift, setRatchetControl, params)
     and
-        AC->>DS: setScrollConfig(hiRes, invert)
-        DS->>CQ: enqueue(HiResWheel / ReprogControls, ...)
+        PO->>DSess: setScrollConfig(hiRes, invert)
+        DSess->>CQ: enqueue(HiResWheel, setWheelMode, params)
     and
-        AC->>DS: setThumbWheelMode(mode, invert)
-        DS->>CQ: enqueue(ThumbWheel, setThumbwheelReporting, params)
+        PO->>DSess: setThumbWheelMode(mode, invert)
+        DSess->>CQ: enqueue(ThumbWheel, setThumbwheelReporting, params)
     and
-        AC->>DS: divertButton(CID, divert, rawXY) [per button]
-        DS->>CQ: enqueue(ReprogControlsV4, setCidReporting, params)
+        PO->>DSess: divertButton(CID, divert, rawXY) (per button)
+        DSess->>CQ: enqueue(ReprogControlsV4, setCidReporting, params)
     end
 
     loop For each enqueued command (FIFO, paced)
@@ -95,7 +105,11 @@ sequenceDiagram
         Note over CQ: Wait 10ms before next command
     end
 
-    AC->>PM: setHwActiveByProfileName(profileName)
+    PO-->>AR: profileApplied(serial) (signal)
+    Note over AR: Wired to ButtonActionDispatcher.onProfileApplied (resets thumbAccum)
+
+    PO->>PM: setHwActiveByProfileName(profileName)
+    Note over BM: ButtonModel is refreshed via onDisplayProfileChanged when the display profile tracks the applied hardware profile.
 ```
 
 ### Key Design Decision: Display vs Hardware Profile
@@ -285,8 +299,8 @@ struct Profile {
 ```mermaid
 graph TB
     subgraph "ProfileEngine"
-        Cache["In-Memory Cache<br/>QMap&lt;QString, Profile&gt;"]
-        Disk["Disk Storage<br/>~/.config/Logitune/devices/&lt;serial&gt;/profiles/"]
+        Cache["In-Memory Cache<br/>QMap of serial to Profile"]
+        Disk["Disk Storage<br/>~/.config/Logitune/devices/{serial}/profiles/"]
         Bindings["App Bindings<br/>app-bindings.conf"]
         Display["displayProfile<br/>(what UI shows)"]
         Hardware["hardwareProfile<br/>(what device runs)"]
@@ -315,7 +329,7 @@ graph TB
 3. **Profile load** — `setDeviceConfigDir()` scans the directory for `.conf` files and loads them into the in-memory cache
 4. **Focus change** — `profileForApp(wmClass)` looks up the app binding; if none found, returns "default"
 5. **Hardware apply** — `applyProfileToHardware()` sends all profile settings via CommandQueue
-6. **User edit** — UI changes go through DeviceModel -> AppRoot -> ProfileEngine cache -> disk save
+6. **User edit** — UI changes go through DeviceModel -> DeviceCommands -> ProfileOrchestrator -> ProfileEngine cache -> disk save
 7. **Cache vs disk** — the cache is the source of truth during runtime; saves to disk are immediate but loads only happen at startup
 
 ### ProfileDelta
@@ -785,49 +799,86 @@ When diverted, the device sends thumb wheel rotation events with raw delta value
 
 The MX Master 3S reports `defaultDirection = 0` (positive when left/back), so `thumbWheelDefaultDirection = -1`. Multiplying raw deltas by -1 makes clockwise = positive, which is the natural direction for zoom-in and volume-up.
 
+## Services
+
+Behavior that responds to user events or mutates application state lives in one of four focused services in `src/app/services/`. Each service holds non-owning pointers to the models, engines, or `DeviceSelection` instance it needs, has zero `connect()` calls of its own, and communicates with its peers only via Qt signals wired by `AppRoot`.
+
+The dependency rule, enforced at the code level:
+
+> Services hold pointers only to models, engines, and `DeviceSelection`. Cross-service communication is always via signal, wired in `AppRoot`.
+
+### DeviceSelection
+
+Resolves the currently selected `PhysicalDevice` / `DeviceSession` / serial from `DeviceModel`'s selection index and its ordered device list. This is the single source of truth for "who is selected", so every other service asks here rather than re-deriving it.
+
+- **Constructor dependencies:** `DeviceModel*`
+- **Public accessors:** `activeDevice()`, `activeSession()`, `activeSerial()`
+- **Public slots:** `onSelectionIndexChanged()`
+- **Signals:** `selectionChanged()`
+- **State:** none (pure projection over `DeviceModel`)
+
+### DeviceCommands
+
+Routes UI change requests (slider drag, toggle click) to the active `DeviceSession`. Every mutator is a no-op when there is no active session, which makes the service safe to invoke before any device attaches.
+
+- **Constructor dependencies:** `DeviceSelection*`
+- **Public slots:** `requestDpi(int)`, `requestSmartShift(bool, int)`, `requestScrollConfig(bool, bool)`, `requestThumbWheelMode(QString)`, `requestThumbWheelInvert(bool)`
+- **Signals:** `userChangedSomething()` emitted after every successful mutation, for `ProfileOrchestrator::saveCurrentProfile` to latch on to
+- **State:** none
+- **Note:** `applyProfileToHardware` (the burst during a profile switch) does *not* go through `DeviceCommands`. It calls the session directly. `DeviceCommands` is specifically for user-initiated control changes from the UI.
+
+### ButtonActionDispatcher
+
+Interprets raw HID++ input events (`gestureRawXY`, `divertedButtonPressed`, `thumbWheelRotation`) and dispatches high-level actions: keystroke injection, app launch, DPI cycle, SmartShift toggle, gesture direction resolution, and thumb-wheel-mode actions. Owns the per-device gesture + thumb-wheel accumulator state.
+
+- **Constructor dependencies:** `ProfileEngine*`, `ActionExecutor*`, `DeviceSelection*`
+- **Public slots:** `onGestureRaw(int16_t, int16_t)`, `onDivertedButtonPressed(uint16_t, bool)`, `onThumbWheelRotation(int)`, `onProfileApplied(QString)`, `onCurrentDeviceChanged(const IDevice*)`
+- **Public methods:** `onDeviceRemoved(QString)` to drop per-device state
+- **State:** `QMap<QString, PerDeviceState>` keyed by serial. Each entry holds `gestureAccumX/Y`, `thumbAccum`, `gestureActive`, `gestureControlId`. Gesture threshold is 50, thumb threshold is 15.
+
+### ProfileOrchestrator
+
+Owns the save, apply, push, and window-focus flow. Holds no device state beyond a current `IDevice*` pointer; reads from models and engines, writes to them, and emits `profileApplied(serial)` after every hardware apply so the dispatcher can reset its thumb accumulator.
+
+- **Constructor dependencies:** `ProfileEngine*`, `ActionExecutor*`, `DeviceSelection*`, `DeviceModel*`, `ButtonModel*`, `ActionModel*`, `ProfileModel*`, `IDesktopIntegration*`
+- **Public methods:** `setupProfileForDevice(PhysicalDevice*)`, `applyProfileToHardware(const Profile&)`, `applyDisplayedChange<Mutator, HardwareForward>(...)` (the templated bridge used by `AppRoot` for the five `DeviceModel` `*ChangeRequested` signals)
+- **Public slots:** `saveCurrentProfile()`, `onUserButtonChanged(int, QString, QString)`, `onTabSwitched(QString)`, `onDisplayProfileChanged(QString, const Profile&)`, `onWindowFocusChanged(QString, QString)`, `onTransportSetupComplete(PhysicalDevice*)`, `onCurrentDeviceChanged(const IDevice*)`
+- **Signals:** `profileApplied(QString serial)`, `currentDeviceChanged(const IDevice*)`
+- **State:** `m_currentDevice` (non-owning `const IDevice*`)
+
 ## AppRoot Wiring
 
-AppRoot is the central orchestrator. It owns all subsystems and wires them together:
+`AppRoot` is the composition root. It owns the long-lived singletons (ViewModels, services, engines, `DeviceRegistry`, `DeviceManager`, `DeviceFetcher`), wires the signal graph between them at startup, attaches `PhysicalDevice` instances into the graph at runtime, and exposes ViewModels via accessors for QML registration in `main.cpp`. It does not implement user-facing behavior; every `connect()` call in the app library lives either in `wireSignals()` or in `onPhysicalDeviceAdded()`.
 
-```mermaid
-graph TB
-    subgraph "Owned Subsystems"
-        Registry[DeviceRegistry]
-        DevMgr[DeviceManager]
-        PE[ProfileEngine]
-        AE[ActionExecutor]
-        DM[DeviceModel]
-        BM[ButtonModel]
-        AM[ActionModel]
-        AFM[ActionFilterModel]
-        PM[ProfileModel]
-        SM[SettingsModel]
-    end
+The wiring falls into three groups:
 
-    subgraph "Injected (or created)"
-        Desktop[IDesktopIntegration]
-        Injector[IInputInjector]
-    end
+- **(a) QML → AppRoot ViewModel → Service.** User events from QML update a ViewModel; `AppRoot` has a `connect()` from the ViewModel's signal into the relevant service slot.
+- **(b) Service → Service.** Cross-service communication, always via a signal emitted by one service and a slot on another, with the edge living in `wireSignals()`.
+- **(c) Hardware → AppRoot → Service.** Per-device runtime wiring in `onPhysicalDeviceAdded`: each new `PhysicalDevice` gets its input signals (`gestureRawXY`, `divertedButtonPressed`, `thumbWheelRotation`, `transportSetupComplete`) hooked into the appropriate service slots.
 
-    subgraph "Signal Connections (wireSignals)"
-        S1["ButtonModel::userActionChanged<br/>→ onUserButtonChanged"]
-        S2["IDesktopIntegration::activeWindowChanged<br/>→ onWindowFocusChanged"]
-        S3["ProfileModel::profileSwitched<br/>→ onTabSwitched"]
-        S4["ProfileEngine::displayProfileChanged<br/>→ onDisplayProfileChanged"]
-        S5["DeviceManager::deviceSetupComplete<br/>→ onDeviceSetupComplete"]
-        S6["DeviceModel::userGestureChanged<br/>→ saveCurrentProfile"]
-        S7["ProfileModel::profileAdded<br/>→ ProfileEngine::createProfileForApp"]
-        S8["ProfileModel::profileRemoved<br/>→ ProfileEngine::removeAppProfile"]
-        S9["DeviceManager::gestureRawXY<br/>→ onGestureRawXY"]
-        S10["DeviceManager::divertedButtonPressed<br/>→ onDivertedButtonPressed"]
-        S11["DeviceManager::thumbWheelRotation<br/>→ onThumbWheelRotation"]
-        S12["DeviceModel::dpiChangeRequested<br/>→ onDpiChangeRequested"]
-        S13["DeviceModel::smartShiftChangeRequested<br/>→ onSmartShiftChangeRequested"]
-        S14["DeviceModel::scrollConfigChangeRequested<br/>→ onScrollConfigChangeRequested"]
-        S15["DeviceModel::thumbWheelModeChangeRequested<br/>→ onThumbWheelModeChangeRequested"]
-        S16["DeviceModel::thumbWheelInvertChangeRequested<br/>→ onThumbWheelInvertChangeRequested"]
-    end
-```
+### Signal wiring reference
+
+Key edges wired in `AppRoot::wireSignals()` and `AppRoot::onPhysicalDeviceAdded()`:
+
+| # | Source | Signal | Sink | Group |
+|---|--------|--------|------|-------|
+| 1 | ButtonModel | `userActionChanged` | ProfileOrchestrator::`onUserButtonChanged` | a |
+| 2 | IDesktopIntegration | `activeWindowChanged` | ProfileOrchestrator::`onWindowFocusChanged` | a |
+| 3 | ProfileModel | `profileSwitched` | ProfileOrchestrator::`onTabSwitched` | a |
+| 4 | ProfileEngine | `deviceDisplayProfileChanged` | ProfileOrchestrator::`onDisplayProfileChanged` | a |
+| 5 | DeviceModel | `selectedChanged` | DeviceSelection::`onSelectionIndexChanged` | a |
+| 6 | DeviceSelection | `selectionChanged` | AppRoot::`onSelectionChanged` (internal refresh) | b |
+| 7 | DeviceModel | `userGestureChanged` | lambda → ProfileOrchestrator::`saveCurrentProfile` | a |
+| 8 | DeviceCommands | `userChangedSomething` | ProfileOrchestrator::`saveCurrentProfile` | b |
+| 9 | ProfileOrchestrator | `profileApplied` | ButtonActionDispatcher::`onProfileApplied` | b |
+| 10 | ProfileOrchestrator | `currentDeviceChanged` | ButtonActionDispatcher::`onCurrentDeviceChanged` | b |
+| 11 | DeviceModel | `dpiChangeRequested` / `smartShiftChangeRequested` / `scrollConfigChangeRequested` / `thumbWheelModeChangeRequested` / `thumbWheelInvertChangeRequested` | lambda → `ProfileOrchestrator::applyDisplayedChange` + `DeviceCommands::request*` | a |
+| 12 | ProfileModel | `profileAdded` / `profileRemoved` | lambda → ProfileEngine::`createProfileForApp` / `removeAppProfile` | a |
+| 13 | DeviceManager | `physicalDeviceAdded` / `physicalDeviceRemoved` | AppRoot::`onPhysicalDeviceAdded` / `onPhysicalDeviceRemoved` | c |
+| 14 | PhysicalDevice | `gestureRawXY` / `divertedButtonPressed` / `thumbWheelRotation` | ButtonActionDispatcher equivalents | c |
+| 15 | PhysicalDevice | `transportSetupComplete` | lambda → ProfileOrchestrator::`onTransportSetupComplete` | c |
+
+Rows 13 to 15 are per-device runtime wiring in `onPhysicalDeviceAdded`; the rest are startup wiring in `wireSignals()`. Row 11 is a single `applyDisplayedChange` bridge reused for all five `*ChangeRequested` signals; it persists the cached profile, refreshes the UI, and only forwards to hardware via `DeviceCommands` when the displayed profile is also the active hardware profile.
 
 ### Dependency Injection
 
@@ -841,4 +892,4 @@ AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent 
 - In tests, `MockDesktop` and `MockInjector` are injected for deterministic behavior
 - The injected pointers are **not owned** by AppRoot (raw pointers); internally created ones are held in `unique_ptr`
 
-This is the sole DI point — the rest of the subsystems are value members of AppRoot, which simplifies lifetime management.
+This is the sole DI point: the rest of the subsystems are value members of AppRoot, which simplifies lifetime management.

@@ -206,7 +206,7 @@ For the full walkthrough, see [Editor Mode](Editor-Mode) and
 | Add a new device | `devices/<slug>/` at the repo root: see [Adding a Device](Adding-a-Device) |
 | Edit a wiki page | `docs/wiki/*.md` in this repo. Wiki is one-way synced from master; edits on the GitHub wiki itself are overwritten on next sync. |
 | Add a new desktop environment | `src/core/desktop/` — see [Adding a Desktop Environment](Adding-a-Desktop-Environment) |
-| Add a new button action type | `src/core/ButtonAction.h` and `src/app/AppRoot.cpp` (onDivertedButtonPressed) |
+| Add a new button action type | `src/core/ButtonAction.h` and `src/app/services/ButtonActionDispatcher.cpp` (onDivertedButtonPressed) |
 | Add a new QML page | `src/app/qml/pages/` and register in `src/app/CMakeLists.txt` |
 | Add a new QML component | `src/app/qml/components/` and register in `src/app/CMakeLists.txt` |
 | Add a new model | `src/app/models/` — create class, register in `main.cpp` as QML singleton |
