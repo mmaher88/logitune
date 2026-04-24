@@ -25,6 +25,7 @@ target_sources(logitune-core PRIVATE
     DeviceRegistry.cpp
     devices/DescriptorWriter.cpp
     devices/JsonDevice.cpp
+    actions/ActionPreset.cpp
     interfaces/IDesktopIntegration.cpp
     interfaces/IInputInjector.cpp
     interfaces/ITransport.cpp
