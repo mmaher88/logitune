@@ -102,3 +102,23 @@ TEST(ActionPresetRegistry, LoadFromJsonReplacesPreviousContents) {
     EXPECT_EQ(r.preset("show-desktop"), nullptr);
     EXPECT_NE(r.preset("only-one"), nullptr);
 }
+
+TEST(ActionPresetRegistry, NonArrayRootReturnsZero) {
+    ActionPresetRegistry r;
+    const QByteArray obj = R"({"not": "an array"})";
+    EXPECT_EQ(r.loadFromJson(obj), 0);
+    EXPECT_TRUE(r.all().empty());
+}
+
+TEST(ActionPresetRegistry, UnparsableInputReturnsZero) {
+    ActionPresetRegistry r;
+    const QByteArray garbage = "not json at all";
+    EXPECT_EQ(r.loadFromJson(garbage), 0);
+    EXPECT_TRUE(r.all().empty());
+}
+
+TEST(ActionPresetRegistry, EmptyArrayReturnsZero) {
+    ActionPresetRegistry r;
+    EXPECT_EQ(r.loadFromJson("[]"), 0);
+    EXPECT_TRUE(r.all().empty());
+}

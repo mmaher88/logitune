@@ -26,6 +26,9 @@ public:
     int loadFromResource();
 
     /// Lookup by id. Returns nullptr for unknown ids.
+    ///
+    /// The returned pointer is valid until the next load(FromJson|FromResource)
+    /// call. Do not cache across loads.
     const ActionPreset *preset(const QString &id) const;
 
     /// True if the preset exists AND has a variant entry for variantKey.
