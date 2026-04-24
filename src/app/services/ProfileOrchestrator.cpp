@@ -277,6 +277,10 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
             aType = QStringLiteral("app-launch");
             aName = m_actionModel->buttonActionToName(ba);
             break;
+        case ButtonAction::PresetRef:
+            aType = QStringLiteral("preset");
+            aName = m_actionModel->buttonActionToName(ba);
+            break;
         case ButtonAction::Media: {
             aType = QStringLiteral("media-controls");
             static const QHash<QString, QString> kMediaNames = {
