@@ -28,7 +28,7 @@ add_executable(logitune-tests
     test_action_model.cpp
     test_device_model.cpp
     test_wmclass_resolution.cpp
-    test_app_controller.cpp
+    test_app_root.cpp
     test_profile_switching.cpp
     test_profile_persistence.cpp
     test_device_reconnect.cpp
@@ -46,6 +46,10 @@ add_executable(logitune-tests
     test_dpi_cycle_ring.cpp
     test_autostart_desktop.cpp
     test_distro_detector.cpp
+    services/test_active_device_resolver.cpp
+    services/test_device_command_handler.cpp
+    services/test_button_action_dispatcher.cpp
+    services/test_profile_orchestrator.cpp
 )
 target_include_directories(logitune-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(logitune-tests PRIVATE SOURCE_ROOT="${CMAKE_SOURCE_DIR}")

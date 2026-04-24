@@ -451,10 +451,10 @@ void DeviceSession::enumerateAndSetup()
     m_lastResponseTime = QDateTime::currentMSecsSinceEpoch();
     m_enumerating = false;
 
-    if (!m_commandQueue && m_features && m_transport) {
-        m_commandQueue = std::make_unique<hidpp::CommandQueue>(
+    if (!m_commandProcessor && m_features && m_transport) {
+        m_commandProcessor = std::make_unique<hidpp::CommandProcessor>(
             m_features.get(), m_transport.get(), m_deviceIndex);
-        m_commandQueue->start();
+        m_commandProcessor->start();
     }
 
     // Start periodic battery polling (60s)
@@ -516,10 +516,10 @@ void DeviceSession::disconnectCleanup()
     if (m_batteryPollTimer)
         m_batteryPollTimer->stop();
 
-    if (m_commandQueue) {
-        m_commandQueue->clear();
-        m_commandQueue->stop();
-        m_commandQueue.reset();
+    if (m_commandProcessor) {
+        m_commandProcessor->clear();
+        m_commandProcessor->stop();
+        m_commandProcessor.reset();
     }
     m_activeDevice = nullptr;
     m_batteryDispatch.reset();
@@ -564,10 +564,10 @@ void DeviceSession::handleNotification(const hidpp::Report &report)
         bool linkEstablished = (report.params[0] & 0x40) == 0;
         qCDebug(lcDevice) << "DeviceConnection:" << (linkEstablished ? "connected" : "disconnected");
         if (!linkEstablished && m_connected) {
-            if (m_commandQueue) {
-                m_commandQueue->clear();
-                m_commandQueue->stop();
-                m_commandQueue.reset();
+            if (m_commandProcessor) {
+                m_commandProcessor->clear();
+                m_commandProcessor->stop();
+                m_commandProcessor.reset();
             }
             m_activeDevice = nullptr;
             m_features.reset();
@@ -754,14 +754,14 @@ void DeviceSession::setDPI(int value)
     if (previous != value)
         emit currentDPIChanged();
 
-    if (!m_features || !m_commandQueue)
+    if (!m_features || !m_commandProcessor)
         return;
     if (!m_features->hasFeature(hidpp::FeatureId::AdjustableDPI))
         return;
 
-    qCDebug(lcDevice) << "setDPI:" << value << "(was" << previous << ") queue=" << m_commandQueue->pending();
+    qCDebug(lcDevice) << "setDPI:" << value << "(was" << previous << ") queue=" << m_commandProcessor->pending();
     auto params = hidpp::features::AdjustableDPI::buildSetDPI(value);
-    m_commandQueue->enqueue(hidpp::FeatureId::AdjustableDPI,
+    m_commandProcessor->enqueue(hidpp::FeatureId::AdjustableDPI,
                             hidpp::features::AdjustableDPI::kFnSetSensorDpi,
                             params);
 }
@@ -772,7 +772,7 @@ void DeviceSession::setDPI(int value)
 
 void DeviceSession::setSmartShift(bool enabled, int threshold)
 {
-    if (!m_connected || !m_features || !m_commandQueue || !m_smartShiftDispatch)
+    if (!m_connected || !m_features || !m_commandProcessor || !m_smartShiftDispatch)
         return;
 
     threshold = qBound(1, threshold, 255);
@@ -785,7 +785,7 @@ void DeviceSession::setSmartShift(bool enabled, int threshold)
     uint8_t ad   = static_cast<uint8_t>(threshold);
 
     auto params = m_smartShiftDispatch->buildSet(mode, ad);
-    m_commandQueue->enqueue(m_smartShiftDispatch->feature,
+    m_commandProcessor->enqueue(m_smartShiftDispatch->feature,
                             m_smartShiftDispatch->setFn,
                             std::span<const uint8_t>(params));
     qCDebug(lcDevice) << "SmartShift set: feature="
@@ -795,7 +795,7 @@ void DeviceSession::setSmartShift(bool enabled, int threshold)
 
 void DeviceSession::setScrollConfig(bool hiRes, bool invert)
 {
-    if (!m_connected || !m_features || !m_commandQueue)
+    if (!m_connected || !m_features || !m_commandProcessor)
         return;
     if (!m_features->hasFeature(hidpp::FeatureId::HiResWheel))
         return;
@@ -805,14 +805,14 @@ void DeviceSession::setScrollConfig(bool hiRes, bool invert)
     emit scrollConfigChanged();
 
     auto params = hidpp::features::HiResWheel::buildSetWheelMode(m_scrollModeByte, hiRes, invert);
-    m_commandQueue->enqueue(hidpp::FeatureId::HiResWheel,
+    m_commandProcessor->enqueue(hidpp::FeatureId::HiResWheel,
                             hidpp::features::HiResWheel::kFnSetWheelMode,
                             std::span<const uint8_t>(params));
 }
 
 void DeviceSession::divertButton(uint16_t controlId, bool divert, bool rawXY)
 {
-    if (!m_connected || !m_features || !m_commandQueue)
+    if (!m_connected || !m_features || !m_commandProcessor)
         return;
     // Only V4 supports SetControlReporting. Older variants enumerate but
     // cannot divert — silently no-op so callers don't need to special-case.
@@ -820,7 +820,7 @@ void DeviceSession::divertButton(uint16_t controlId, bool divert, bool rawXY)
         return;
 
     auto params = hidpp::features::ReprogControls::buildSetDivert(controlId, divert, rawXY);
-    m_commandQueue->enqueue(m_reprogControlsDispatch->feature,
+    m_commandProcessor->enqueue(m_reprogControlsDispatch->feature,
                             hidpp::features::ReprogControls::kFnSetControlReporting,
                             std::span<const uint8_t>(params));
     qCDebug(lcDevice) << "button" << Qt::hex << controlId
@@ -837,10 +837,10 @@ bool DeviceSession::isHostPaired(int host) const {
     return m_hostPaired[host];
 }
 
-void DeviceSession::flushCommandQueue()
+void DeviceSession::flushCommandProcessor()
 {
-    if (m_commandQueue)
-        m_commandQueue->clear();
+    if (m_commandProcessor)
+        m_commandProcessor->clear();
 }
 
 void DeviceSession::touchResponseTime()
@@ -855,7 +855,7 @@ void DeviceSession::setThumbWheelMode(const QString &mode, bool invert)
     m_thumbWheelInvert = invert;
     emit thumbWheelModeChanged();
 
-    if (!m_connected || !m_features || !m_commandQueue)
+    if (!m_connected || !m_features || !m_commandProcessor)
         return;
     if (!m_features->hasFeature(hidpp::FeatureId::ThumbWheel))
         return;
@@ -866,7 +866,7 @@ void DeviceSession::setThumbWheelMode(const QString &mode, bool invert)
         static_cast<uint8_t>(divert ? 0x01 : 0x00),
         static_cast<uint8_t>(invert ? 0x01 : 0x00)
     };
-    m_commandQueue->enqueue(hidpp::FeatureId::ThumbWheel, 0x02,
+    m_commandProcessor->enqueue(hidpp::FeatureId::ThumbWheel, 0x02,
                             std::span<const uint8_t>(twParams),
                             [divert, invert](const hidpp::Report &) {
                                 qCDebug(lcDevice) << "thumb wheel setReporting confirmed:"

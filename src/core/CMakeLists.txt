@@ -8,7 +8,7 @@ target_sources(logitune-core PRIVATE
     hidpp/HidrawDevice.cpp
     hidpp/Transport.cpp
     hidpp/FeatureDispatcher.cpp
-    hidpp/CommandQueue.cpp
+    hidpp/CommandProcessor.cpp
     hidpp/features/SmartShift.cpp
     hidpp/features/HiResWheel.cpp
     hidpp/features/ThumbWheel.cpp

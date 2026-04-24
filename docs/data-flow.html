@@ -116,7 +116,7 @@
 <div class="legend">
   <div class="legend-item"><div class="legend-dot" style="background:#00EAD0"></div> QML UI</div>
   <div class="legend-item"><div class="legend-dot" style="background:#814EFA"></div> Models (QML bridge)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#FA4E4E"></div> AppController</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FA4E4E"></div> AppRoot</div>
   <div class="legend-item"><div class="legend-dot" style="background:#4afa4a"></div> Profile Cache</div>
   <div class="legend-item"><div class="legend-dot" style="background:#888"></div> Core (DeviceManager)</div>
   <div class="legend-item"><div class="legend-dot" style="background:#faa614"></div> Hardware (HID++)</div>
@@ -140,12 +140,12 @@
 
 <div class="problem">
   <h4>Problem 1: DeviceModel → ProfileEngine (layering violation)</h4>
-  <p>DeviceModel (model layer) directly holds a ProfileEngine* (core layer). Models should not reach into core — AppController should mediate.</p>
+  <p>DeviceModel (model layer) directly holds a ProfileEngine* (core layer). Models should not reach into core — AppRoot should mediate.</p>
 </div>
 
 <div class="problem">
   <h4>Problem 2: Duplicate save paths</h4>
-  <p>DeviceModel.setDPI() calls saveProfileToDisk(). AppController.saveCurrentProfile() also calls saveProfileToDisk(). Two writers, same file, can clobber.</p>
+  <p>DeviceModel.setDPI() calls saveProfileToDisk(). AppRoot.saveCurrentProfile() also calls saveProfileToDisk(). Two writers, same file, can clobber.</p>
 </div>
 
 <div class="problem">
@@ -182,9 +182,9 @@
   <h3>Scenario 3: User switches profile tab</h3>
   <div class="step"><div class="step-num">1</div><div class="step-content"><span class="ui-op">Click "Chrome" tab</span> → <code>ProfileModel.setActiveByIndex(1)</code></div></div>
   <div class="step"><div class="step-num">2</div><div class="step-content">ProfileModel emits <span class="signal">profileSwitched("Google Chrome")</span></div></div>
-  <div class="step"><div class="step-num">3</div><div class="step-content">AppController.onTabSwitched → <span class="cache-op">ProfileEngine.setDisplayProfile("Google Chrome")</span></div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-content">AppRoot.onTabSwitched → <span class="cache-op">ProfileEngine.setDisplayProfile("Google Chrome")</span></div></div>
   <div class="step"><div class="step-num">4</div><div class="step-content">ProfileEngine emits <span class="signal">displayProfileChanged(profile)</span></div></div>
-  <div class="step"><div class="step-num">5</div><div class="step-content">AppController.onDisplayProfileChanged → updates ButtonModel labels ✓</div></div>
+  <div class="step"><div class="step-num">5</div><div class="step-content">AppRoot.onDisplayProfileChanged → updates ButtonModel labels ✓</div></div>
   <div class="step"><div class="step-num">6</div><div class="step-content"><span class="no">BUT: QML reads DPI/SmartShift from DeviceManager, not from the profile!</span></div></div>
   <div class="step"><div class="step-num">7</div><div class="step-content">UI shows hardware values, not Chrome profile's values</div></div>
 </div>
@@ -192,7 +192,7 @@
 <div class="scenario">
   <h3>Scenario 4: Window focus changes (e.g., switch to Chrome)</h3>
   <div class="step"><div class="step-num">1</div><div class="step-content"><span class="signal">activeWindowChanged("Google-chrome")</span></div></div>
-  <div class="step"><div class="step-num">2</div><div class="step-content">AppController.onWindowFocusChanged → looks up profile for "Google-chrome"</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-content">AppRoot.onWindowFocusChanged → looks up profile for "Google-chrome"</div></div>
   <div class="step"><div class="step-num">3</div><div class="step-content"><span class="cache-op">ProfileEngine.setHardwareProfile("Google Chrome")</span></div></div>
   <div class="step"><div class="step-num">4</div><div class="step-content"><span class="writes">applyProfileToHardware()</span> → setDPI, setSmartShift, setScrollConfig, setThumbWheelMode, divertButtons</div></div>
   <div class="step"><div class="step-num">5</div><div class="step-content"><span class="ui-op">Updates UI tab highlight</span> + <span class="cache-op">setDisplayProfile</span></div></div>
@@ -205,7 +205,7 @@
 
 <div class="correct">
   <h4>Remove ProfileEngine from DeviceModel</h4>
-  <p>DeviceModel emits signals. AppController handles cache + hardware + disk. Single save path.</p>
+  <p>DeviceModel emits signals. AppRoot handles cache + hardware + disk. Single save path.</p>
 </div>
 
 <div class="flow-row">
@@ -213,7 +213,7 @@
   <span class="arrow accent">→</span>
   <div class="node model"><h3>DeviceModel</h3><p>emit dpiChangeRequested(2400)</p></div>
   <span class="arrow accent">→</span>
-  <div class="node controller"><h3>AppController</h3><p>Single handler</p></div>
+  <div class="node controller"><h3>AppRoot</h3><p>Single handler</p></div>
 </div>
 <div class="arrow down accent">↓</div>
 <div class="flow-row">
@@ -231,25 +231,25 @@
   <tr>
     <td><code>dpiChangeRequested(int)</code></td>
     <td>DeviceModel</td>
-    <td>AppController</td>
+    <td>AppRoot</td>
     <td>cache.dpi = val → save → if display==hw: dm.setDPI()</td>
   </tr>
   <tr>
     <td><code>smartShiftChangeRequested(bool, int)</code></td>
     <td>DeviceModel</td>
-    <td>AppController</td>
+    <td>AppRoot</td>
     <td>cache.smartShift = val → save → if display==hw: dm.setSmartShift()</td>
   </tr>
   <tr>
     <td><code>scrollConfigChangeRequested(bool, bool)</code></td>
     <td>DeviceModel</td>
-    <td>AppController</td>
+    <td>AppRoot</td>
     <td>cache.scroll = val → save → if display==hw: dm.setScrollConfig()</td>
   </tr>
   <tr>
     <td><code>thumbWheelModeChangeRequested(QString)</code></td>
     <td>DeviceModel</td>
-    <td>AppController</td>
+    <td>AppRoot</td>
     <td>cache.thumbWheelMode = val → save → if display==hw: dm.setThumbWheelMode()</td>
   </tr>
 </table>
@@ -260,7 +260,7 @@
   <tr><th>Issue</th><th>Fix</th></tr>
   <tr>
     <td>DeviceModel getters read from DeviceManager (hardware)</td>
-    <td>When display != hardware, getters should read from the cached profile instead. AppController pushes profile values to DeviceModel on tab switch.</td>
+    <td>When display != hardware, getters should read from the cached profile instead. AppRoot pushes profile values to DeviceModel on tab switch.</td>
   </tr>
   <tr>
     <td>Dead code in ProfileEngine (switchToProfile, activeProfile, etc.)</td>
@@ -268,7 +268,7 @@
   </tr>
   <tr>
     <td>Duplicate saveProfileToDisk calls</td>
-    <td>Single save path in AppController only</td>
+    <td>Single save path in AppRoot only</td>
   </tr>
 </table>
 </div>

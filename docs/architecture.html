@@ -52,7 +52,7 @@
   <div class="stat"><div class="num">78</div><div class="label">Source Files</div></div>
   <div class="stat"><div class="num">133</div><div class="label">Tests Passing</div></div>
   <div class="stat"><div class="num">125</div><div class="label">main.cpp lines</div></div>
-  <div class="stat"><div class="num">463</div><div class="label">AppController lines</div></div>
+  <div class="stat"><div class="num">463</div><div class="label">AppRoot lines</div></div>
   <div class="stat"><div class="num">1008</div><div class="label">DeviceManager lines</div></div>
 </div>
 
@@ -125,11 +125,11 @@
 
   <div class="arrow">&darr; owned by</div>
 
-  <!-- AppController -->
+  <!-- AppRoot -->
   <div class="layer">
     <div class="layer-label">Orchestrator</div>
     <div class="box highlight" style="max-width: 100%;">
-      <h3>AppController &mdash; 463 lines</h3>
+      <h3>AppRoot &mdash; 463 lines</h3>
       <p>Owns all subsystems. All signal wiring, profile lifecycle, gesture dispatch, button divert orchestration, thumb wheel accumulation. No UI concerns, no raw HID.</p>
       <ul>
         <li class="active">onDeviceSetupComplete &mdash; profile bootstrap + restore</li>
@@ -256,7 +256,7 @@
     <span class="flow-arrow">&rarr;</span>
     <div class="flow-item">currentDPIChanged signal</div>
     <span class="flow-arrow">&rarr;</span>
-    <div class="flow-item">AppController.saveProfile()</div>
+    <div class="flow-item">AppRoot.saveProfile()</div>
   </div>
 </div>
 
@@ -269,7 +269,7 @@
     <span class="flow-arrow">&rarr;</span>
     <div class="flow-item">divertedButtonPressed signal</div>
     <span class="flow-arrow">&rarr;</span>
-    <div class="flow-item">AppController dispatch</div>
+    <div class="flow-item">AppRoot dispatch</div>
     <span class="flow-arrow">&rarr;</span>
     <div class="flow-item">UinputInjector.injectKeystroke()</div>
   </div>
@@ -315,8 +315,8 @@
     <p style="font-size: 13px; line-height: 1.8; padding: 8px;">
       1. Create <code>src/core/desktop/GnomeDesktop.cpp</code><br>
       2. Implement <code>IDesktopIntegration</code><br>
-      3. Add detection logic in <code>AppController::init()</code><br>
-      <strong style="color: #00EAD0;">One line change in AppController</strong>
+      3. Add detection logic in <code>AppRoot::init()</code><br>
+      <strong style="color: #00EAD0;">One line change in AppRoot</strong>
     </p>
   </div>
   <div class="layer">
@@ -324,8 +324,8 @@
     <p style="font-size: 13px; line-height: 1.8; padding: 8px;">
       1. Create <code>src/core/input/LibeiInjector.cpp</code><br>
       2. Implement <code>IInputInjector</code><br>
-      3. Select in <code>AppController::init()</code><br>
-      <strong style="color: #00EAD0;">One line change in AppController</strong>
+      3. Select in <code>AppRoot::init()</code><br>
+      <strong style="color: #00EAD0;">One line change in AppRoot</strong>
     </p>
   </div>
 </div>

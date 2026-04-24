@@ -3,7 +3,7 @@
 #include "hidpp/HidrawDevice.h"
 #include "hidpp/Transport.h"
 #include "hidpp/FeatureDispatcher.h"
-#include "hidpp/CommandQueue.h"
+#include "hidpp/CommandProcessor.h"
 #include "hidpp/capabilities/BatteryCapability.h"
 #include "hidpp/capabilities/SmartShiftCapability.h"
 #include "hidpp/capabilities/ReprogControlsCapability.h"
@@ -14,7 +14,7 @@
 #include <optional>
 #include <vector>
 
-namespace logitune::test { class AppControllerFixture; }
+namespace logitune::test { class AppRootFixture; }
 
 namespace logitune {
 
@@ -23,7 +23,7 @@ class IDevice;
 
 class DeviceSession : public QObject {
     Q_OBJECT
-    friend class test::AppControllerFixture;
+    friend class test::AppRootFixture;
 
 public:
     DeviceSession(std::unique_ptr<hidpp::HidrawDevice> device,
@@ -72,13 +72,13 @@ public:
 
     Q_INVOKABLE void cycleDpi();
 
-    // Setters (write to device via command queue)
+    // Setters (write to device via command processor)
     void setDPI(int value);
     void setSmartShift(bool enabled, int threshold);
     void setScrollConfig(bool hiRes, bool invert);
     void divertButton(uint16_t controlId, bool divert, bool rawXY = false);
     void setThumbWheelMode(const QString &mode, bool invert = false);
-    void flushCommandQueue();
+    void flushCommandProcessor();
     void touchResponseTime();
 
     // Notification handling (called by DeviceManager from hidraw notifier)
@@ -135,7 +135,7 @@ private:
     std::unique_ptr<hidpp::HidrawDevice> m_device;
     std::unique_ptr<hidpp::Transport> m_transport;
     std::unique_ptr<hidpp::FeatureDispatcher> m_features;
-    std::unique_ptr<hidpp::CommandQueue> m_commandQueue;
+    std::unique_ptr<hidpp::CommandProcessor> m_commandProcessor;
 
     std::optional<hidpp::capabilities::BatteryVariant>         m_batteryDispatch;
     std::optional<hidpp::capabilities::SmartShiftVariant>      m_smartShiftDispatch;

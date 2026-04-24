@@ -1,16 +1,16 @@
 #include <gtest/gtest.h>
-#include "helpers/AppControllerFixture.h"
+#include "helpers/AppRootFixture.h"
 #include "helpers/TestFixtures.h"
 
 using namespace logitune;
 using namespace logitune::test;
 
-TEST_F(AppControllerFixture, FirstConnectSetsDefaultProfile) {
+TEST_F(AppRootFixture, FirstConnectSetsDefaultProfile) {
     // Fresh controller — hw profile should be "default" after setup
     EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
-TEST_F(AppControllerFixture, ReconnectPreservesHwProfile) {
+TEST_F(AppRootFixture, ReconnectPreservesHwProfile) {
     createAppProfile("google-chrome", "Google Chrome", 2000, "zoom");
     focusApp("google-chrome");
     EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Google Chrome");
@@ -26,13 +26,13 @@ TEST_F(AppControllerFixture, ReconnectPreservesHwProfile) {
 }
 
 // A fresh ProfileEngine (before any setHardwareProfile call) has an empty hw profile.
-// This mirrors the state of AppController before device setup completes.
+// This mirrors the state of AppRoot before device setup completes.
 TEST(DeviceReconnect, HwProfileEmptyOnFirstConnect) {
     ProfileEngine engine;
     EXPECT_TRUE(engine.hardwareProfile(QStringLiteral("mock-serial")).isEmpty());
 }
 
-TEST_F(AppControllerFixture, ProfileDataIntactAcrossReconnect) {
+TEST_F(AppRootFixture, ProfileDataIntactAcrossReconnect) {
     createAppProfile("google-chrome", "Google Chrome");
     // Explicitly set dpi and thumbWheelMode in the cache (createAppProfile copies from default)
     profileEngine().cachedProfile(QStringLiteral("mock-serial"), "Google Chrome").dpi = 2000;
@@ -48,7 +48,7 @@ TEST_F(AppControllerFixture, ProfileDataIntactAcrossReconnect) {
     EXPECT_EQ(p.buttons[3].payload, "Alt+Left");
 }
 
-TEST_F(AppControllerFixture, ButtonDiversionsMatchHwProfile) {
+TEST_F(AppRootFixture, ButtonDiversionsMatchHwProfile) {
     createAppProfile("google-chrome", "Google Chrome");
     setProfileButton("Google Chrome", 3, {ButtonAction::Keystroke, "Alt+Left"});
     setProfileButton("Google Chrome", 4, {ButtonAction::Keystroke, "Alt+Right"});

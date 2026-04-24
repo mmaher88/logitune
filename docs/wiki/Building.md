@@ -140,7 +140,7 @@ logitune/
 │   │   │   ├── HidrawDevice.h  # Raw hidraw fd wrapper
 │   │   │   ├── Transport.h     # Send/receive with timeout + retry
 │   │   │   ├── FeatureDispatcher.h  # Feature table, call(), callAsync()
-│   │   │   ├── CommandQueue.h  # Paced sequential command sending
+│   │   │   ├── CommandProcessor.h  # Paced sequential command sending
 │   │   │   └── features/       # Per-feature param builders + parsers
 │   │   ├── devices/
 │   │   │   └── MxMaster3sDescriptor.cpp/h
@@ -160,7 +160,7 @@ logitune/
 │   └── app/                    # Static library: logitune-app-lib + executable
 │       ├── CMakeLists.txt
 │       ├── main.cpp            # Entry point, QML engine, tray
-│       ├── AppController.cpp/h # Main orchestrator
+│       ├── AppRoot.cpp/h # Main orchestrator
 │       ├── TrayManager.cpp/h
 │       ├── models/
 │       │   ├── DeviceModel.h   # QML-facing device state
@@ -183,7 +183,7 @@ logitune/
 │   ├── test_main.cpp           # GTest main with QCoreApplication
 │   ├── helpers/
 │   │   ├── TestFixtures.h      # ProfileFixture, ensureApp()
-│   │   └── AppControllerFixture.h  # Full integration test fixture
+│   │   └── AppRootFixture.h  # Full integration test fixture
 │   ├── mocks/
 │   │   ├── MockDesktop.h/cpp
 │   │   ├── MockTransport.h/cpp

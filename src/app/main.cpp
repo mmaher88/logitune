@@ -19,7 +19,7 @@
 #include <QDBusMessage>
 #include <QDBusVariant>
 
-#include "AppController.h"
+#include "AppRoot.h"
 #include "models/EditorModel.h"
 #include "logging/LogManager.h"
 #include "logging/CrashHandler.h"
@@ -169,8 +169,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    // AppController
-    logitune::AppController controller;
+    // AppRoot
+    logitune::AppRoot controller;
     controller.init();
 
     // QML engine

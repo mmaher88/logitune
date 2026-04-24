@@ -1,10 +1,10 @@
-#include "hidpp/CommandQueue.h"
+#include "hidpp/CommandProcessor.h"
 #include "logging/LogManager.h"
 #include <QThread>
 
 namespace logitune::hidpp {
 
-CommandQueue::CommandQueue(FeatureDispatcher *features, Transport *transport,
+CommandProcessor::CommandProcessor(FeatureDispatcher *features, Transport *transport,
                             uint8_t deviceIndex, QObject *parent)
     : QObject(parent)
     , m_features(features)
@@ -12,10 +12,10 @@ CommandQueue::CommandQueue(FeatureDispatcher *features, Transport *transport,
     , m_deviceIndex(deviceIndex)
 {
     m_timer.setSingleShot(true);
-    connect(&m_timer, &QTimer::timeout, this, &CommandQueue::processNext);
+    connect(&m_timer, &QTimer::timeout, this, &CommandProcessor::processNext);
 }
 
-void CommandQueue::enqueue(FeatureId feature, uint8_t functionId,
+void CommandProcessor::enqueue(FeatureId feature, uint8_t functionId,
                             std::span<const uint8_t> params,
                             FeatureDispatcher::ResponseCallback callback)
 {
@@ -31,31 +31,31 @@ void CommandQueue::enqueue(FeatureId feature, uint8_t functionId,
         m_timer.start(0);
 }
 
-void CommandQueue::clear()
+void CommandProcessor::clear()
 {
     std::queue<Command> empty;
     m_queue.swap(empty);
 }
 
-int CommandQueue::pending() const
+int CommandProcessor::pending() const
 {
     return static_cast<int>(m_queue.size());
 }
 
-void CommandQueue::start()
+void CommandProcessor::start()
 {
     m_running = true;
     if (!m_queue.empty())
         m_timer.start(0);
 }
 
-void CommandQueue::stop()
+void CommandProcessor::stop()
 {
     m_running = false;
     m_timer.stop();
 }
 
-void CommandQueue::processNext()
+void CommandProcessor::processNext()
 {
     if (!m_running || m_queue.empty())
         return;

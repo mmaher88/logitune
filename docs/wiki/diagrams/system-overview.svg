@@ -1,57 +1,196 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" width="800" font-family="ui-monospace, 'JetBrains Mono', monospace">
-  <rect x="0" y="0" width="800" height="560" fill="#0f172a"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 940" width="1200" height="940" font-family="ui-monospace, 'JetBrains Mono', monospace">
+  <rect x="0" y="0" width="1200" height="940" fill="#0f172a"/>
+
+  <!-- ============ Layer bands ============ -->
+  <!-- QML UI: 0-90 -->
+  <!-- App library: 90-330 (was 200, now 240 with 3 sub-bands) -->
+  <!-- Core library: 330-790 -->
+  <!-- Linux kernel: 790-870 -->
+  <!-- Hardware: 870-940 -->
+  <rect x="0" y="0"   width="1200" height="90"  fill="#ec4899" fill-opacity="0.08" stroke="#ec4899" stroke-width="1.5"/>
+  <rect x="0" y="90"  width="1200" height="240" fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-width="1.5"/>
+  <rect x="0" y="330" width="1200" height="460" fill="#10b981" fill-opacity="0.08" stroke="#10b981" stroke-width="1.5"/>
+  <rect x="0" y="790" width="1200" height="80"  fill="#8b5cf6" fill-opacity="0.08" stroke="#8b5cf6" stroke-width="1.5"/>
+  <rect x="0" y="870" width="1200" height="70"  fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="1.5"/>
+
+  <!-- ============ Layer labels ============ -->
   <g font-size="11" font-weight="700" letter-spacing="1.3" fill="#94a3b8">
-    <rect x="0"   y="0"   width="800" height="80"  fill="#ec4899" fill-opacity="0.08" stroke="#ec4899" stroke-width="1.5"/>
-    <rect x="0"   y="80"  width="800" height="80"  fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-width="1.5"/>
-    <rect x="0"   y="160" width="800" height="240" fill="#10b981" fill-opacity="0.08" stroke="#10b981" stroke-width="1.5"/>
-    <rect x="0"   y="400" width="800" height="80"  fill="#8b5cf6" fill-opacity="0.08" stroke="#8b5cf6" stroke-width="1.5"/>
-    <rect x="0"   y="480" width="800" height="80"  fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="1.5"/>
     <text x="14" y="20">QML UI</text>
-    <text x="14" y="100">APP LIBRARY &#8212; LOGITUNE-APP-LIB</text>
-    <text x="14" y="180">CORE LIBRARY &#8212; LOGITUNE-CORE</text>
-    <text x="14" y="420">LINUX KERNEL</text>
-    <text x="14" y="500">HARDWARE &#8212; DEVICES/*/DESCRIPTOR.JSON</text>
+    <text x="14" y="110">APP LIBRARY &#8212; LOGITUNE-APP-LIB</text>
+    <text x="14" y="350">CORE LIBRARY &#8212; LOGITUNE-CORE</text>
+    <text x="14" y="810">LINUX KERNEL</text>
+    <text x="14" y="890">HARDWARE &#8212; DEVICES/*/DESCRIPTOR.JSON</text>
   </g>
 
-  <g fill="#0f172a" stroke-width="1">
-    <rect x="150" y="28"  width="500" height="36" stroke="#ec4899" rx="4"/>
-    <rect x="60"  y="108" width="320" height="36" stroke="#3b82f6" rx="4"/>
-    <rect x="420" y="108" width="320" height="36" stroke="#3b82f6" rx="4"/>
-    <rect x="60"  y="212" width="220" height="32" stroke="#10b981" rx="4"/>
-    <rect x="300" y="212" width="200" height="32" stroke="#10b981" rx="4"/>
-    <rect x="520" y="212" width="220" height="32" stroke="#10b981" rx="4"/>
-    <rect x="140" y="282" width="240" height="32" stroke="#10b981" rx="4"/>
-    <rect x="420" y="282" width="240" height="32" stroke="#10b981" rx="4"/>
-    <rect x="140" y="352" width="240" height="32" stroke="#10b981" rx="4"/>
-    <rect x="420" y="352" width="240" height="32" stroke="#10b981" rx="4"/>
-    <rect x="40"  y="428" width="160" height="36" stroke="#8b5cf6" rx="4"/>
-    <rect x="220" y="428" width="160" height="36" stroke="#8b5cf6" rx="4"/>
-    <rect x="400" y="428" width="160" height="36" stroke="#8b5cf6" rx="4"/>
-    <rect x="580" y="428" width="180" height="36" stroke="#8b5cf6" rx="4"/>
-    <rect x="150" y="508" width="500" height="36" stroke="#f59e0b" rx="4"/>
-  </g>
-
+  <!-- ============ App sub-band labels ============ -->
   <g font-size="9" font-weight="700" letter-spacing="1.2" fill="#64748b">
-    <text x="14" y="206">INTEGRATION</text>
-    <text x="14" y="276">AGGREGATION</text>
-    <text x="14" y="346">PROTOCOL</text>
+    <text x="14" y="135">COMPOSITION ROOT</text>
+    <text x="14" y="180">VIEWMODELS</text>
+    <text x="14" y="265">SERVICES</text>
   </g>
 
-  <g font-size="12" text-anchor="middle" fill="#e2e8f0">
-    <text x="400" y="51">Main.qml + pages + components</text>
-    <text x="220" y="131">AppController</text>
-    <text x="580" y="131">Models + TrayManager</text>
-    <text x="170" y="232">Desktop integration</text>
-    <text x="400" y="232">UinputInjector</text>
-    <text x="630" y="232">ProfileEngine</text>
-    <text x="260" y="302">PhysicalDevice</text>
-    <text x="540" y="302">DeviceManager</text>
-    <text x="260" y="372">DeviceSession</text>
-    <text x="540" y="372">HID++ stack</text>
-    <text x="120" y="451">/dev/hidrawN</text>
-    <text x="300" y="451">libudev</text>
-    <text x="480" y="451">D-Bus</text>
-    <text x="670" y="451">/dev/uinput</text>
-    <text x="400" y="531">MX Master 3S / 4 / Anywhere / Vertical</text>
+  <!-- ============ App sub-band dividers ============ -->
+  <g stroke="#3b82f6" stroke-opacity="0.35" stroke-width="0.8" stroke-dasharray="3 3">
+    <line x1="0" y1="165" x2="1200" y2="165"/>
+    <line x1="0" y1="250" x2="1200" y2="250"/>
+  </g>
+
+  <!-- ============ Core sub-band labels ============ -->
+  <g font-size="9" font-weight="700" letter-spacing="1.2" fill="#64748b">
+    <text x="14" y="376">INTEGRATION</text>
+    <text x="14" y="496">DOMAIN</text>
+    <text x="14" y="596">AGGREGATION</text>
+    <text x="14" y="696">PROTOCOL</text>
+  </g>
+
+  <!-- ============ Core library faint sub-band dividers ============ -->
+  <g stroke="#10b981" stroke-opacity="0.35" stroke-width="0.8" stroke-dasharray="3 3">
+    <line x1="0" y1="480" x2="1200" y2="480"/>
+    <line x1="0" y1="580" x2="1200" y2="580"/>
+    <line x1="0" y1="680" x2="1200" y2="680"/>
+  </g>
+
+  <!-- ============ Block outlines ============ -->
+  <g fill="#0f172a" stroke-width="1">
+    <!-- QML UI -->
+    <rect x="30"   y="30" width="180" height="40" stroke="#ec4899" rx="4"/>
+    <rect x="225"  y="30" width="150" height="40" stroke="#ec4899" rx="4"/>
+    <rect x="390"  y="30" width="150" height="40" stroke="#ec4899" rx="4"/>
+    <rect x="555"  y="30" width="180" height="40" stroke="#ec4899" rx="4"/>
+    <rect x="750"  y="30" width="200" height="40" stroke="#ec4899" rx="4"/>
+    <rect x="965"  y="30" width="210" height="40" stroke="#ec4899" rx="4"/>
+
+    <!-- App / Composition Root: AppRoot (centered wide) -->
+    <rect x="140" y="120" width="920" height="36" stroke="#3b82f6" rx="4"/>
+
+    <!-- App / ViewModels: 7 models in one row + Shell at right (TrayManager, Dialogs stacked small) -->
+    <rect x="140" y="195" width="130" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="280" y="195" width="130" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="420" y="195" width="130" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="560" y="195" width="150" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="720" y="195" width="130" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="860" y="195" width="130" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="1000" y="195" width="110" height="36" stroke="#3b82f6" rx="4"/>
+    <!-- Shell strip (TrayManager + Dialogs on the right, slightly separated) -->
+    <rect x="1120" y="195" width="75" height="36" stroke="#3b82f6" stroke-opacity="0.55" rx="4"/>
+
+    <!-- App / Services: 4 services + TrayManager/Dialogs rolled together on right -->
+    <rect x="140" y="280" width="220" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="370" y="280" width="235" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="615" y="280" width="245" height="36" stroke="#3b82f6" rx="4"/>
+    <rect x="870" y="280" width="215" height="36" stroke="#3b82f6" rx="4"/>
+    <!-- Shell on services row right side (separate visual group) -->
+    <rect x="1095" y="280" width="100" height="36" stroke="#3b82f6" stroke-opacity="0.55" rx="4"/>
+
+    <!-- Core / Integration (6 boxes) -->
+    <rect x="140" y="400" width="160" height="36" stroke="#10b981" rx="4"/>
+    <rect x="310" y="400" width="135" height="36" stroke="#10b981" rx="4"/>
+    <rect x="455" y="400" width="135" height="36" stroke="#10b981" rx="4"/>
+    <rect x="600" y="400" width="140" height="36" stroke="#10b981" rx="4"/>
+    <rect x="750" y="400" width="150" height="36" stroke="#10b981" rx="4"/>
+    <rect x="910" y="400" width="170" height="36" stroke="#10b981" rx="4"/>
+    <!-- Desktop variants below KDeDesktop -->
+    <rect x="140" y="442" width="155" height="30" stroke="#10b981" stroke-opacity="0.6" rx="4"/>
+    <rect x="305" y="442" width="140" height="30" stroke="#10b981" stroke-opacity="0.6" rx="4"/>
+
+    <!-- Core / Domain -->
+    <rect x="140" y="510" width="220" height="40" stroke="#10b981" rx="4"/>
+    <rect x="375" y="510" width="220" height="40" stroke="#10b981" rx="4"/>
+
+    <!-- Core / Aggregation -->
+    <rect x="140" y="610" width="260" height="40" stroke="#10b981" rx="4"/>
+    <rect x="420" y="610" width="260" height="40" stroke="#10b981" rx="4"/>
+
+    <!-- Core / Protocol -->
+    <rect x="140" y="710" width="160" height="50" stroke="#10b981" rx="4"/>
+    <rect x="320" y="710" width="165" height="36" stroke="#10b981" rx="4"/>
+    <rect x="505" y="710" width="170" height="36" stroke="#10b981" rx="4"/>
+    <rect x="695" y="710" width="150" height="36" stroke="#10b981" rx="4"/>
+    <rect x="865" y="710" width="160" height="36" stroke="#10b981" rx="4"/>
+    <!-- Capabilities strip -->
+    <rect x="140" y="768" width="940" height="18" stroke="#10b981" stroke-opacity="0.45" rx="3"/>
+
+    <!-- Linux kernel -->
+    <rect x="80"  y="818" width="240" height="36" stroke="#8b5cf6" rx="4"/>
+    <rect x="340" y="818" width="200" height="36" stroke="#8b5cf6" rx="4"/>
+    <rect x="560" y="818" width="200" height="36" stroke="#8b5cf6" rx="4"/>
+    <rect x="780" y="818" width="340" height="36" stroke="#8b5cf6" rx="4"/>
+
+    <!-- Hardware -->
+    <rect x="260" y="898" width="680" height="30" stroke="#f59e0b" rx="4"/>
+  </g>
+
+  <!-- ============ Block text ============ -->
+  <g font-size="11" text-anchor="middle" fill="#e2e8f0">
+    <!-- QML UI -->
+    <text x="120" y="55">Main.qml (shell)</text>
+    <text x="300" y="55">HomeView</text>
+    <text x="465" y="55">DeviceView</text>
+    <text x="645" y="55">AppSettingsView</text>
+    <text x="850" y="55">Pages</text>
+    <text x="1070" y="55">Components</text>
+
+    <!-- App / Composition Root -->
+    <text x="600" y="144" font-weight="700" fill="#dbeafe">AppRoot (composition root, signal wiring, device lifecycle)</text>
+
+    <!-- App / ViewModels -->
+    <text x="205" y="218">DeviceModel</text>
+    <text x="345" y="218">ButtonModel</text>
+    <text x="485" y="218">ActionModel</text>
+    <text x="635" y="218">ActionFilterModel</text>
+    <text x="785" y="218">ProfileModel</text>
+    <text x="925" y="218">SettingsModel</text>
+    <text x="1055" y="218">EditorModel</text>
+    <text x="1157" y="211" font-size="9" fill="#bfdbfe">TrayManager</text>
+    <text x="1157" y="224" font-size="9" fill="#bfdbfe">Dialogs</text>
+
+    <!-- App / Services -->
+    <text x="250" y="303">ActiveDeviceResolver</text>
+    <text x="487" y="303">DeviceCommandHandler</text>
+    <text x="737" y="303">ButtonActionDispatcher</text>
+    <text x="977" y="303">ProfileOrchestrator</text>
+    <text x="1145" y="296" font-size="9" fill="#bfdbfe">Shell helpers</text>
+    <text x="1145" y="310" font-size="9" fill="#93c5fd">(tray, dialogs)</text>
+
+    <!-- Core / Integration -->
+    <text x="220" y="423">KDeDesktop</text>
+    <text x="377" y="423">UinputInjector</text>
+    <text x="522" y="423">ActionExecutor</text>
+    <text x="670" y="423">DeviceFetcher</text>
+    <text x="825" y="423">DescriptorWriter</text>
+    <text x="995" y="423">IDesktopIntegration</text>
+
+    <text x="217" y="462" font-size="10" fill="#cbd5e1">GnomeDesktop</text>
+    <text x="375" y="462" font-size="10" fill="#cbd5e1">GenericDesktop</text>
+
+    <!-- Core / Domain -->
+    <text x="250" y="535">ProfileEngine</text>
+    <text x="485" y="535">DeviceRegistry</text>
+
+    <!-- Core / Aggregation -->
+    <text x="270" y="635">PhysicalDevice</text>
+    <text x="270" y="648" font-size="9" fill="#94a3b8">(transport aggregation)</text>
+    <text x="550" y="635">DeviceManager</text>
+    <text x="550" y="648" font-size="9" fill="#94a3b8">(hidraw enum + udev)</text>
+
+    <!-- Core / Protocol -->
+    <text x="220" y="731">DeviceSession</text>
+    <text x="220" y="749" font-size="9" fill="#94a3b8">HID++ setter API</text>
+    <text x="402" y="733">CommandProcessor</text>
+    <text x="590" y="733">FeatureDispatcher</text>
+    <text x="770" y="733">Transport</text>
+    <text x="945" y="733">HidrawDevice</text>
+
+    <!-- Capabilities strip text -->
+    <text x="610" y="781" font-size="9" text-anchor="middle" fill="#94a3b8">HID++ feature capabilities: Battery, SmartShift, AdjustableDPI, DeviceName, GestureV2, HiResWheel, ReprogControls, ThumbWheel</text>
+
+    <!-- Linux kernel -->
+    <text x="200" y="841">/dev/hidrawN</text>
+    <text x="440" y="841">libudev</text>
+    <text x="660" y="841">D-Bus</text>
+    <text x="950" y="841">/dev/uinput</text>
+
+    <!-- Hardware -->
+    <text x="600" y="918">MX Master 3S / 4 / Anywhere / Vertical</text>
   </g>
 </svg>

@@ -1,6 +1,6 @@
-# ── Static library: models + AppController + QML module (linkable from tests) ─
+# ── Static library: models + AppRoot + QML module (linkable from tests) ─
 add_library(logitune-app-lib STATIC
-    AppController.cpp
+    AppRoot.cpp
     models/DeviceModel.cpp
     models/SettingsModel.cpp
     models/ButtonModel.cpp
@@ -8,6 +8,10 @@ add_library(logitune-app-lib STATIC
     models/ActionModel.cpp
     models/ProfileModel.cpp
     models/EditorModel.cpp
+    services/ActiveDeviceResolver.cpp
+    services/DeviceCommandHandler.cpp
+    services/ButtonActionDispatcher.cpp
+    services/ProfileOrchestrator.cpp
     dialogs/GitHubIssueBuilder.cpp
     dialogs/CrashReportDialog.cpp
     TrayManager.cpp
@@ -16,6 +20,7 @@ add_library(logitune-app-lib STATIC
 target_include_directories(logitune-app-lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/models
+    ${CMAKE_CURRENT_SOURCE_DIR}/services
 )
 
 target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widgets)

@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "helpers/AppControllerFixture.h"
+#include "helpers/AppRootFixture.h"
 
 using namespace logitune;
 using namespace logitune::test;
@@ -8,7 +8,7 @@ using namespace logitune::test;
 // Smoke
 // =============================================================================
 
-TEST_F(AppControllerFixture, Smoke) {
+TEST_F(AppRootFixture, Smoke) {
     EXPECT_NE(m_ctrl.get(), nullptr);
     EXPECT_EQ(profileEngine().displayProfile(QStringLiteral("mock-serial")), "default");
     EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
@@ -18,7 +18,7 @@ TEST_F(AppControllerFixture, Smoke) {
 // Focus / Profile switching tests
 // =============================================================================
 
-TEST_F(AppControllerFixture, FocusAppWithProfileSwitchesHardware) {
+TEST_F(AppRootFixture, FocusAppWithProfileSwitchesHardware) {
     createAppProfile("google-chrome", "Chrome", 1600);
     setProfileButton("Chrome", 3, {ButtonAction::Keystroke, "Alt+Left"});
 
@@ -27,14 +27,14 @@ TEST_F(AppControllerFixture, FocusAppWithProfileSwitchesHardware) {
     EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Chrome");
 }
 
-TEST_F(AppControllerFixture, FocusAppWithoutProfileSwitchesToDefault) {
+TEST_F(AppRootFixture, FocusAppWithoutProfileSwitchesToDefault) {
     // No profile for "firefox" — should stay on default
     focusApp("firefox");
 
     EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
-TEST_F(AppControllerFixture, FocusSameAppTwiceNoDoubleApply) {
+TEST_F(AppRootFixture, FocusSameAppTwiceNoDoubleApply) {
     createAppProfile("google-chrome", "Chrome", 1600);
 
     focusApp("google-chrome");
@@ -46,7 +46,7 @@ TEST_F(AppControllerFixture, FocusSameAppTwiceNoDoubleApply) {
     EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Chrome");
 }
 
-TEST_F(AppControllerFixture, DesktopComponentsFiltered) {
+TEST_F(AppRootFixture, DesktopComponentsFiltered) {
     createAppProfile("org.kde.plasmashell", "Plasma");
 
     focusApp("org.kde.plasmashell");
@@ -55,13 +55,13 @@ TEST_F(AppControllerFixture, DesktopComponentsFiltered) {
     EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
-TEST_F(AppControllerFixture, KwinWaylandFiltered) {
+TEST_F(AppRootFixture, KwinWaylandFiltered) {
     focusApp("kwin_wayland");
 
     EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
-TEST_F(AppControllerFixture, FocusUpdatesHwIndicator) {
+TEST_F(AppRootFixture, FocusUpdatesHwIndicator) {
     createAppProfile("google-chrome", "Chrome");
 
     focusApp("google-chrome");
@@ -75,7 +75,7 @@ TEST_F(AppControllerFixture, FocusUpdatesHwIndicator) {
     EXPECT_FALSE(profileModel().data(defIdx, ProfileModel::IsHwActiveRole).toBool());
 }
 
-TEST_F(AppControllerFixture, TabSwitchChangesDisplayNotHardware) {
+TEST_F(AppRootFixture, TabSwitchChangesDisplayNotHardware) {
     createAppProfile("google-chrome", "Chrome", 1600);
 
     // Focus Chrome so hardware is on Chrome
@@ -90,7 +90,7 @@ TEST_F(AppControllerFixture, TabSwitchChangesDisplayNotHardware) {
     EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Chrome");
 }
 
-TEST_F(AppControllerFixture, TabSwitchPushesDisplayValues) {
+TEST_F(AppRootFixture, TabSwitchPushesDisplayValues) {
     createAppProfile("google-chrome", "Chrome", 1600);
 
     // Focus Chrome so hardware is on Chrome
@@ -103,7 +103,7 @@ TEST_F(AppControllerFixture, TabSwitchPushesDisplayValues) {
     EXPECT_EQ(deviceModel().currentDPI(), 1000);
 }
 
-TEST_F(AppControllerFixture, SettingsSaveToDisplayedProfile) {
+TEST_F(AppRootFixture, SettingsSaveToDisplayedProfile) {
     createAppProfile("google-chrome", "Chrome", 1600);
 
     // Display Chrome profile
@@ -123,7 +123,7 @@ TEST_F(AppControllerFixture, SettingsSaveToDisplayedProfile) {
     EXPECT_EQ(buttonModel().actionTypeForButton(3), "keystroke");
 }
 
-TEST_F(AppControllerFixture, SettingsDontSaveToOtherProfile) {
+TEST_F(AppRootFixture, SettingsDontSaveToOtherProfile) {
     createAppProfile("google-chrome", "Chrome", 1600);
     setProfileButton("Chrome", 3, {ButtonAction::Keystroke, "Alt+Left"});
 
@@ -146,7 +146,7 @@ TEST_F(AppControllerFixture, SettingsDontSaveToOtherProfile) {
 // Action dispatch tests
 // =============================================================================
 
-TEST_F(AppControllerFixture, KeystrokeDispatchReadsHardwareProfile) {
+TEST_F(AppRootFixture, KeystrokeDispatchReadsHardwareProfile) {
     // Set button 3 (CID 0x53) to a keystroke on default profile
     setProfileButton("default", 3, {ButtonAction::Keystroke, "Ctrl+C"});
 
@@ -157,7 +157,7 @@ TEST_F(AppControllerFixture, KeystrokeDispatchReadsHardwareProfile) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Ctrl+C");
 }
 
-TEST_F(AppControllerFixture, DispatchReadsHwNotDisplayProfile) {
+TEST_F(AppRootFixture, DispatchReadsHwNotDisplayProfile) {
     // Set up Chrome profile with a keystroke on button 3
     createAppProfile("google-chrome", "Chrome", 1600);
     setProfileButton("Chrome", 3, {ButtonAction::Keystroke, "Alt+Left"});
@@ -177,7 +177,7 @@ TEST_F(AppControllerFixture, DispatchReadsHwNotDisplayProfile) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Alt+Left");
 }
 
-TEST_F(AppControllerFixture, DefaultButtonNotDispatched) {
+TEST_F(AppRootFixture, DefaultButtonNotDispatched) {
     // Button 3 is Default type by default — pressing it should not dispatch anything
     pressButton(0x53);
 
@@ -185,7 +185,7 @@ TEST_F(AppControllerFixture, DefaultButtonNotDispatched) {
     EXPECT_FALSE(m_injector->hasCalled("launchApp"));
 }
 
-TEST_F(AppControllerFixture, SmartShiftToggleDoesNotInjectKeystroke) {
+TEST_F(AppRootFixture, SmartShiftToggleDoesNotInjectKeystroke) {
     setProfileButton("default", 3, {ButtonAction::SmartShiftToggle, ""});
 
     pressButton(0x53);
@@ -194,7 +194,7 @@ TEST_F(AppControllerFixture, SmartShiftToggleDoesNotInjectKeystroke) {
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
 
-TEST_F(AppControllerFixture, AppLaunchDispatches) {
+TEST_F(AppRootFixture, AppLaunchDispatches) {
     setProfileButton("default", 3, {ButtonAction::AppLaunch, "firefox"});
 
     pressButton(0x53);
@@ -203,7 +203,7 @@ TEST_F(AppControllerFixture, AppLaunchDispatches) {
     EXPECT_EQ(m_injector->lastArg("launchApp"), "firefox");
 }
 
-TEST_F(AppControllerFixture, EmptyPayloadNotDispatched) {
+TEST_F(AppRootFixture, EmptyPayloadNotDispatched) {
     // Set a keystroke action with empty payload — should not dispatch
     setProfileButton("default", 3, {ButtonAction::Keystroke, ""});
 
@@ -216,7 +216,7 @@ TEST_F(AppControllerFixture, EmptyPayloadNotDispatched) {
 // Gesture tests
 // =============================================================================
 
-TEST_F(AppControllerFixture, GestureRightDetected) {
+TEST_F(AppRootFixture, GestureRightDetected) {
     setProfileGesture("default", "right", "Ctrl+Super+Right");
 
     // Activate gesture: press gesture button (CID 0xC3)
@@ -235,7 +235,7 @@ TEST_F(AppControllerFixture, GestureRightDetected) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Ctrl+Super+Right");
 }
 
-TEST_F(AppControllerFixture, GestureLeftDetected) {
+TEST_F(AppRootFixture, GestureLeftDetected) {
     setProfileGesture("default", "left", "Ctrl+Super+Left");
     setProfileButton("default", 5, {ButtonAction::GestureTrigger, ""});
 
@@ -247,7 +247,7 @@ TEST_F(AppControllerFixture, GestureLeftDetected) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Ctrl+Super+Left");
 }
 
-TEST_F(AppControllerFixture, GestureDownDetected) {
+TEST_F(AppRootFixture, GestureDownDetected) {
     setProfileGesture("default", "down", "Super+D");
     setProfileButton("default", 5, {ButtonAction::GestureTrigger, ""});
 
@@ -259,7 +259,7 @@ TEST_F(AppControllerFixture, GestureDownDetected) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Super+D");
 }
 
-TEST_F(AppControllerFixture, GestureUpDetected) {
+TEST_F(AppRootFixture, GestureUpDetected) {
     setProfileGesture("default", "up", "Super+Up");
     setProfileButton("default", 5, {ButtonAction::GestureTrigger, ""});
 
@@ -271,7 +271,7 @@ TEST_F(AppControllerFixture, GestureUpDetected) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Super+Up");
 }
 
-TEST_F(AppControllerFixture, GestureClickDetected) {
+TEST_F(AppRootFixture, GestureClickDetected) {
     setProfileGesture("default", "click", "Super+W");
     setProfileButton("default", 5, {ButtonAction::GestureTrigger, ""});
 
@@ -283,7 +283,7 @@ TEST_F(AppControllerFixture, GestureClickDetected) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Super+W");
 }
 
-TEST_F(AppControllerFixture, GestureOnlyResolvesOnGestureButtonRelease) {
+TEST_F(AppRootFixture, GestureOnlyResolvesOnGestureButtonRelease) {
     setProfileGesture("default", "right", "Ctrl+Super+Right");
     setProfileButton("default", 5, {ButtonAction::GestureTrigger, ""});
 
@@ -302,7 +302,7 @@ TEST_F(AppControllerFixture, GestureOnlyResolvesOnGestureButtonRelease) {
     EXPECT_FALSE(gestureActive());
 }
 
-TEST_F(AppControllerFixture, GestureUsesHardwareProfileGestures) {
+TEST_F(AppRootFixture, GestureUsesHardwareProfileGestures) {
     // Chrome has a different gesture for "right"
     createAppProfile("google-chrome", "Chrome");
     setProfileButton("Chrome", 5, {ButtonAction::GestureTrigger, ""});
@@ -333,7 +333,7 @@ TEST_F(AppControllerFixture, GestureUsesHardwareProfileGestures) {
 // Thumb wheel tests
 // =============================================================================
 
-TEST_F(AppControllerFixture, ThumbWheelVolumeForwardIsUp) {
+TEST_F(AppRootFixture, ThumbWheelVolumeForwardIsUp) {
     setThumbWheelMode("volume");
 
     thumbWheel(20);
@@ -342,7 +342,7 @@ TEST_F(AppControllerFixture, ThumbWheelVolumeForwardIsUp) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "VolumeUp");
 }
 
-TEST_F(AppControllerFixture, ThumbWheelVolumeBackwardIsDown) {
+TEST_F(AppRootFixture, ThumbWheelVolumeBackwardIsDown) {
     setThumbWheelMode("volume");
 
     thumbWheel(-20);
@@ -351,7 +351,7 @@ TEST_F(AppControllerFixture, ThumbWheelVolumeBackwardIsDown) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "VolumeDown");
 }
 
-TEST_F(AppControllerFixture, ThumbWheelZoomForward) {
+TEST_F(AppRootFixture, ThumbWheelZoomForward) {
     setThumbWheelMode("zoom");
 
     // Positive delta (clockwise) in zoom mode -> zoom in (ctrlscroll +1)
@@ -361,7 +361,7 @@ TEST_F(AppControllerFixture, ThumbWheelZoomForward) {
     EXPECT_EQ(m_injector->lastArg("injectCtrlScroll"), "1");
 }
 
-TEST_F(AppControllerFixture, ThumbWheelScrollModeNoDispatch) {
+TEST_F(AppRootFixture, ThumbWheelScrollModeNoDispatch) {
     // Default mode is "scroll" — no injection should occur
     setThumbWheelMode("scroll");
 
@@ -371,7 +371,7 @@ TEST_F(AppControllerFixture, ThumbWheelScrollModeNoDispatch) {
     EXPECT_FALSE(m_injector->hasCalled("injectCtrlScroll"));
 }
 
-TEST_F(AppControllerFixture, ThumbWheelBelowThresholdNoDispatch) {
+TEST_F(AppRootFixture, ThumbWheelBelowThresholdNoDispatch) {
     setThumbWheelMode("volume");
 
     // kThumbThreshold is 15; delta of 5 should not trigger
@@ -384,7 +384,7 @@ TEST_F(AppControllerFixture, ThumbWheelBelowThresholdNoDispatch) {
 // Media controls tests
 // =============================================================================
 
-TEST_F(AppControllerFixture, MediaPlayPauseInjectsPlay) {
+TEST_F(AppRootFixture, MediaPlayPauseInjectsPlay) {
     setProfileButton("default", 3, {ButtonAction::Media, "Play"});
 
     pressButton(0x53);
@@ -393,7 +393,7 @@ TEST_F(AppControllerFixture, MediaPlayPauseInjectsPlay) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Play");
 }
 
-TEST_F(AppControllerFixture, MediaNextTrackInjectsNext) {
+TEST_F(AppRootFixture, MediaNextTrackInjectsNext) {
     setProfileButton("default", 3, {ButtonAction::Media, "Next"});
 
     pressButton(0x53);
@@ -402,7 +402,7 @@ TEST_F(AppControllerFixture, MediaNextTrackInjectsNext) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Next");
 }
 
-TEST_F(AppControllerFixture, MediaMuteInjectsMute) {
+TEST_F(AppRootFixture, MediaMuteInjectsMute) {
     setProfileButton("default", 3, {ButtonAction::Media, "Mute"});
 
     pressButton(0x53);
@@ -411,7 +411,7 @@ TEST_F(AppControllerFixture, MediaMuteInjectsMute) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Mute");
 }
 
-TEST_F(AppControllerFixture, MediaVolumeDownInjectsVolumeDown) {
+TEST_F(AppRootFixture, MediaVolumeDownInjectsVolumeDown) {
     setProfileButton("default", 3, {ButtonAction::Media, "VolumeDown"});
 
     pressButton(0x53);
@@ -420,7 +420,7 @@ TEST_F(AppControllerFixture, MediaVolumeDownInjectsVolumeDown) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "VolumeDown");
 }
 
-TEST_F(AppControllerFixture, MediaActionPerProfileSwitching) {
+TEST_F(AppRootFixture, MediaActionPerProfileSwitching) {
     // Default profile: button 3 = Play/Pause
     setProfileButton("default", 3, {ButtonAction::Media, "Play"});
 
@@ -436,7 +436,7 @@ TEST_F(AppControllerFixture, MediaActionPerProfileSwitching) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Next");
 }
 
-TEST_F(AppControllerFixture, CarouselSwitchSwapsButtonModel) {
+TEST_F(AppRootFixture, CarouselSwitchSwapsButtonModel) {
     // Fixture's primary device "mock-serial" is selected (index 0). Set
     // its button 3 to a distinctive action.
     setProfileButton("default", 3,
@@ -468,7 +468,7 @@ TEST_F(AppControllerFixture, CarouselSwitchSwapsButtonModel) {
               QStringLiteral("media-controls"));
 }
 
-TEST_F(AppControllerFixture, CarouselSwitchSwapsDisplayValues) {
+TEST_F(AppRootFixture, CarouselSwitchSwapsDisplayValues) {
     // Fixture primary has DPI 1000 (seeded in SetUp).
     deviceModel().setSelectedIndex(0);
     EXPECT_EQ(deviceModel().currentDPI(), 1000);
@@ -484,7 +484,7 @@ TEST_F(AppControllerFixture, CarouselSwitchSwapsDisplayValues) {
     EXPECT_EQ(deviceModel().currentDPI(), 1000);
 }
 
-TEST_F(AppControllerFixture, DisplayProfileChangedIgnoredForNonSelectedDevice) {
+TEST_F(AppRootFixture, DisplayProfileChangedIgnoredForNonSelectedDevice) {
     deviceModel().setSelectedIndex(0);
     EXPECT_EQ(deviceModel().currentDPI(), 1000);
 

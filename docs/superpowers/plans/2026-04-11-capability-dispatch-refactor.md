@@ -833,7 +833,7 @@ Replace `#include <memory>` area to also include `<optional>`:
 Then add the dispatch members after the `m_commandQueue` member (around line 152):
 
 ```cpp
-    std::unique_ptr<hidpp::CommandQueue> m_commandQueue;
+    std::unique_ptr<hidpp::CommandProcessor> m_commandQueue;
 
     // Resolved capability dispatches — set once at enumerateAndSetup
     std::optional<hidpp::capabilities::BatteryVariant>    m_batteryDispatch;

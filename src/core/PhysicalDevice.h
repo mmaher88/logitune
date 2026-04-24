@@ -78,7 +78,7 @@ signals:
     void stateChanged();
 
     // Fires on setupComplete from any transport (fresh enumerate or
-    // reconnect re-enumerate). AppController hooks this to re-apply
+    // reconnect re-enumerate). AppRoot hooks this to re-apply
     // the current profile after reconnects.
     void transportSetupComplete();
 
