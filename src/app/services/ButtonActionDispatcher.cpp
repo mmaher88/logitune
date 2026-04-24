@@ -131,16 +131,7 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
                              << "not resolvable on" << m_desktop->variantKey();
             return;
         }
-        if (resolved->type == ButtonAction::Keystroke || resolved->type == ButtonAction::Media) {
-            m_actionExecutor->injectKeystroke(resolved->payload);
-        } else if (resolved->type == ButtonAction::DBus) {
-            m_actionExecutor->executeDBusCall(resolved->payload);
-        } else if (resolved->type == ButtonAction::AppLaunch) {
-            m_actionExecutor->launchApp(resolved->payload);
-        } else {
-            qCWarning(lcApp) << "preset" << ba.payload
-                             << "resolved to unsupported type" << resolved->type;
-        }
+        m_actionExecutor->executeAction(*resolved);
     }
 }
 

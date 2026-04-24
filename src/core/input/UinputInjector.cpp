@@ -1,4 +1,5 @@
 #include "input/UinputInjector.h"
+#include "ActionExecutor.h"
 #include "logging/LogManager.h"
 
 #include <QProcess>
@@ -183,16 +184,15 @@ void UinputInjector::injectHorizontalScroll(int direction)
 
 void UinputInjector::sendDBusCall(const QString &spec)
 {
-    const QStringList parts = spec.split(QLatin1Char(','));
-    if (parts.size() < 4 || parts.size() > 5)
+    const DBusCall call = ActionExecutor::parseDBusAction(spec);
+    if (call.method.isEmpty())
         return;
 
     QDBusMessage msg = QDBusMessage::createMethodCall(
-        parts[0].trimmed(), parts[1].trimmed(),
-        parts[2].trimmed(), parts[3].trimmed());
+        call.service, call.path, call.interface, call.method);
 
-    if (parts.size() == 5 && !parts[4].trimmed().isEmpty())
-        msg.setArguments({ parts[4].trimmed() });
+    if (!call.arg.isEmpty())
+        msg.setArguments({ call.arg });
 
     QDBusConnection::sessionBus().send(msg);
 }

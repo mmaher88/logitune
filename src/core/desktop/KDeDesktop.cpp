@@ -217,7 +217,10 @@ std::optional<ButtonAction> KDeDesktop::resolveNamedAction(const QString &id) co
         return std::nullopt;
 
     // kglobalaccel: invoke a named action by DBus. Encoded as a five-field
-    // payload: service,path,interface,method,arg
+    // comma-separated payload: service,path,interface,method,arg
+    // The DBus fields cannot contain commas by construction; the action name
+    // (arg) must not contain commas either (no escape is supported). Every
+    // kglobalaccel action we ship is comma-free.
     if (variant.contains(QStringLiteral("kglobalaccel"))) {
         const QJsonObject spec = variant.value(QStringLiteral("kglobalaccel")).toObject();
         const QString component = spec.value(QStringLiteral("component")).toString();
