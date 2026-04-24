@@ -352,7 +352,19 @@ This enables future optimizations where only changed settings are sent to hardwa
 
 Logitune uses a Model-View-ViewModel pattern where C++ models serve as the ViewModel layer between QML views and core logic.
 
-Services do not all sit in the same MVVM stratum. `DeviceSelection` is a VM-side query helper, `DeviceCommands` bridges VM intent to Model operations, `ButtonActionDispatcher` is Model-side (reacts to hardware events), and `ProfileOrchestrator` is a coordinator that spans the whole stack. The diagram splits these visually.
+The four services split into **translators** and **a coordinator**.
+
+**Translators** do one focused conversion each and do not own multi-step flows:
+- `DeviceSelection` — converts ViewModel state (selected index + device list) into a resolved active device pointer
+- `DeviceCommands` — converts ViewModel intent (UI slider drag, toggle click) into Model operations (`DeviceSession::setDPI`, etc.)
+- `ButtonActionDispatcher` — converts hardware events (button press, thumb wheel rotation) into domain actions (keystroke injection, app launch)
+
+**Coordinator** — `ProfileOrchestrator` owns a multi-step workflow that reads and writes across both layers. `onWindowFocusChanged` alone does: ViewModel write (active wmClass), Model read (profile-for-app lookup), Model write (set hardware profile), Model command fan-out (apply DPI / SmartShift / scroll / buttons to session), cross-service signal emission (`profileApplied` to dispatcher), ViewModel write (hardware-active profile name). Seven steps spanning both layers per user window-focus change. That is coordination, not translation — which is why it warrants the MVVM-C "Coordinator" role rather than fitting into the same VM-to-Model bridge category as the translators.
+
+Telling signals that something is a coordinator, not a translator:
+- Holds pointers to many dependencies (8 on `ProfileOrchestrator`; 1-3 on each translator)
+- Owns workflow entry points (`onWindowFocusChanged`, `onUserButtonChanged`, `onTabSwitched`) rather than single-responsibility translators
+- Writes to both ViewModels and Model in the same method
 
 ```mermaid
 graph LR
