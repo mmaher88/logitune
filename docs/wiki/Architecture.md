@@ -363,10 +363,10 @@ graph LR
     end
 
     subgraph "ViewModel (C++ Models)"
-        DM[DeviceModel<br/>QObject singleton]
-        BM[ButtonModel<br/>QAbstractListModel]
-        AM[ActionModel<br/>QAbstractListModel]
-        PM[ProfileModel<br/>QAbstractListModel]
+        DM[DeviceModel]
+        BM[ButtonModel]
+        AM[ActionModel]
+        PM[ProfileModel]
     end
 
     subgraph "Services"
@@ -390,7 +390,7 @@ graph LR
     Settings --> DM
     ProfileBar --> PM
 
-    DM -->|*ChangeRequested| DCmd
+    DM -->|ChangeRequested| DCmd
     BM -->|userActionChanged| PO
     PM -->|profileSwitched| PO
     DSel --> DM
@@ -402,6 +402,16 @@ graph LR
     PO --> DSel
     PO --> PE
     PO --> AE
+
+    classDef view fill:#831843,stroke:#f472b6,color:#fce7f3
+    classDef vm fill:#1e3a8a,stroke:#60a5fa,color:#dbeafe
+    classDef service fill:#064e3b,stroke:#34d399,color:#d1fae5
+    classDef core fill:#78350f,stroke:#fbbf24,color:#fef3c7
+
+    class PointScroll,Buttons,EasySwitch,Settings,ProfileBar view
+    class DM,BM,AM,PM vm
+    class DSel,DCmd,BAD,PO service
+    class DMgr,PE,AE core
 ```
 
 ### Model Roles
