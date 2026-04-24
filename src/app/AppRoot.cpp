@@ -53,8 +53,15 @@ AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject
 {
     m_actionExecutor.setInjector(m_injector);
 
-    m_actionFilterModel = std::make_unique<ActionFilterModel>(&m_deviceModel, this);
+    m_presetRegistry.loadFromResource();
+    m_actionFilterModel = std::make_unique<ActionFilterModel>(
+        &m_deviceModel, m_desktop, &m_presetRegistry, this);
     m_actionFilterModel->setSourceModel(&m_actionModel);
+
+    if (auto *kde = dynamic_cast<KDeDesktop *>(m_desktop))
+        kde->setPresetRegistry(&m_presetRegistry);
+    if (auto *gnome = dynamic_cast<GnomeDesktop *>(m_desktop))
+        gnome->setPresetRegistry(&m_presetRegistry);
 }
 
 AppRoot::~AppRoot() = default;

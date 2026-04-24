@@ -3,6 +3,7 @@
 #include "DeviceManager.h"
 #include "PhysicalDevice.h"
 #include "DeviceRegistry.h"
+#include "actions/ActionPresetRegistry.h"
 #include "interfaces/IDesktopIntegration.h"
 #include "interfaces/IInputInjector.h"
 #include "ProfileEngine.h"
@@ -89,6 +90,7 @@ private:
     IInputInjector      *m_injector = nullptr;
 
     DeviceRegistry m_registry;
+    ActionPresetRegistry m_presetRegistry;
     DeviceManager  m_deviceManager;
     DeviceFetcher  m_deviceFetcher;
     DeviceModel    m_deviceModel;

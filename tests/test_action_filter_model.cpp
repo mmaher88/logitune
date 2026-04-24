@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "actions/ActionPresetRegistry.h"
+#include "interfaces/IDesktopIntegration.h"
+#include "mocks/MockDesktop.h"
 #include "mocks/MockDevice.h"
 #include "models/ActionModel.h"
 #include "models/ActionFilterModel.h"
@@ -147,4 +150,56 @@ TEST(ActionFilterModel, UnrestrictedActionsAlwaysVisible) {
     EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Paste")), 1);
     EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Do nothing")), 1);
     EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Media controls")), 1);
+}
+
+// ---------------------------------------------------------------------------
+// Preset filtering by DE variant key
+// ---------------------------------------------------------------------------
+
+TEST(ActionFilterModel, HidesPresetUnsupportedByVariantKey) {
+    ActionModel src;
+    DeviceModel dev;
+
+    ActionPresetRegistry reg;
+    reg.loadFromJson(R"([
+        { "id": "show-desktop", "label": "Show Desktop",
+          "variants": { "kde": {"kglobalaccel": {"component": "kwin", "name": "X"}} } }
+    ])");
+
+    MockDesktop desktop;
+    desktop.setVariantKey("gnome");
+
+    ActionFilterModel filter(&dev, &desktop, &reg);
+    filter.setSourceModel(&src);
+
+    EXPECT_EQ(proxyCountByName(filter, QStringLiteral("Show desktop")), 0);
+}
+
+TEST(ActionFilterModel, ShowsPresetSupportedByVariantKey) {
+    ActionModel src;
+    DeviceModel dev;
+
+    ActionPresetRegistry reg;
+    reg.loadFromJson(R"([
+        { "id": "show-desktop", "label": "Show Desktop",
+          "variants": { "kde": {"kglobalaccel": {"component": "kwin", "name": "X"}} } }
+    ])");
+
+    MockDesktop desktop;
+    desktop.setVariantKey("kde");
+
+    ActionFilterModel filter(&dev, &desktop, &reg);
+    filter.setSourceModel(&src);
+
+    EXPECT_EQ(proxyCountByName(filter, QStringLiteral("Show desktop")), 1);
+}
+
+TEST(ActionFilterModel, ShowsPresetWhenDesktopOrRegistryIsNull) {
+    // Back-compat: null desktop or registry means "accept all" (startup race)
+    ActionModel src;
+    DeviceModel dev;
+    ActionFilterModel filter(&dev, nullptr, nullptr);
+    filter.setSourceModel(&src);
+
+    EXPECT_EQ(proxyCountByName(filter, QStringLiteral("Show desktop")), 1);
 }
