@@ -1109,7 +1109,9 @@ The wiring falls into three groups:
 
 Each row is a single signal-to-slot connection wired either in `AppRoot::wireSignals()` or in `AppRoot::onPhysicalDeviceAdded()`. Where one signal lands in a lambda that has two distinct effects (the `*ChangeRequested` fan-outs), each effect gets its own row so both the cache-update path and the hardware-forward path are visible.
 
-Rows are ordered by group: **a** = startup wiring in `wireSignals()`, **b** = cross-service signal chains wired at startup, **c** = per-device runtime wiring in `onPhysicalDeviceAdded()`.
+**Most signals have only one sink because this graph is deliberately linear.** Qt signals natively support one-to-many emission, but in this codebase each signal typically has exactly one `connect()` call wiring it to a specific slot. The one AppRoot-level exception is `DeviceModel::selectedChanged`, which has two sinks: `ActiveDeviceResolver` at startup (always) and an `EditorModel` path in `startMonitoring` (editor mode only). TrayManager, PhysicalDevice, and DeviceSession each wire additional listeners inside their own classes, but those are internal to each subsystem and not part of AppRoot's top-level graph.
+
+Rows are ordered by group: **a** = startup wiring in `wireSignals()` or `startMonitoring()`, **b** = cross-service signal chains wired at startup, **c** = per-device runtime wiring in `onPhysicalDeviceAdded()`.
 
 | # | Source | Signal | Sink | Group |
 |---|--------|--------|------|-------|
@@ -1118,6 +1120,7 @@ Rows are ordered by group: **a** = startup wiring in `wireSignals()`, **b** = cr
 | 3 | ProfileModel | `profileSwitched` | ProfileOrchestrator::`onTabSwitched` | a |
 | 4 | ProfileEngine | `deviceDisplayProfileChanged` | ProfileOrchestrator::`onDisplayProfileChanged` | a |
 | 5 | DeviceModel | `selectedChanged` | ActiveDeviceResolver::`onSelectionIndexChanged` | a |
+| 5b | DeviceModel | `selectedChanged` | lambda → EditorModel::`setActiveDevicePath` (editor mode only) | a |
 | 6 | DeviceModel | `userGestureChanged` | lambda → ProfileOrchestrator::`saveCurrentProfile` | a |
 | 7 | DeviceModel | `dpiChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) | a |
 | 8 | DeviceModel | `dpiChangeRequested` | lambda → DeviceCommandHandler::`requestDpi` (hardware, guarded) | a |
