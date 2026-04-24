@@ -296,6 +296,8 @@ struct Profile {
 
 ### ProfileEngine
 
+`ProfileEngine` is the profile domain layer. It owns every `Profile` known to the app, persists them to disk, and answers two questions: "which profile should the UI show for this device?" and "which profile is currently applied to this device's hardware?" Services read and write through its API; no other class touches profile files directly.
+
 ```mermaid
 graph TB
     subgraph "ProfileEngine"
@@ -317,10 +319,20 @@ graph TB
     Cache --> Firefox
     Cache --> VSCode
     Bindings --> AppBindConf
-    
+
     Display --> Cache
     Hardware --> Cache
 ```
+
+**What each block does:**
+
+- **In-memory cache** — a `QMap<QString, QMap<QString, Profile>>` keyed by `(deviceSerial, profileName)`. `cachedProfile(serial, name)` is the mutable accessor everything else uses; it loads from disk on first access and returns by reference so in-place edits are picked up on the next `saveProfileToDisk(serial, name)`.
+- **Disk storage** — each device gets its own directory under `~/.config/Logitune/devices/{serial}/profiles/`. Profiles are named `{profileName}.conf` (one file per profile). The `default.conf` is always present; app-specific profiles are created on demand.
+- **App bindings** — `app-bindings.conf` maps window manager class (e.g. `google-chrome`) to a profile name. `profileForApp(serial, wmClass)` consults this map; anything unmapped falls back to `default`. Mutations go through `createProfileForApp(serial, wmClass, profileName)` and `removeAppProfile(serial, wmClass)`.
+- **displayProfile** — per-device name of the profile the UI is currently viewing/editing. Updated when the user clicks a profile tab. Emits `deviceDisplayProfileChanged(serial, profile)`.
+- **hardwareProfile** — per-device name of the profile currently applied to the hardware. Updated when the focused window changes and `ProfileOrchestrator` pushes a new profile. Emits `deviceHardwareProfileChanged(serial, profile)`.
+
+Display and hardware pointers are independent on purpose. See [Display vs Hardware Profile](#key-design-decision-display-vs-hardware-profile).
 
 ### Profile Lifecycle
 
