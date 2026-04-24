@@ -10,8 +10,8 @@ ActionModel::ActionModel(QObject *parent)
         { "Back",                 "Navigate backward in browser/file manager",  "keystroke",       "Alt+Left"    },
         { "Brightness down",      "Decrease display brightness",                "keystroke",       "BrightnessDown" },
         { "Brightness up",        "Increase display brightness",                "keystroke",       "BrightnessUp" },
-        { "Calculator",           "Open the system calculator",                 "app-launch",      "kcalc"       },
-        { "Close window",         "Close the active window",                    "keystroke",       "Alt+F4"      },
+        { "Calculator",           "Open the system calculator",                 "preset",          "calculator"  },
+        { "Close window",         "Close the active window",                    "preset",          "close-window"},
         { "Copy",                 "Copy selected content to clipboard",         "keystroke",       "Ctrl+C"      },
         { "Cut",                  "Cut selected content to clipboard",          "keystroke",       "Ctrl+X"      },
         { "DPI cycle",            "Step through the device's DPI preset list",  "dpi-cycle",       ""            },
@@ -25,12 +25,12 @@ ActionModel::ActionModel(QObject *parent)
         { "Paste",                "Paste clipboard content",                    "keystroke",       "Ctrl+V"      },
         { "Play/Pause",           "Play or pause media",                        "keystroke",       "Play"        },
         { "Redo",                 "Redo last undone action",                    "keystroke",       "Ctrl+Shift+Z"},
-        { "Screenshot",           "Capture a screenshot",                       "keystroke",       "Print"       },
+        { "Screenshot",           "Capture a screenshot",                       "preset",          "screenshot"  },
         { "Shift wheel mode",     "Toggle scroll wheel ratchet/freespin",       "smartshift-toggle", ""          },
-        { "Show desktop",         "Minimize all windows to show desktop",       "keystroke",       "Super+D"     },
-        { "Switch desktop left",  "Switch to the virtual desktop on the left",  "keystroke",       "Ctrl+Super+Left" },
-        { "Switch desktop right", "Switch to the virtual desktop on the right", "keystroke",       "Ctrl+Super+Right" },
-        { "Task switcher",        "Open the window/task switcher",              "keystroke",       "Super+W"     },
+        { "Show desktop",         "Minimize all windows to show desktop",       "preset",          "show-desktop" },
+        { "Switch desktop left",  "Switch to the virtual desktop on the left",  "preset",          "switch-desktop-left" },
+        { "Switch desktop right", "Switch to the virtual desktop on the right", "preset",          "switch-desktop-right" },
+        { "Task switcher",        "Open the window/task switcher",              "preset",          "task-switcher" },
         { "Undo",                 "Undo the last action",                       "keystroke",       "Ctrl+Z"      },
         { "Volume down",          "Decrease system volume",                     "keystroke",       "VolumeDown"  },
         { "Volume up",            "Increase system volume",                     "keystroke",       "VolumeUp"    },
@@ -106,6 +106,13 @@ QString ActionModel::buttonActionToName(const ButtonAction &ba) const
         return QString();
     if (ba.type == ButtonAction::GestureTrigger)
         return QStringLiteral("Gestures");
+    if (ba.type == ButtonAction::PresetRef) {
+        for (const auto &a : m_actions) {
+            if (a.actionType == QStringLiteral("preset") && a.payload == ba.payload)
+                return a.name;
+        }
+        return ba.payload;
+    }
     if (ba.type == ButtonAction::Keystroke) {
         for (const auto &a : m_actions) {
             if (a.actionType == QStringLiteral("keystroke") && a.payload == ba.payload)
@@ -148,6 +155,11 @@ ButtonAction ActionModel::buttonEntryToAction(const QString &actionType, const Q
         QString payload = payloadForName(actionName);
         if (payload.isEmpty()) payload = actionName;
         return {ButtonAction::AppLaunch, payload};
+    }
+    if (actionType == QStringLiteral("preset")) {
+        QString payload = payloadForName(actionName);
+        if (payload.isEmpty()) payload = actionName;
+        return {ButtonAction::PresetRef, payload};
     }
     return {ButtonAction::Default, {}};
 }
