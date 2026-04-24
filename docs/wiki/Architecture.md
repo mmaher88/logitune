@@ -633,6 +633,31 @@ This prevents Ctrl+Super+Left (assigned to "switch desktop left") from actually 
 
 ## Device Discovery and Connection
 
+### DeviceManager
+
+`DeviceManager` is the hardware-facing entry point of the core library. Its job is to detect Logitech HID++ devices on the system, open transports to them, group transports that belong to the same physical unit, and notify the rest of the app when a device appears or disappears.
+
+**Responsibilities:**
+
+- **Hidraw enumeration.** On `start()`, scans `/sys/class/hidraw/` for nodes matching Logitech vendor IDs (direct + Bolt/Unifying receiver variants). For each candidate, probes whether the device speaks HID++ (report descriptor check) and which feature set it advertises.
+- **Transport creation.** For each probed device, creates a `DeviceSession` wrapping the hidraw file descriptor and a `CommandProcessor` with its own pacing state.
+- **Physical device grouping.** Calls `DeviceInfo.getSerial` over HID++ to get the unit serial, then groups `DeviceSession` instances with the same serial under a single `PhysicalDevice`. A mouse that shows up twice (once via Bolt receiver, once via Bluetooth) becomes one `PhysicalDevice` with two transports. Details in the [transport aggregation section](#physicaldevice-transport-aggregation).
+- **udev event handling.** Subscribes to libudev on the session bus for `add` / `remove` events on hidraw nodes. On `add`, probes the new node and either creates a new `PhysicalDevice` or attaches the transport to an existing one. On `remove`, detaches the transport; if the last transport for a `PhysicalDevice` is gone, removes the device.
+- **Unknown device reporting.** If a device with a known Logitech VID but an unrecognized PID appears, emits `unknownDeviceDetected(pid)`. `DeviceFetcher` subscribes and tries to pull a community descriptor for that PID from the GitHub-hosted device database.
+- **Simulation mode.** `simulateAllFromRegistry()` bypasses udev and HID++ entirely, synthesizing one fake `DeviceSession` + `PhysicalDevice` per descriptor in `DeviceRegistry`. Used by the `--simulate-all` CLI flag to let developers visually inspect every community descriptor without physical hardware. Never called in production.
+
+**Signals emitted:**
+
+- `physicalDeviceAdded(PhysicalDevice*)` — fires when a new unit serial is seen. `AppRoot` subscribes and wires the new device's per-device runtime signals (`gestureRawXY`, `divertedButtonPressed`, `thumbWheelRotation`, `transportSetupComplete`) directly into `ButtonActionDispatcher` and `ProfileOrchestrator`.
+- `physicalDeviceRemoved(PhysicalDevice*)` — fires only when the last transport of a device is gone, not on every transport switch. `DeviceModel` drops its row, `ButtonActionDispatcher` drops its gesture state entry for that serial, `ProfileOrchestrator` cleans up any per-device cached state.
+- `unknownDeviceDetected(uint16_t pid)` — wired to `DeviceFetcher::fetchForPid` for on-demand descriptor fetching.
+
+**What it does NOT do:**
+
+- Does not own device settings (DPI, SmartShift, etc.). That is `ProfileEngine`.
+- Does not parse HID++ responses. That is `FeatureDispatcher` + `DeviceSession`.
+- Does not write profiles to hardware. That is `ProfileOrchestrator` via `DeviceSession` setters.
+
 ### PhysicalDevice: transport aggregation
 
 A single MX Master 3S mouse typically appears on the host as *two* hidraw nodes when both transports are active — once via the Bolt/Unifying receiver, once via direct Bluetooth. HID++ unit serial (from `DeviceInfo.getSerial`) identifies them as the same physical unit. `src/core/PhysicalDevice.{h,cpp}` is the abstraction that collapses them:
