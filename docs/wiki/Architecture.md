@@ -193,6 +193,46 @@ Known features (from `HidppTypes.h`):
 
 Features with multiple variants (Battery, SmartShift) are resolved at enumeration time via capability dispatch tables in `src/core/hidpp/capabilities/`. DeviceManager stores the resolved variant and uses it everywhere, so adding new variants requires only a table entry with zero DeviceManager changes.
 
+### Transport Layer
+
+The transport layer is the thin stack that turns "I want to call AdjustableDPI.setSensorDpi with these parameters" into bytes on an `/dev/hidraw*` file descriptor and back. Three types collaborate.
+
+`hidpp::HidrawDevice` (`src/core/hidpp/HidrawDevice.{h,cpp}`) is a non-copyable RAII wrapper over the hidraw fd. It holds the device path, opens the fd with `O_RDWR | O_NONBLOCK`, reads `HIDIOCGRAWINFO` into a `DeviceInfo` (vendor, product, path), and exposes `writeReport(span<const uint8_t>)` plus `readReport(timeoutMs)` which uses `poll()` internally. Everything above this class treats the fd as an implementation detail.
+
+`hidpp::Transport` (`src/core/hidpp/Transport.{h,cpp}`) is the blocking request / async send layer over `HidrawDevice`. `sendRequest(Report, timeoutMs)` writes the report and waits for a matching response, handling timeouts and retries via `trySend` (which decrements `retriesLeft`). `sendRequestAsync(Report)` writes and returns without waiting, for use by `CommandProcessor` + `FeatureDispatcher::callAsync`. Error notifications come out on `deviceError(ErrorCode, featureIndex)` and `deviceDisconnected()`. Response matching against `softwareId` happens one layer up in `FeatureDispatcher`.
+
+`ITransport` (`src/core/interfaces/ITransport.h`) is the abstract interface used by the tests. It declares `sendRequest`, `notificationFd`, `readRawReport`, plus the `notificationReceived` / `deviceDisconnected` signals. Production code uses `hidpp::Transport`; tests substitute `MockTransport` to feed canned reports without a real hidraw fd.
+
+Error paths surface on `deviceError`: timeouts bubble up as a null `optional` return from `sendRequest`; HID++ `HwError 0x04` (device busy) is the error code that motivates the 10 ms inter-command delay in `CommandProcessor`.
+
+### Capability Dispatch
+
+The MX Master generations do not implement the same feature the same way: Battery is `0x1000` on MX Master 2S and older, `0x1004` on 3S and newer; SmartShift is `0x2110` on 3S but `0x2111` (Enhanced) on MX Master 4; ReprogControls has five versions (V1 through V4) with different function tables. Rather than scatter per-variant conditionals through `DeviceSession`, the codebase uses a capability dispatch table pattern under `src/core/hidpp/capabilities/`.
+
+Each capability is a plain struct that stores the `FeatureId` it matches, the function IDs it uses for get / set, and function pointers for report parsing or request building:
+
+- `BatteryVariant` (`BatteryCapability.h`): `feature`, `getFn`, `parse(Report&) -> BatteryStatus`. Two entries in `kBatteryVariants`: `BatteryUnified (0x1004)` preferred, `BatteryStatus (0x1000)` fallback.
+- `SmartShiftVariant` (`SmartShiftCapability.h`): `feature`, `getFn`, `setFn`, `parseGet`, `buildSet(mode, autoDisengage)`. Two entries in `kSmartShiftVariants`: `SmartShift (0x2110)` for 3S and older, `SmartShiftEnhanced (0x2111)` for 4 and newer.
+- `ReprogControlsVariant` (`ReprogControlsCapability.h`): `feature`, `supportsDiversion` (only V4). Five entries in `kReprogControlsVariants` spanning V1 to V4.
+
+`capabilities::resolveCapability<Variant, N>(dispatcher, kVariants)` in `Capabilities.h` walks the table in preference order and returns the first `FeatureId` for which `FeatureDispatcher::hasFeature` returns true. `DeviceSession` stores the resolved variant in `std::optional<BatteryVariant>`, `std::optional<SmartShiftVariant>`, `std::optional<ReprogControlsVariant>` and calls through those for the life of the session (`src/core/DeviceSession.h` lines 140 to 142). Adding support for a new variant is one table entry in the capabilities header / cpp; no `DeviceSession` or `DeviceManager` edits are required.
+
+Protocol-level feature code (parsing one variant, building one request) lives in `src/core/hidpp/features/` (`AdjustableDPI`, `Battery`, `DeviceName`, `GestureV2`, `HiResWheel`, `ReprogControls`, `SmartShift`, `ThumbWheel`). Features without multiple variants (`AdjustableDPI`, `HiResWheel`, `ThumbWheel`, `DeviceName`, `GestureV2`) are called directly against their `FeatureId`; only Battery, SmartShift, and ReprogControls currently need the dispatch-table layer.
+
+### FeatureDispatcher
+
+`hidpp::FeatureDispatcher` (`src/core/hidpp/FeatureDispatcher.{h,cpp}`) owns the per-device feature index table. HID++ 2.0 assigns each feature a device-specific 8-bit index at runtime (Root is always `0x00`, the rest vary), so every feature call has to resolve `FeatureId -> index` before building a report.
+
+**Responsibilities:**
+
+- **Enumeration.** `enumerate(Transport*, deviceIndex)` iterates the `kKnownFeatures` array (the constexpr list at the top of `FeatureDispatcher.cpp`), sends `Root.getFeatureID(featureId)` for each, and populates `m_featureMap`. Index `0` returned for a non-Root feature means "unsupported" and the entry is skipped.
+- **Lookup.** `featureIndex(FeatureId)` returns the resolved index as an optional; `hasFeature(FeatureId)` is the boolean predicate used by capability gates (do not call SmartShift if `hasFeature(SmartShift)` is false).
+- **Synchronous calls.** `call(Transport*, deviceIndex, FeatureId, functionId, params)` resolves the index, builds the report, sends via `Transport::sendRequest`, and returns the response.
+- **Async calls + softwareId matching.** `callAsync(...)` assigns a rotating `softwareId` (1 to 15, via `nextSoftwareId`) so responses can be routed back to the original caller even when multiple requests are in flight. The caller-supplied `ResponseCallback` is stored in `m_pendingCallbacks` keyed on the `softwareId`. `handleResponse(Report)` is invoked by `DeviceManager` whenever an incoming report has non-zero `softwareId`, which is the signal that the report is a response to one of our requests rather than an unsolicited notification.
+- **Test hook.** `setFeatureTable(std::vector<pair<FeatureId, uint8_t>>)` bypasses enumeration so unit tests can inject a deterministic feature map.
+
+`FeatureDispatcher` does not own the transport; `DeviceSession` does. It holds no state about the hidraw fd, only the resolved feature map and pending callbacks.
+
 ### Command Processor
 
 The CommandProcessor exists to solve a specific problem: **HwError flooding**.
@@ -519,6 +559,21 @@ flowchart LR
 
 All five are registered in `src/app/main.cpp` against `controller.xxxModel()` accessors — AppRoot owns them, QML borrows them. No other QML-visible C++ classes.
 
+### EditorModel
+
+`EditorModel` (`src/app/models/EditorModel.{h,cpp}`) is the controller for descriptor-editor mode, despite the "Model" name. It is only instantiated when the app is launched with `--edit`; in normal runs the pointer is null and none of its signals fire. Exposed to QML, it stores pending JSON edits per descriptor path, runs an undo / redo stack, and persists through `DescriptorWriter` when the user clicks Save.
+
+**Responsibilities:**
+
+- **Pending-edit buffering.** Edits do not go straight to disk. `m_pendingEdits` (`QHash<QString, QJsonObject>`) holds one in-memory `descriptor.json` per device path; `ensurePending(path)` lazy-loads it from disk on first access. `pushStateToActiveDevice()` applies the pending JSON to the live `JsonDevice` via `JsonDevice::refreshFromObject` so QML bindings see the change immediately even before the user saves.
+- **Per-path undo stack.** `m_undoStacks` and `m_redoStacks` are keyed on device path, so switching `activeDevicePath` preserves each device's history independently. Every mutator creates an `EditCommand` with `before` / `after` JSON payloads and calls `pushCommand` to push onto the undo stack (clearing the redo stack).
+- **External-change detection.** A `QFileSystemWatcher` (`m_watcher`) watches each loaded `descriptor.json`. On `fileChanged`, `onExternalFileChanged` either suppresses the event (if `m_selfWrittenPaths` shows we just wrote it ourselves), emits `externalChangeDetected(path)` when the user has unsaved edits, or asks `DeviceRegistry::reload` to pick up the new on-disk state otherwise.
+- **Atomic save.** `save()` marks the path in `m_selfWrittenPaths` (to suppress the filesystem-watcher echo), calls `m_writer.write(path, pendingJson)`, then clears pending state and asks `DeviceRegistry` to reload on success or emits `saveFailed(path, error)` on failure.
+
+**Q_INVOKABLE API (used from QML):** `updateSlotPosition(idx, xPct, yPct)`, `updateHotspot(idx, xPct, yPct, side, labelOffsetYPct)`, `updateScrollHotspot(idx, xPct, yPct, side, labelOffsetYPct)`, `updateText(field, index, value)`, `replaceImage(role, sourcePath)`, `undo()`, `redo()`, `save()`, `reset()`, plus the `pendingFor(path) -> QVariantMap` accessor for reading the in-memory state.
+
+**Signals:** `dirtyChanged()`, `undoStateChanged()`, `activeDevicePathChanged()`, `saved(path)`, `saveFailed(path, error)`, `externalChangeDetected(path)`. Q_PROPERTY surface: `editing`, `hasUnsavedChanges`, `canUndo`, `canRedo`, `activeDevicePath`.
+
 ## Desktop Integration
 
 ### Interface Hierarchy
@@ -631,6 +686,28 @@ QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
 
 This prevents Ctrl+Super+Left (assigned to "switch desktop left") from actually switching desktops while the user is trying to capture it as a button binding.
 
+### GNOME Focus Tracking
+
+`GnomeDesktop` (`src/core/desktop/GnomeDesktop.{h,cpp}`) is the Wayland-only GNOME implementation. On `start()` it checks `XDG_SESSION_TYPE == wayland` and pings `org.gnome.Shell` via D-Bus to confirm GNOME Shell is reachable (both gates return `available() = false` if they fail). `ensureExtensionInstalled()` copies the bundled `logitune-focus@logitune.com` Shell extension into `~/.local/share/gnome-shell/extensions/` and enables it via `gnome-extensions enable`; the extension then calls back into the app via D-Bus rather than the app polling for focus.
+
+After the extension is in place, `GnomeDesktop` registers the service `com.logitune.app` and the object `/FocusWatcher` on the session bus (`QDBusConnection::ExportAllSlots`) so the extension's `focusChanged(appId, title)` calls land on the matching slot.
+
+`detectAppIndicatorStatus()` is a separate probe for system-tray support. It checks whether `org.kde.StatusNotifierWatcher` is registered on the session bus (the D-Bus interface that any AppIndicator-compatible extension registers). The result populates `m_appIndicatorStatus` (one of `AppIndicatorUnknown`, `AppIndicatorNotInstalled`, `AppIndicatorDisabled`, `AppIndicatorActive`) so the UI can tell GNOME users to install `gnome-shell-extension-appindicator` when the tray icon will not render.
+
+### Generic Desktop Fallback
+
+`GenericDesktop` (`src/core/desktop/GenericDesktop.{h,cpp}`) is the no-op fallback for desktop environments that are neither KDE nor GNOME (XFCE, MATE, Cinnamon, sway, Hyprland, etc.). `start()` does nothing, `available()` returns true unconditionally, `desktopName()` returns `"Generic"`, `detectedCompositors()` returns an empty list, and `blockGlobalShortcuts(bool)` is a no-op. The practical consequence: per-app profile switching is disabled on these environments because there is no focus-tracking signal; the user can still switch profiles manually through the profile tab bar, and every other feature (HID++, button remapping, uinput injection) continues to work.
+
+### Input Injection
+
+`IInputInjector` (`src/core/interfaces/IInputInjector.h`) is the abstract interface through which the app delivers synthesized input: `init()`, `injectKeystroke(combo)`, `injectCtrlScroll(direction)`, `injectHorizontalScroll(direction)`, `sendDBusCall(spec)`, `launchApp(command)`. `ActionExecutor` holds a non-owning pointer to one; tests substitute `MockInjector` to capture the calls for assertions.
+
+`UinputInjector` (`src/core/input/UinputInjector.{h,cpp}`) is the production `/dev/uinput` implementation. `init()` opens `/dev/uinput` with `O_WRONLY | O_NONBLOCK`, registers the key and relative-axis bits the app can emit (modifiers, arrows, media keys, F1 to F12, A to Z, 0 to 9, plus `REL_WHEEL` and `REL_HWHEEL`), sets up a `uinput_setup` with vendor `0x046d` and product `0x0001` under the name `logitune-virtual-kbd`, and finalizes with `UI_DEV_CREATE`. If any step fails (most often because `/dev/uinput` is not accessible under the user's group or the `logitune` udev rules are missing), `init()` returns false and all subsequent `injectKeystroke` calls are silent no-ops.
+
+Keystroke chord parsing lives in `UinputInjector::parseKeystroke(combo)` (static, unit-tested directly). It splits on `+`, maps modifier tokens (`Ctrl`, `Shift`, `Alt`, `Super` / `Meta`), special keys (`Tab`, `Space`, `Enter`, `Up`, `Down`, `Home`, `PageUp`, `VolumeUp`, `Print`, `BrightnessDown`, etc.), symbols (`Minus`, `Equal`, `LeftBrace`, `Semicolon`, `Comma`), and letters / digits to `KEY_*` codes from `<linux/input-event-codes.h>`. The bare `"+"` chord is handled before the split to preserve the `KEY_KPPLUS` case. `ActionExecutor::parseKeystroke` forwards to this function so tests can cover the parser without constructing an injector.
+
+Key emission in `injectKeystroke` presses all resolved keycodes in order (`emitKey(k, true)` + `emitSync()`), then releases them in reverse order. `injectCtrlScroll(direction)` wraps a `REL_WHEEL` write in a `KEY_LEFTCTRL` press / release so applications that bind zoom to Ctrl+scroll respond. `injectHorizontalScroll(direction)` writes a `REL_HWHEEL` event for the thumb-wheel scroll mode. `launchApp(command)` uses `QProcess::startDetached`; `sendDBusCall(spec)` parses a four-part `service,path,interface,method` string and dispatches through `QDBusConnection::sessionBus().send`.
+
 ## Device Discovery and Connection
 
 ### DeviceManager
@@ -685,6 +762,34 @@ flowchart LR
 ```
 
 When the active transport drops (udev remove, HID++ ping timeout), `PhysicalDevice::setPrimary()` picks any remaining connected session. The UI never sees a disconnect event — `stateChanged` still fires, but `DeviceModel`'s row for this serial stays.
+
+### DeviceSession
+
+`DeviceSession` (`src/core/DeviceSession.{h,cpp}`) is the per-transport object: one hidraw fd, one HID++ conversation, one set of per-device runtime state. A `PhysicalDevice` owns one or more of these; everything that writes to hardware eventually calls setter methods here.
+
+**Responsibilities:**
+
+- **Owns the protocol stack for one transport.** Holds `unique_ptr<HidrawDevice>`, `unique_ptr<Transport>`, `unique_ptr<FeatureDispatcher>`, and `unique_ptr<CommandProcessor>` as members (`DeviceSession.h` lines 135 to 138). `enumerateAndSetup()` is the single entry point that probes features, reads initial state (battery, DPI, SmartShift, scroll config, thumb wheel, Easy-Switch hosts), and constructs the `CommandProcessor` only once the feature table is ready.
+- **Resolves capability variants at enumeration.** Stores `optional<BatteryVariant>`, `optional<SmartShiftVariant>`, `optional<ReprogControlsVariant>` (`DeviceSession.h` lines 140 to 142) populated via `capabilities::resolveCapability`. All later reads and writes go through the resolved variant, so `DeviceSession` has no per-generation branching of its own.
+- **Hardware setter API.** `setDPI(int)`, `setSmartShift(bool, int)`, `setScrollConfig(bool, bool)`, `setThumbWheelMode(QString, bool)`, `divertButton(uint16_t, bool, bool rawXY)`, and the Q_INVOKABLE `cycleDpi()`. Each enqueues one command on the `CommandProcessor` with a 10 ms pacing gap rather than writing directly.
+- **Read-only getters.** `currentDPI`, `minDPI`, `maxDPI`, `dpiStep`, `smartShiftEnabled`, `smartShiftThreshold`, `scrollHiRes`, `scrollInvert`, `scrollRatchet`, `thumbWheelMode`, `thumbWheelInvert`, `thumbWheelDefaultDirection`, `batteryLevel`, `batteryCharging`, `currentHost`, `hostCount`, `isHostPaired(int)`. These are projections of `m_*` members, updated by notification handlers and by responses to our requests.
+- **Notification dispatch.** `handleNotification(const Report&)` is called by `DeviceManager` from the hidraw `QSocketNotifier` for reports with `softwareId == 0`. Routes thumb wheel, gesture, button, battery, and link-state notifications to the right per-feature handler.
+- **Sleep / wake detection.** `checkSleepWake()` runs on the battery poll timer and compares `m_lastResponseTime` against `kSleepThresholdMs`. `touchResponseTime()` is called before intentional hardware writes so a profile switch does not look like a wake event. See [Sleep/Wake Detection](#sleepwake-detection).
+- **Connection tracking.** `m_connected`, `m_deviceName`, `m_deviceSerial`, `m_firmwareVersion`, and `m_activeDevice` (non-owning `const IDevice*` pointer to the descriptor matched via `DeviceRegistry`) make up the session's identity. `disconnectCleanup()` tears down logical state without closing the fd (see [Bolt Receiver DJ Notifications](#bolt-receiver-dj-notifications)).
+- **Simulation hook.** `applySimulation(const IDevice*, QString fakeSerial)` is the `--simulate-all` entry point; it fakes a connected state against a registry descriptor so the UI can render without real hardware. Never called in production.
+
+**Signals emitted:**
+
+- `setupComplete()`: emitted once `enumerateAndSetup` finishes, triggering `ProfileOrchestrator::onTransportSetupComplete` via `PhysicalDevice::transportSetupComplete`.
+- `disconnected()`, `deviceWoke()`: transport-state transitions.
+- `batteryChanged(level, charging)`, `smartShiftChanged(enabled, threshold)`, `currentDPIChanged()`, `scrollConfigChanged()`, `thumbWheelModeChanged()`: property-change signals mirrored up to `PhysicalDevice`.
+- `divertedButtonPressed(controlId, pressed)`, `gestureRawXY(dx, dy)`, `thumbWheelRotation(delta)`: raw input events consumed by `ButtonActionDispatcher`.
+- `unknownDeviceDetected(pid)`: forwarded up to `DeviceManager` so `DeviceFetcher` can pull a community descriptor.
+
+**Helpers:**
+
+- `flushCommandProcessor()` drains the pending command queue (used during profile switches and teardown).
+- The static `effectiveDpiRing(curated, adjustableDpi, min, max, step)` and `nextDpiInRing(ring, currentDpi)` are pure helpers unit-tested independently in `tests/test_dpi_cycle_ring.cpp`.
 
 ### Discovery Flow
 
@@ -775,6 +880,41 @@ graph LR
 For the contributor-facing workflow, see
 [Adding a Device](Adding-a-Device). For the visual-editing tool, see
 [Editor Mode](Editor-Mode).
+
+## Device Descriptors
+
+A device in Logitune is data, not code. Every supported mouse is a directory under `devices/{slug}/` containing one `descriptor.json` plus `front.png`, `side.png`, and `back.png`. At startup `DeviceRegistry` enumerates these directories, wraps each one in a `JsonDevice`, and that `JsonDevice *` is what the rest of the app sees through the `IDevice` interface. Adding a new mouse requires no C++ changes.
+
+### IDevice
+
+`IDevice` (`src/core/interfaces/IDevice.h`) is the pure-virtual interface every descriptor satisfies. It is intentionally read-only: getters for identity (`deviceName`, `productIds`, `matchesPid(pid)`), DPI range (`minDpi`, `maxDpi`, `dpiStep`, `dpiCycleRing`), buttons (`controls()` returning `QList<ControlDescriptor>`), hotspots (`buttonHotspots()`, `scrollHotspots()`), feature support flags (`features()` returning `FeatureSupport`), images (`frontImagePath`, `sideImagePath`, `backImagePath`), default gestures (`defaultGestures()` keyed by `"up" / "down" / "left" / "right" / "click"`), and Easy-Switch slot positions (`easySwitchSlotPositions()`).
+
+Three structs carry the runtime values:
+
+- `ControlDescriptor`: HID++ `controlId` (e.g. `0x00C3` for the gesture button), zero-based `buttonIndex`, default name, `defaultActionType` (`"default"`, `"gesture-trigger"`, `"smartshift-toggle"`), and a `configurable` flag that tells the UI whether the user can remap this button.
+- `HotspotDescriptor`: per-button annotation coordinates for the QML overlay. `xPct` / `yPct` are 0 to 1 floats, `side` is `"front" / "side" / "back"`, `kind` distinguishes scroll / thumb-wheel hotspots from button hotspots.
+- `FeatureSupport`: 27 booleans gating UI visibility. When `smartShift` is `false`, the SmartShift slider is hidden; when `thumbWheel` is `false`, the Point & Scroll page hides thumb-wheel controls; and so on. See the MX Master 3S descriptor at `devices/mx-master-3s/descriptor.json` for the shape.
+
+`IDevice` is consumed throughout the runtime: `DeviceSession` holds a `const IDevice*` as `m_activeDevice`, `ProfileEngine` seeds `default.conf` from it, `ButtonModel` iterates `controls()` to render the buttons list, `ButtonActionDispatcher` reads `defaultGestures()` for gesture routing, and the QML overlays read hotspots from `DeviceModel`.
+
+### JsonDevice
+
+`JsonDevice` (`src/core/devices/JsonDevice.{h,cpp}`) is the only concrete `IDevice` implementation shipped with Logitune. `JsonDevice::load(dirPath)` opens `descriptor.json` in the given directory, parses it into the member structures (`m_pids`, `m_features`, `m_minDpi`, `m_controls`, `m_buttonHotspots`, `m_scrollHotspots`, `m_frontImage`, `m_sideImage`, `m_backImage`, `m_defaultGestures`, `m_easySwitchSlots`, `m_dpiCycleRing`), and stores `m_sourcePath` + `m_loadedMtime` so `DeviceRegistry::reload(path)` can do targeted live reloads when the descriptor changes on disk. `refreshFromObject(QJsonObject)` lets `EditorModel` push pending in-memory edits into the live device without going through disk.
+
+`status()` distinguishes `Verified` from `Beta` devices; the UI uses this to show a "beta descriptor" banner on first launch for community-contributed entries. There are no per-device C++ subclasses.
+
+### DescriptorWriter
+
+`DescriptorWriter` (`src/core/devices/DescriptorWriter.{h,cpp}`) is the save path for `EditorModel`. `write(dirPath, QJsonObject, errorOut)` uses `QSaveFile` for an atomic write (temp file + rename) to `descriptor.json` inside the target directory, returning `Ok`, `IoError`, or `JsonError`. Atomicity matters because the editor's `QFileSystemWatcher` would otherwise observe a truncated mid-write state and try to reload a broken descriptor. Not used outside editor mode.
+
+### DeviceFetcher
+
+`DeviceFetcher` (`src/core/DeviceFetcher.{h,cpp}`) brings community-contributed descriptors from GitHub into the user's local devices directory. Two entry points:
+
+- `fetchManifest()` is called at startup (if `isCacheFresh()` returns false; the TTL is `kCacheTtlSeconds = 3600`). It GETs `kManifestUrl` (the `manifest.json` in the `logitune-devices` GitHub repository) and compares each listed slug's `manifestVersion` against what is already cached; anything new or updated is downloaded via `downloadDevice(slug, info)`.
+- `fetchForPid(pid)` is wired to `DeviceManager::unknownDeviceDetected(pid)`. When an unrecognized Logitech device appears, `DeviceFetcher` looks up that PID in the cached manifest (`findDeviceForPid`), downloads the matching descriptor + images, and writes them into `deviceCachePath(slug)`.
+
+On successful fetch, `DeviceFetcher` emits `descriptorsUpdated()`, which `DeviceRegistry` subscribes to so it can rescan the local directory and expose the new device without a restart. The HTTP cache is keyed on ETag (`saveEtag` / `loadEtag`) and timestamp (`saveTimestamp` / `isCacheFresh`) to avoid re-downloading unchanged manifests.
 
 ## Disconnect and Reconnect
 
@@ -880,6 +1020,24 @@ When diverted, the device sends thumb wheel rotation events with raw delta value
 
 The MX Master 3S reports `defaultDirection = 0` (positive when left/back), so `thumbWheelDefaultDirection = -1`. Multiplying raw deltas by -1 makes clockwise = positive, which is the natural direction for zoom-in and volume-up.
 
+## ActionExecutor
+
+`ActionExecutor` (`src/core/ActionExecutor.{h,cpp}`) is the bridge between `ButtonActionDispatcher` deciding "this button press should inject Ctrl+C" and an actual uinput / D-Bus / exec call reaching the system. It holds a non-owning `IInputInjector*` and delegates every side-effecting call to it, so swapping `UinputInjector` for `MockInjector` in tests is a one-line constructor change.
+
+**Responsibilities:**
+
+- **Action dispatch.** `executeAction(const ButtonAction&)` switches on `action.type`: `Keystroke` and `Media` both forward to `injectKeystroke(payload)`; `DBus` to `executeDBusCall(payload)`; `AppLaunch` to `launchApp(payload)`. `Default`, `GestureTrigger`, and `SmartShiftToggle` are handled upstream in `ButtonActionDispatcher` and fall through to a no-op here.
+- **Injector routing.** `injectKeystroke(combo)`, `injectCtrlScroll(direction)`, `injectHorizontalScroll(direction)`, `executeDBusCall(spec)`, `launchApp(command)` are one-line passthroughs to the injector.
+- **Gesture detection.** Owns a `GestureDetector` instance accessible via `gestureDetector()`. `GestureDetector::addDelta(dx, dy)` accumulates the raw XY deltas emitted during a held gesture button; `resolve()` returns the dominant-axis `GestureDirection` (`Up`, `Down`, `Left`, `Right`, or `Click` when neither axis exceeds `kThreshold = 50`). `reset()` is called between gestures.
+
+**Static helpers (testable without an injector):**
+
+- `parseKeystroke(combo)` forwards to `UinputInjector::parseKeystroke` so tests can exercise the parser without opening `/dev/uinput`.
+- `parseDBusAction(spec)` splits a `service,path,interface,method` string into a `DBusCall` struct; returns an empty struct when the spec is malformed.
+- `gestureDirectionName(dir)` maps the enum to its display string.
+
+**Dependency injection:** `setInjector(IInputInjector*)` lets callers swap the injector post-construction (used by `AppRoot::Dependency Injection` and by test fixtures). `ActionExecutor` stores no state of its own other than the gesture accumulator and the injector pointer.
+
 ## Services
 
 Behavior that responds to user events or mutates application state lives in one of four focused services in `src/app/services/`. Each service holds non-owning pointers to the models, engines, or `ActiveDeviceResolver` instance it needs, has zero `connect()` calls of its own, and communicates with its peers only via Qt signals wired by `AppRoot`.
@@ -974,3 +1132,17 @@ AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject *parent 
 - The injected pointers are **not owned** by AppRoot (raw pointers); internally created ones are held in `unique_ptr`
 
 This is the sole DI point: the rest of the subsystems are value members of AppRoot, which simplifies lifetime management.
+
+## TrayManager
+
+`TrayManager` (`src/app/TrayManager.{h,cpp}`) owns the `QSystemTrayIcon` and its context menu. It is constructed with a non-owning `DeviceModel*` so it can reflect per-device state (name, battery) without reaching into `DeviceManager` directly.
+
+**Menu composition.** The menu skeleton is fixed: `Show Logitune` at the top, a separator, then a block of per-device entries inserted before a trailing `Quit`. Each device contributes a `DeviceEntry` struct (`TrayManager.h` lines 32 to 37) with three disabled actions: a header showing `deviceName()`, a battery row showing `"Battery: N%"`, and a trailing separator. `rebuildEntries()` reconciles the action list against `DeviceModel::devices()` on every `countChanged`, deleting entries for removed devices and inserting entries for new ones while leaving existing ones in place.
+
+**Per-device wiring.** `refreshEntry(PhysicalDevice*)` updates the header and battery labels and is reconnected via `stateConn` (`QMetaObject::Connection` stored per entry) when the device emits `stateChanged`. This keeps the battery indicator live without the tray having to poll.
+
+**User interaction.** The `Show Logitune` action and a left click on the icon (`QSystemTrayIcon::activated` with reason `Trigger`) both emit `showWindowRequested()`; `AppRoot` wires this to the main window's `show + raise + activate` sequence. The `Quit` action is hooked up by the caller to `QApplication::quit` (it is exposed via `quitAction()` rather than wired internally so tests can suppress it).
+
+**Tooltip.** `refreshTooltip()` populates the hover tooltip when no devices are attached (falls back to an app-level string) and when the device list changes.
+
+`TrayManager` does not own the `DeviceModel` or the `PhysicalDevice` objects in `m_entries`; lifetimes are guarded by the dtor disconnecting every `stateConn` before destruction.
