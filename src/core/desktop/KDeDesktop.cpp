@@ -1,5 +1,6 @@
 #include "desktop/KDeDesktop.h"
 #include "logging/LogManager.h"
+#include <optional>
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusReply>
@@ -197,6 +198,17 @@ void KDeDesktop::blockGlobalShortcuts(bool block)
         QStringLiteral("blockGlobalShortcuts"));
     msg << block;
     QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
+}
+
+QString KDeDesktop::variantKey() const
+{
+    return QStringLiteral("kde");
+}
+
+std::optional<ButtonAction> KDeDesktop::resolveNamedAction(const QString &id) const
+{
+    Q_UNUSED(id);
+    return std::nullopt;   // Real resolver added in task 6
 }
 
 } // namespace logitune

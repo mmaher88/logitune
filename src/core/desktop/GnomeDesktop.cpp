@@ -1,5 +1,6 @@
 #include "desktop/GnomeDesktop.h"
 #include "logging/LogManager.h"
+#include <optional>
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
@@ -257,6 +258,17 @@ void GnomeDesktop::blockGlobalShortcuts(bool block)
         QStringLiteral("Eval"));
     msg << js;
     QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
+}
+
+QString GnomeDesktop::variantKey() const
+{
+    return QStringLiteral("gnome");
+}
+
+std::optional<ButtonAction> GnomeDesktop::resolveNamedAction(const QString &id) const
+{
+    Q_UNUSED(id);
+    return std::nullopt;   // Real resolver added in task 7
 }
 
 } // namespace logitune
