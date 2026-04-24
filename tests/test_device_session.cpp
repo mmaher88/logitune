@@ -162,7 +162,7 @@ TEST_F(DeviceSessionTest, DivertButtonSkipsWhenNotConnected) {
 TEST_F(DeviceSessionTest, FlushCommandProcessorWhenEmpty) {
     auto session = makeSession();
     session->flushCommandProcessor();
-    // No crash — safe on null command queue
+    // No crash — safe on null command processor
 }
 
 TEST_F(DeviceSessionTest, TouchResponseTime) {

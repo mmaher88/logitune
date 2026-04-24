@@ -185,6 +185,6 @@ Debug logging can also be toggled at runtime from the Settings page.
 4. **AppRoot init** — creates DeviceManager, ProfileEngine, models, wires signals
 5. **QML engine load** — registers model singletons, loads `Main.qml`
 6. **Start monitoring** — DeviceManager begins udev scanning and KDE desktop starts focus tracking
-7. **Device connect** — on first hidraw match, enumerates HID++ features, reads state, creates command queue
+7. **Device connect** — on first hidraw match, enumerates HID++ features, reads state, creates command processor
 8. **Profile load** — loads or seeds the default profile, applies settings to hardware
 9. **Tray icon** — system tray icon appears with battery info

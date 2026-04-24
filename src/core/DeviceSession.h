@@ -72,7 +72,7 @@ public:
 
     Q_INVOKABLE void cycleDpi();
 
-    // Setters (write to device via command queue)
+    // Setters (write to device via command processor)
     void setDPI(int value);
     void setSmartShift(bool enabled, int threshold);
     void setScrollConfig(bool hiRes, bool invert);

@@ -14,7 +14,7 @@ The app-lib band contains AppRoot plus four focused services (`ActiveDeviceResol
 
 | Layer | Detail |
 |---|---|
-| Core — HID++ stack | [HID++ protocol stack](#stack), [feature discovery](#feature-discovery), [command queue](#command-queue), [async matching](#async-response-matching) |
+| Core — HID++ stack | [HID++ protocol stack](#stack), [feature discovery](#feature-discovery), [command processor](#command-processor), [async matching](#async-response-matching) |
 | Core — Desktop integration | [Interface hierarchy](#interface-hierarchy), [KDE focus tracking](#kde-focus-tracking) |
 | Core — Device lifecycle | [PhysicalDevice transport aggregation](#physicaldevice-transport-aggregation), [Discovery flow](#discovery-flow), [Disconnect and reconnect](#disconnect-and-reconnect) |
 | App — Services | [Services](#services) |
@@ -193,7 +193,7 @@ Known features (from `HidppTypes.h`):
 
 Features with multiple variants (Battery, SmartShift) are resolved at enumeration time via capability dispatch tables in `src/core/hidpp/capabilities/`. DeviceManager stores the resolved variant and uses it everywhere, so adding new variants requires only a table entry with zero DeviceManager changes.
 
-### Command Queue
+### Command Processor
 
 The CommandProcessor exists to solve a specific problem: **HwError flooding**.
 
@@ -237,7 +237,7 @@ Key properties:
 - **10ms inter-command delay** (`kInterCommandDelayMs = 10`) — enough for the device to process each command
 - **3 retries** (`kMaxRetries = 3`) with 50ms retry delay
 - **Main thread only** — uses `QTimer`, no mutex needed, no fd contention with `QSocketNotifier`
-- **Created after feature enumeration** — the command queue is instantiated inside `enumerateAndSetup()` after the feature table is populated
+- **Created after feature enumeration** — the command processor is instantiated inside `enumerateAndSetup()` after the feature table is populated
 
 ### Async Response Matching
 
@@ -804,7 +804,7 @@ sequenceDiagram
 
 Key details:
 
-- **Soft disconnect** — the hidraw fd stays open. Only logical state (features, command queue, connected flag) is reset.
+- **Soft disconnect** — the hidraw fd stays open. Only logical state (features, command processor, connected flag) is reset.
 - **1500ms debounce** — the device sends multiple DJ notifications during boot, and HID++ calls fail with HwError if sent too early.
 - **Reconnect timer cancellation** — if multiple link-established notifications arrive, only the last one triggers re-enumeration.
 

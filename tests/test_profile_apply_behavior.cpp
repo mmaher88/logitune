@@ -15,7 +15,7 @@ class ProfileApplyBehaviorTest : public AppRootFixture {};
 
 // When a control has configurable=false (e.g. left/right click), the profile
 // apply must skip it rather than trying to divert it via HID++.  Previously
-// this caused HwError 0x04 responses that clogged the command queue.
+// this caused HwError 0x04 responses that clogged the command processor.
 
 TEST_F(ProfileApplyBehaviorTest, NonConfigurableButtonsAreSkippedDuringProfileApply) {
     // Mark buttons 0 and 1 (left/right click, CID 0x0050 / 0x0051) as non-configurable

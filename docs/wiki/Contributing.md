@@ -157,14 +157,14 @@ test: add profile switch behavior tests for display vs hardware profile
 For large changes touching multiple subsystems, use a summary line followed by subsection headers in the body:
 
 ```
-feat: thumb wheel overhaul — defaultDirection, invert, command queue, reconnect
+feat: thumb wheel overhaul — defaultDirection, invert, command processor, reconnect
 
 Thumb wheel:
 - Read defaultDirection from HID++ GetInfo to normalize clockwise=positive
 - Add thumbWheelInvert as a proper profile field with UI toggle
 - Add horizontal scroll injection (REL_HWHEEL) for scroll mode
 
-HID++ command queue:
+HID++ command processor:
 - New CommandProcessor sends commands sequentially with 10ms pacing
 - Eliminates HwError from flooding device during profile switches
 ```
