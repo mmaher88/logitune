@@ -303,3 +303,54 @@ TEST_F(ButtonActionDispatcherFixture, OnCurrentDeviceChangedUpdatesPointer) {
     m_dispatcher->onDivertedButtonPressed(kBackCid, true);
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
+
+// ---------------------------------------------------------------------------
+// PresetRef resolution via IDesktopIntegration
+// ---------------------------------------------------------------------------
+
+TEST_F(ButtonActionDispatcherFixture, PresetRefResolvesViaDesktopAndFiresKeystroke) {
+    attachMockSession();
+    m_desktop->scriptResolve("show-desktop",
+                             ButtonAction{ButtonAction::Keystroke, "Super+D"});
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Super+D"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, PresetRefResolvedToDBusFiresDBus) {
+    attachMockSession();
+    m_desktop->scriptResolve("show-desktop",
+                             ButtonAction{ButtonAction::DBus,
+                                          "org.x,/path,org.x.Iface,method"});
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_EQ(m_injector->lastArg("sendDBusCall"),
+              QStringLiteral("org.x,/path,org.x.Iface,method"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, PresetRefResolvedToAppLaunchFiresLaunch) {
+    attachMockSession();
+    m_desktop->scriptResolve("calculator",
+                             ButtonAction{ButtonAction::AppLaunch, "gnome-calculator"});
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("calculator")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_EQ(m_injector->lastArg("launchApp"), QStringLiteral("gnome-calculator"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, PresetRefUnresolvedLogsAndFiresNothing) {
+    attachMockSession();
+    // No scriptResolve -> resolveNamedAction returns nullopt
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
+    EXPECT_FALSE(m_injector->hasCalled("sendDBusCall"));
+    EXPECT_FALSE(m_injector->hasCalled("launchApp"));
+}

@@ -118,15 +118,19 @@ std::vector<int> ActionExecutor::parseKeystroke(const QString &combo)
 
 DBusCall ActionExecutor::parseDBusAction(const QString &spec)
 {
-    const QStringList parts = spec.split(QLatin1Char(','));
-    if (parts.size() != 4)
-        return {};   // method will be empty, caller treats as invalid
+    // Split on commas with a max limit of 5 parts (4 commas) so the final
+    // arg field can contain commas if ever needed. 4-field payloads remain
+    // backward-compatible.
+    const QStringList parts = spec.split(QLatin1Char(','), Qt::KeepEmptyParts);
+    if (parts.size() < 4 || parts.size() > 5)
+        return {};
 
     return DBusCall{
         parts[0].trimmed(),
         parts[1].trimmed(),
         parts[2].trimmed(),
         parts[3].trimmed(),
+        parts.size() == 5 ? parts[4].trimmed() : QString(),
     };
 }
 

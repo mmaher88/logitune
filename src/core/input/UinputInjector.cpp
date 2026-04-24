@@ -184,12 +184,16 @@ void UinputInjector::injectHorizontalScroll(int direction)
 void UinputInjector::sendDBusCall(const QString &spec)
 {
     const QStringList parts = spec.split(QLatin1Char(','));
-    if (parts.size() != 4)
+    if (parts.size() < 4 || parts.size() > 5)
         return;
 
     QDBusMessage msg = QDBusMessage::createMethodCall(
         parts[0].trimmed(), parts[1].trimmed(),
         parts[2].trimmed(), parts[3].trimmed());
+
+    if (parts.size() == 5 && !parts[4].trimmed().isEmpty())
+        msg.setArguments({ parts[4].trimmed() });
+
     QDBusConnection::sessionBus().send(msg);
 }
 

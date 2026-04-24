@@ -45,7 +45,8 @@ AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject
     , m_deviceResolver(&m_deviceModel, this)
     , m_deviceCommandHandler(&m_deviceResolver, this)
     , m_actionExecutor(nullptr)
-    , m_buttonDispatcher(&m_profileEngine, &m_actionExecutor, &m_deviceResolver, this)
+    , m_buttonDispatcher(&m_profileEngine, &m_actionExecutor, &m_deviceResolver,
+                         m_desktop, this)
     , m_profileOrchestrator(&m_profileEngine, &m_actionExecutor, &m_deviceResolver,
                             &m_deviceModel, &m_buttonModel, &m_actionModel,
                             &m_profileModel, m_desktop, this)

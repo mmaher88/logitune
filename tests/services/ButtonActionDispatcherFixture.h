@@ -12,6 +12,7 @@
 
 #include "helpers/TestFixtures.h"
 #include "hidpp/HidrawDevice.h"
+#include "mocks/MockDesktop.h"
 #include "mocks/MockDevice.h"
 #include "mocks/MockInjector.h"
 
@@ -32,12 +33,15 @@ protected:
         m_profileEngine = std::make_unique<ProfileEngine>();
         m_injector      = std::make_unique<MockInjector>();
         m_executor      = std::make_unique<ActionExecutor>(m_injector.get());
+        m_desktop       = std::make_unique<MockDesktop>();
         m_dispatcher    = std::make_unique<ButtonActionDispatcher>(
-            m_profileEngine.get(), m_executor.get(), m_selection.get());
+            m_profileEngine.get(), m_executor.get(), m_selection.get(),
+            m_desktop.get());
     }
 
     void TearDown() override {
         m_dispatcher.reset();
+        m_desktop.reset();
         m_executor.reset();
         m_injector.reset();
         delete m_physical;
@@ -114,6 +118,7 @@ protected:
     std::unique_ptr<ProfileEngine>           m_profileEngine;
     std::unique_ptr<MockInjector>            m_injector;
     std::unique_ptr<ActionExecutor>          m_executor;
+    std::unique_ptr<MockDesktop>             m_desktop;
     std::unique_ptr<ButtonActionDispatcher>  m_dispatcher;
 
     MockDevice       m_device;

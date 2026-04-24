@@ -3,6 +3,7 @@
 #include "ActiveDeviceResolver.h"
 #include "DeviceSession.h"
 #include "ProfileEngine.h"
+#include "interfaces/IDesktopIntegration.h"
 #include "interfaces/IDevice.h"
 #include "logging/LogManager.h"
 #include <cstdlib>
@@ -12,11 +13,13 @@ namespace logitune {
 ButtonActionDispatcher::ButtonActionDispatcher(ProfileEngine *profileEngine,
                                                ActionExecutor *actionExecutor,
                                                ActiveDeviceResolver *selection,
+                                               IDesktopIntegration *desktop,
                                                QObject *parent)
     : QObject(parent)
     , m_profileEngine(profileEngine)
     , m_actionExecutor(actionExecutor)
     , m_selection(selection)
+    , m_desktop(desktop)
 {}
 
 void ButtonActionDispatcher::onDeviceRemoved(const QString &serial)
@@ -116,6 +119,28 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
         state.gestureControlId = controlId;
     } else if (ba.type == ButtonAction::AppLaunch && !ba.payload.isEmpty()) {
         m_actionExecutor->launchApp(ba.payload);
+    } else if (ba.type == ButtonAction::PresetRef && !ba.payload.isEmpty()) {
+        if (!m_desktop) {
+            qCWarning(lcApp) << "preset action requested but desktop integration is null"
+                             << ba.payload;
+            return;
+        }
+        auto resolved = m_desktop->resolveNamedAction(ba.payload);
+        if (!resolved.has_value()) {
+            qCWarning(lcApp) << "preset" << ba.payload
+                             << "not resolvable on" << m_desktop->variantKey();
+            return;
+        }
+        if (resolved->type == ButtonAction::Keystroke || resolved->type == ButtonAction::Media) {
+            m_actionExecutor->injectKeystroke(resolved->payload);
+        } else if (resolved->type == ButtonAction::DBus) {
+            m_actionExecutor->executeDBusCall(resolved->payload);
+        } else if (resolved->type == ButtonAction::AppLaunch) {
+            m_actionExecutor->launchApp(resolved->payload);
+        } else {
+            qCWarning(lcApp) << "preset" << ba.payload
+                             << "resolved to unsupported type" << resolved->type;
+        }
     }
 }
 
