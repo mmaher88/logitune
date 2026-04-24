@@ -369,6 +369,13 @@ graph LR
         PM[ProfileModel<br/>QAbstractListModel]
     end
 
+    subgraph "Services"
+        DSel[DeviceSelection]
+        DCmd[DeviceCommands]
+        BAD[ButtonActionDispatcher]
+        PO[ProfileOrchestrator]
+    end
+
     subgraph "Model (Core)"
         DMgr[DeviceManager]
         PE[ProfileEngine]
@@ -383,13 +390,18 @@ graph LR
     Settings --> DM
     ProfileBar --> PM
 
-    DM --> DMgr
-    BM --> AC[AppRoot]
-    AM --> AC
-    PM --> AC
-    AC --> DMgr
-    AC --> PE
-    AC --> AE
+    DM -->|*ChangeRequested| DCmd
+    BM -->|userActionChanged| PO
+    PM -->|profileSwitched| PO
+    DSel --> DM
+    DSel --> DMgr
+    DCmd --> DSel
+    BAD --> DSel
+    BAD --> PE
+    BAD --> AE
+    PO --> DSel
+    PO --> PE
+    PO --> AE
 ```
 
 ### Model Roles
