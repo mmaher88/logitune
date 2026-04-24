@@ -221,15 +221,20 @@ Protocol-level feature code (parsing one variant, building one request) lives in
 
 ### FeatureDispatcher
 
-`hidpp::FeatureDispatcher` (`src/core/hidpp/FeatureDispatcher.{h,cpp}`) owns the per-device feature index table. HID++ 2.0 assigns each feature a device-specific 8-bit index at runtime (Root is always `0x00`, the rest vary), so every feature call has to resolve `FeatureId -> index` before building a report.
+`hidpp::FeatureDispatcher` (`src/core/hidpp/FeatureDispatcher.{h,cpp}`) owns the per-device feature index table. HID++ 2.0 assigns each feature a device-specific 8-bit index at runtime (Root is always `0x00`, the rest vary), so every feature call has to resolve `FeatureId -> index` before building a report. `callAsync` assigns a rotating `softwareId` (1 to 15) so responses can be routed back to the original caller even when multiple requests are in flight; `handleResponse` is invoked by `DeviceManager` whenever an incoming report has non-zero `softwareId` (that is, a response rather than an unsolicited notification).
 
-**Responsibilities:**
+**Methods:**
 
-- **Enumeration.** `enumerate(Transport*, deviceIndex)` iterates the `kKnownFeatures` array (the constexpr list at the top of `FeatureDispatcher.cpp`), sends `Root.getFeatureID(featureId)` for each, and populates `m_featureMap`. Index `0` returned for a non-Root feature means "unsupported" and the entry is skipped.
-- **Lookup.** `featureIndex(FeatureId)` returns the resolved index as an optional; `hasFeature(FeatureId)` is the boolean predicate used by capability gates (do not call SmartShift if `hasFeature(SmartShift)` is false).
-- **Synchronous calls.** `call(Transport*, deviceIndex, FeatureId, functionId, params)` resolves the index, builds the report, sends via `Transport::sendRequest`, and returns the response.
-- **Async calls + softwareId matching.** `callAsync(...)` assigns a rotating `softwareId` (1 to 15, via `nextSoftwareId`) so responses can be routed back to the original caller even when multiple requests are in flight. The caller-supplied `ResponseCallback` is stored in `m_pendingCallbacks` keyed on the `softwareId`. `handleResponse(Report)` is invoked by `DeviceManager` whenever an incoming report has non-zero `softwareId`, which is the signal that the report is a response to one of our requests rather than an unsolicited notification.
-- **Test hook.** `setFeatureTable(std::vector<pair<FeatureId, uint8_t>>)` bypasses enumeration so unit tests can inject a deterministic feature map.
+| Method | Purpose |
+|--------|---------|
+| `enumerate(Transport *transport, uint8_t deviceIndex)` | Iterates the `kKnownFeatures` array, sends `Root.getFeatureID(featureId)` for each, and populates `m_featureMap`. Returns true on success. |
+| `setFeatureTable(std::vector<std::pair<FeatureId, uint8_t>> table)` | Test hook: bypasses enumeration so unit tests can inject a deterministic feature map. |
+| `featureIndex(FeatureId id)` | Returns the resolved index as `std::optional<uint8_t>`. |
+| `hasFeature(FeatureId id)` | Boolean predicate used by capability gates. |
+| `setFeatureIndex(FeatureId id, uint8_t index)` | Directly sets one entry in the feature map (used during capability resolution). |
+| `call(Transport *transport, uint8_t deviceIndex, FeatureId feature, uint8_t functionId, std::span<const uint8_t> params = {})` | Synchronous: resolves the index, builds the report, sends via `Transport::sendRequest`, and returns the response. |
+| `callAsync(Transport *transport, uint8_t deviceIndex, FeatureId feature, uint8_t functionId, std::span<const uint8_t> params = {}, ResponseCallback callback = nullptr)` | Async: assigns a rotating `softwareId`, stores the `ResponseCallback` keyed on it, and returns the `softwareId` used. |
+| `handleResponse(const Report &report)` | Called by `DeviceManager` when an incoming report has non-zero `softwareId`; looks up the pending callback and invokes it. Returns true when consumed. |
 
 `FeatureDispatcher` does not own the transport; `DeviceSession` does. It holds no state about the hidraw fd, only the resolved feature map and pending callbacks.
 
@@ -374,6 +379,35 @@ graph TB
 - **hardwareProfile** — per-device name of the profile currently applied to the hardware. Updated when the focused window changes and `ProfileOrchestrator` pushes a new profile. Emits `deviceHardwareProfileChanged(serial, profile)`.
 
 Display and hardware pointers are independent on purpose. See [Display vs Hardware Profile](#key-design-decision-display-vs-hardware-profile).
+
+**Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `registerDevice(const QString &serial, const QString &configDir)` | Initializes the per-device context, pointing it at `configDir` under `~/.config/Logitune/devices/`. |
+| `hasDevice(const QString &serial)` | Returns true if a device context has been registered for `serial`. |
+| `cachedProfile(const QString &serial, const QString &name)` | Mutable accessor; lazy-loads from disk on first touch and returns a reference so callers can edit in place. |
+| `profileNames(const QString &serial)` | Returns the list of profile names currently known for `serial`. |
+| `displayProfile(const QString &serial)` | Returns the name of the profile the UI is currently viewing. |
+| `hardwareProfile(const QString &serial)` | Returns the name of the profile currently applied to the device hardware. |
+| `profileForApp(const QString &serial, const QString &wmClass)` | Looks up the app binding; returns `"default"` if unmapped. |
+| `setDisplayProfile(const QString &serial, const QString &name)` | Switches the UI-viewed profile and emits `deviceDisplayProfileChanged`. |
+| `setHardwareProfile(const QString &serial, const QString &name)` | Switches the hardware-active profile and emits `deviceHardwareProfileChanged`. |
+| `saveProfileToDisk(const QString &serial, const QString &name)` | Persists the cached profile for `(serial, name)` to its `.conf` file. |
+| `createProfileForApp(const QString &serial, const QString &wmClass, const QString &profileName)` | Adds or updates the `wmClass` to `profileName` entry in `app-bindings.conf`. |
+| `removeAppProfile(const QString &serial, const QString &wmClass)` | Removes the app binding for `wmClass`. |
+| `loadProfile(const QString &path)` | Static: parses a single `.conf` file into a `Profile`. |
+| `saveProfile(const QString &path, const Profile &profile)` | Static: serializes a `Profile` to disk. |
+| `loadAppBindings(const QString &path)` | Static: parses an `app-bindings.conf` into a `QMap<QString, QString>`. |
+| `saveAppBindings(const QString &path, const QMap<QString, QString> &bindings)` | Static: serializes app bindings to disk. |
+| `diff(const Profile &a, const Profile &b)` | Static: returns a `ProfileDelta` describing which fields differ. |
+
+**Signals:**
+
+| Signal | Emitted when |
+|--------|--------------|
+| `deviceDisplayProfileChanged(const QString &serial, const Profile &profile)` | The UI-viewed profile changes, wired to `ProfileOrchestrator::onDisplayProfileChanged` in `AppRoot::wireSignals`. |
+| `deviceHardwareProfileChanged(const QString &serial, const Profile &profile)` | The hardware-active profile changes. |
 
 ### Profile Lifecycle
 
@@ -571,9 +605,45 @@ All five are registered in `src/app/main.cpp` against `controller.xxxModel()` ac
 - **External-change detection.** A `QFileSystemWatcher` (`m_watcher`) watches each loaded `descriptor.json`. On `fileChanged`, `onExternalFileChanged` either suppresses the event (if `m_selfWrittenPaths` shows we just wrote it ourselves), emits `externalChangeDetected(path)` when the user has unsaved edits, or asks `DeviceRegistry::reload` to pick up the new on-disk state otherwise.
 - **Atomic save.** `save()` marks the path in `m_selfWrittenPaths` (to suppress the filesystem-watcher echo), calls `m_writer.write(path, pendingJson)`, then clears pending state and asks `DeviceRegistry` to reload on success or emits `saveFailed(path, error)` on failure.
 
-**Q_INVOKABLE API (used from QML):** `updateSlotPosition(idx, xPct, yPct)`, `updateHotspot(idx, xPct, yPct, side, labelOffsetYPct)`, `updateScrollHotspot(idx, xPct, yPct, side, labelOffsetYPct)`, `updateText(field, index, value)`, `replaceImage(role, sourcePath)`, `undo()`, `redo()`, `save()`, `reset()`, plus the `pendingFor(path) -> QVariantMap` accessor for reading the in-memory state.
+Q_PROPERTY surface: `editing`, `hasUnsavedChanges`, `canUndo`, `canRedo`, `activeDevicePath`.
 
-**Signals:** `dirtyChanged()`, `undoStateChanged()`, `activeDevicePathChanged()`, `saved(path)`, `saveFailed(path, error)`, `externalChangeDetected(path)`. Q_PROPERTY surface: `editing`, `hasUnsavedChanges`, `canUndo`, `canRedo`, `activeDevicePath`.
+**Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `editing()` | Returns true when the app was launched with `--edit`. |
+| `hasUnsavedChanges()` | Returns true if the active device path has pending edits. |
+| `canUndo()` | Returns true if the active device's undo stack is non-empty. |
+| `canRedo()` | Returns true if the active device's redo stack is non-empty. |
+| `activeDevicePath()` | Returns the descriptor path currently being edited. |
+| `pendingFor(const QString &path)` | `Q_INVOKABLE`: returns the in-memory pending JSON for `path` as a `QVariantMap`. |
+| `updateSlotPosition(int idx, double xPct, double yPct)` | `Q_INVOKABLE`: edits an Easy-Switch slot position and pushes an `EditCommand`. |
+| `updateHotspot(int hotspotIndex, double xPct, double yPct, const QString &side, double labelOffsetYPct)` | `Q_INVOKABLE`: edits a button hotspot. |
+| `updateScrollHotspot(int hotspotIndex, double xPct, double yPct, const QString &side, double labelOffsetYPct)` | `Q_INVOKABLE`: edits a scroll-wheel or thumb-wheel hotspot. |
+| `updateText(const QString &field, int index, const QString &value)` | `Q_INVOKABLE`: edits a named string field (e.g. control `defaultName`). |
+| `undo()` | `Q_INVOKABLE`: pops the top `EditCommand` off the undo stack and pushes onto the redo stack. |
+| `redo()` | `Q_INVOKABLE`: pops the top `EditCommand` off the redo stack and reapplies. |
+| `save()` | `Q_INVOKABLE`: marks the path in `m_selfWrittenPaths`, writes via `DescriptorWriter`, and asks `DeviceRegistry` to reload. |
+| `reset()` | `Q_INVOKABLE`: clears pending edits and undo / redo stacks for the active path. |
+| `replaceImage(const QString &role, const QString &sourcePath)` | `Q_INVOKABLE`: copies a new image into the descriptor directory for role `"front"` / `"side"` / `"back"`. |
+
+**Signals:**
+
+| Signal | Emitted when |
+|--------|--------------|
+| `dirtyChanged()` | The dirty flag for the active path flips. |
+| `undoStateChanged()` | The undo or redo stack for the active path changes (push, pop, or active-path switch). |
+| `activeDevicePathChanged()` | `setActiveDevicePath` changes the currently-edited path. |
+| `saved(const QString &path)` | `save()` successfully writes `path`. |
+| `saveFailed(const QString &path, const QString &error)` | `save()` fails with an I/O or JSON error. |
+| `externalChangeDetected(const QString &path)` | The `QFileSystemWatcher` reports a change to `path` while the user has unsaved edits. |
+
+**Slots:**
+
+| Slot | Responds to |
+|------|-------------|
+| `setActiveDevicePath(const QString &path)` | `DeviceModel::selectedChanged` in editor mode, wired in `AppRoot::startMonitoring`. |
+| `onExternalFileChanged(const QString &filePath)` | `QFileSystemWatcher::fileChanged`, wired internally by `EditorModel`. |
 
 ## Desktop Integration
 
@@ -725,11 +795,29 @@ Key emission in `injectKeystroke` presses all resolved keycodes in order (`emitK
 - **Unknown device reporting.** If a device with a known Logitech VID but an unrecognized PID appears, emits `unknownDeviceDetected(pid)`. `DeviceFetcher` subscribes and tries to pull a community descriptor for that PID from the GitHub-hosted device database.
 - **Simulation mode.** `simulateAllFromRegistry()` bypasses udev and HID++ entirely, synthesizing one fake `DeviceSession` + `PhysicalDevice` per descriptor in `DeviceRegistry`. Used by the `--simulate-all` CLI flag to let developers visually inspect every community descriptor without physical hardware. Never called in production.
 
-**Signals emitted:**
+**Methods:**
 
-- `physicalDeviceAdded(PhysicalDevice*)` — fires when a new unit serial is seen. `AppRoot` subscribes and wires the new device's per-device runtime signals (`gestureRawXY`, `divertedButtonPressed`, `thumbWheelRotation`, `transportSetupComplete`) directly into `ButtonActionDispatcher` and `ProfileOrchestrator`.
-- `physicalDeviceRemoved(PhysicalDevice*)` — fires only when the last transport of a device is gone, not on every transport switch. `DeviceModel` drops its row, `ButtonActionDispatcher` drops its gesture state entry for that serial, `ProfileOrchestrator` cleans up any per-device cached state.
-- `unknownDeviceDetected(uint16_t pid)` — wired to `DeviceFetcher::fetchForPid` for on-demand descriptor fetching.
+| Method | Purpose |
+|--------|---------|
+| `start()` | Initializes the libudev monitor and scans existing `/dev/hidraw*` nodes. |
+| `simulateAllFromRegistry()` | `--simulate-all` entry point: synthesizes one fake `DeviceSession` + `PhysicalDevice` per descriptor in `DeviceRegistry`. Never called in production. |
+| `sessions()` | Returns the owning `std::vector<std::unique_ptr<DeviceSession>>`. |
+| `sessionById(const QString &id)` | Lookup a `DeviceSession*` by device id, or `nullptr`. |
+| `sessionByPid(uint16_t pid)` | Lookup a `DeviceSession*` by Logitech product id, or `nullptr`. |
+| `physicalDevices()` | Returns a `QList<PhysicalDevice*>` of currently-attached devices. |
+| `physicalDeviceBySerial(const QString &serial)` | Lookup a `PhysicalDevice*` by HID++ unit serial, or `nullptr`. |
+| `activeDevice()` | Backward-compat: returns the first session's descriptor. |
+| `isReceiver(uint16_t pid)` | Static: true if `pid` is a known Bolt/Unifying receiver. |
+| `deviceIndexForDirect()` | Static: the HID++ device index (`0xFF`) used for direct (non-receiver) connections. |
+| `deviceIndexForReceiver(int slot)` | Static: the HID++ device index for receiver slot `slot` (1 to 6). |
+
+**Signals:**
+
+| Signal | Emitted when |
+|--------|--------------|
+| `physicalDeviceAdded(PhysicalDevice *device)` | A new HID++ unit serial is first seen. `AppRoot::onPhysicalDeviceAdded` wires per-device signals into `ButtonActionDispatcher` and `ProfileOrchestrator`. |
+| `physicalDeviceRemoved(PhysicalDevice *device)` | The last transport of a device is gone (not on transport switch). `DeviceModel` drops its row, `ButtonActionDispatcher` drops gesture state, `ProfileOrchestrator` cleans per-device state. |
+| `unknownDeviceDetected(uint16_t pid)` | A device with a known Logitech VID but unrecognized PID appears. Wired to `DeviceFetcher::fetchForPid` for on-demand descriptor fetching. |
 
 **What it does NOT do:**
 
@@ -766,6 +854,44 @@ flowchart LR
 
 When the active transport drops (udev remove, HID++ ping timeout), `PhysicalDevice::setPrimary()` picks any remaining connected session. The UI never sees a disconnect event — `stateChanged` still fires, but `DeviceModel`'s row for this serial stays.
 
+**Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `serial()` | Returns the HID++ unit serial this aggregator is keyed on. |
+| `primary()` | Returns the currently-active `DeviceSession*` that commands route to, or `nullptr`. |
+| `transports()` | Returns the full `QList<DeviceSession*>` of attached transports (primary plus alternates). |
+| `transportCount()` | Number of currently-attached transports. |
+| `attachTransport(DeviceSession *session)` | Registers a transport; promotes to primary if none exists or current primary is offline. |
+| `detachTransport(DeviceSession *session)` | Removes a transport and promotes an alternate if needed. Returns `true` when no transports remain. |
+| `isConnected()` | Delegates to the primary transport. |
+| `deviceName()` | Delegates to the primary transport. |
+| `connectionType()` | Delegates to the primary transport (`"bolt"`, `"bluetooth"`, etc.). |
+| `batteryLevel()` | Delegates to the primary transport. |
+| `batteryCharging()` | Delegates to the primary transport. |
+| `currentDPI()` / `minDPI()` / `maxDPI()` / `dpiStep()` | Delegates DPI accessors to the primary transport. |
+| `smartShiftEnabled()` / `smartShiftThreshold()` | Delegates SmartShift state to the primary transport. |
+| `scrollHiRes()` / `scrollInvert()` / `scrollRatchet()` | Delegates scroll config to the primary transport. |
+| `thumbWheelMode()` / `thumbWheelInvert()` / `thumbWheelDefaultDirection()` | Delegates thumb-wheel state to the primary transport. |
+| `currentHost()` / `hostCount()` / `isHostPaired(int host)` | Delegates Easy-Switch host state to the primary transport. |
+| `deviceSerial()` | Delegates to the primary transport (may differ from the aggregator key early in enumeration). |
+| `firmwareVersion()` | Delegates to the primary transport. |
+| `descriptor()` | Returns the resolved `const IDevice*` descriptor from the primary transport. |
+
+**Signals:**
+
+| Signal | Emitted when |
+|--------|--------------|
+| `stateChanged()` | Anything observable changes (primary swap, enumerate complete, disconnect, battery update). `DeviceModel` emits `dataChanged` in response. |
+| `transportSetupComplete()` | Any transport finishes `setupComplete` (fresh enumerate or reconnect re-enumerate). Wired per-device in `AppRoot::onPhysicalDeviceAdded` to `ProfileOrchestrator::onTransportSetupComplete`. |
+| `gestureRawXY(int16_t dx, int16_t dy)` | Forwarded from the active session's gesture notifications. |
+| `divertedButtonPressed(uint16_t controlId, bool pressed)` | Forwarded from the active session's diverted-button notifications. |
+| `thumbWheelRotation(int delta)` | Forwarded from the active session's thumb-wheel notifications. |
+| `smartShiftChanged(bool enabled, int threshold)` | Per-property relay of `DeviceSession::smartShiftChanged`. |
+| `scrollConfigChanged()` | Per-property relay of `DeviceSession::scrollConfigChanged`. |
+| `thumbWheelModeChanged()` | Per-property relay of `DeviceSession::thumbWheelModeChanged`. |
+| `currentDPIChanged()` | Per-property relay of `DeviceSession::currentDPIChanged`. |
+
 ### DeviceSession
 
 `DeviceSession` (`src/core/DeviceSession.{h,cpp}`) is the per-transport object: one hidraw fd, one HID++ conversation, one set of per-device runtime state. A `PhysicalDevice` owns one or more of these; everything that writes to hardware eventually calls setter methods here.
@@ -782,18 +908,49 @@ When the active transport drops (udev remove, HID++ ping timeout), `PhysicalDevi
 - **Connection tracking.** `m_connected`, `m_deviceName`, `m_deviceSerial`, `m_firmwareVersion`, and `m_activeDevice` (non-owning `const IDevice*` pointer to the descriptor matched via `DeviceRegistry`) make up the session's identity. `disconnectCleanup()` tears down logical state without closing the fd (see [Bolt Receiver DJ Notifications](#bolt-receiver-dj-notifications)).
 - **Simulation hook.** `applySimulation(const IDevice*, QString fakeSerial)` is the `--simulate-all` entry point; it fakes a connected state against a registry descriptor so the UI can render without real hardware. Never called in production.
 
-**Signals emitted:**
+**Methods:**
 
-- `setupComplete()`: emitted once `enumerateAndSetup` finishes, triggering `ProfileOrchestrator::onTransportSetupComplete` via `PhysicalDevice::transportSetupComplete`.
-- `disconnected()`, `deviceWoke()`: transport-state transitions.
-- `batteryChanged(level, charging)`, `smartShiftChanged(enabled, threshold)`, `currentDPIChanged()`, `scrollConfigChanged()`, `thumbWheelModeChanged()`: property-change signals mirrored up to `PhysicalDevice`.
-- `divertedButtonPressed(controlId, pressed)`, `gestureRawXY(dx, dy)`, `thumbWheelRotation(delta)`: raw input events consumed by `ButtonActionDispatcher`.
-- `unknownDeviceDetected(pid)`: forwarded up to `DeviceManager` so `DeviceFetcher` can pull a community descriptor.
+| Method | Purpose |
+|--------|---------|
+| `enumerateAndSetup()` | Single entry point: probes features, reads initial state, resolves capability variants, and constructs the `CommandProcessor`. |
+| `cycleDpi()` | `Q_INVOKABLE`: advances to the next DPI stop in the effective ring. |
+| `setDPI(int value)` | Enqueues an `AdjustableDPI.setSensorDpi` command on the `CommandProcessor`. |
+| `setSmartShift(bool enabled, int threshold)` | Enqueues a SmartShift set command using the resolved variant. |
+| `setScrollConfig(bool hiRes, bool invert)` | Enqueues a `HiResWheel.setWheelMode` command. |
+| `divertButton(uint16_t controlId, bool divert, bool rawXY = false)` | Enqueues a `ReprogControlsV4.setCidReporting` command. |
+| `setThumbWheelMode(const QString &mode, bool invert = false)` | Enqueues a `ThumbWheel.setThumbwheelReporting` command. |
+| `flushCommandProcessor()` | Drains the pending command queue (used during profile switches and teardown). |
+| `touchResponseTime()` | Updates `m_lastResponseTime` so an intentional hardware write does not look like a wake event. |
+| `handleNotification(const hidpp::Report &report)` | Called by `DeviceManager` from the hidraw `QSocketNotifier` for reports with `softwareId == 0`; routes to the right per-feature handler. |
+| `disconnectCleanup()` | Tears down logical state without closing the hidraw fd (soft disconnect for DJ notifications). |
+| `applySimulation(const IDevice *dev, const QString &fakeSerial)` | `--simulate-all` entry point: fakes a connected state against a registry descriptor. Never called in production. |
+| `deviceId()` / `descriptor()` / `devicePid()` / `deviceVid()` / `deviceSerial()` / `deviceName()` / `connectionType()` / `isConnected()` / `firmwareVersion()` | Identity accessors. |
+| `batteryLevel()` / `batteryCharging()` | Battery state accessors. |
+| `currentDPI()` / `minDPI()` / `maxDPI()` / `dpiStep()` | DPI state accessors (projections of `m_*` members). |
+| `smartShiftEnabled()` / `smartShiftThreshold()` | SmartShift state accessors. |
+| `scrollHiRes()` / `scrollInvert()` / `scrollRatchet()` | Scroll config accessors. |
+| `thumbWheelMode()` / `thumbWheelInvert()` / `thumbWheelDefaultDirection()` | Thumb-wheel state accessors. |
+| `currentHost()` / `hostCount()` / `isHostPaired(int host)` | Easy-Switch host state accessors. |
+| `features()` / `transport()` / `deviceIndex()` / `device()` | Protocol-stack accessors (return the owned `FeatureDispatcher`, `Transport`, HID++ index, and `HidrawDevice`). |
+| `effectiveDpiRing(const std::vector<int> &curated, bool adjustableDpi, int minDpi, int maxDpi, int step)` | Static pure helper, unit-tested in `tests/test_dpi_cycle_ring.cpp`. |
+| `nextDpiInRing(const std::vector<int> &ring, int currentDpi)` | Static pure helper, unit-tested in `tests/test_dpi_cycle_ring.cpp`. |
 
-**Helpers:**
+**Signals:**
 
-- `flushCommandProcessor()` drains the pending command queue (used during profile switches and teardown).
-- The static `effectiveDpiRing(curated, adjustableDpi, min, max, step)` and `nextDpiInRing(ring, currentDpi)` are pure helpers unit-tested independently in `tests/test_dpi_cycle_ring.cpp`.
+| Signal | Emitted when |
+|--------|--------------|
+| `setupComplete()` | `enumerateAndSetup` finishes. Forwarded via `PhysicalDevice::transportSetupComplete` to `ProfileOrchestrator::onTransportSetupComplete`. |
+| `disconnected()` | The transport goes offline (DJ notification or hidraw read failure). |
+| `deviceWoke()` | The sleep/wake detector observes a response after a gap greater than `kSleepThresholdMs`. |
+| `batteryChanged(int level, bool charging)` | Battery level or charging state changes, mirrored up to `PhysicalDevice`. |
+| `smartShiftChanged(bool enabled, int threshold)` | SmartShift mode or threshold changes, mirrored up to `PhysicalDevice`. |
+| `currentDPIChanged()` | DPI set response is received, mirrored up to `PhysicalDevice`. |
+| `scrollConfigChanged()` | Scroll config is refreshed, mirrored up to `PhysicalDevice`. |
+| `thumbWheelModeChanged()` | Thumb-wheel mode or invert is refreshed, mirrored up to `PhysicalDevice`. |
+| `divertedButtonPressed(uint16_t controlId, bool pressed)` | A diverted button press or release is received; consumed by `ButtonActionDispatcher` via `PhysicalDevice`. |
+| `gestureRawXY(int16_t dx, int16_t dy)` | A `DivertedRawXYEvent` is received during an active gesture; consumed by `ButtonActionDispatcher` via `PhysicalDevice`. |
+| `thumbWheelRotation(int delta)` | A diverted thumb-wheel rotation is received; consumed by `ButtonActionDispatcher` via `PhysicalDevice`. |
+| `unknownDeviceDetected(uint16_t pid)` | A receiver-attached device's PID is not in `DeviceRegistry`. Forwarded up to `DeviceManager::unknownDeviceDetected`. |
 
 ### Discovery Flow
 
@@ -913,12 +1070,32 @@ Three structs carry the runtime values:
 
 ### DeviceFetcher
 
-`DeviceFetcher` (`src/core/DeviceFetcher.{h,cpp}`) brings community-contributed descriptors from GitHub into the user's local devices directory. Two entry points:
-
-- `fetchManifest()` is called at startup (if `isCacheFresh()` returns false; the TTL is `kCacheTtlSeconds = 3600`). It GETs `kManifestUrl` (the `manifest.json` in the `logitune-devices` GitHub repository) and compares each listed slug's `manifestVersion` against what is already cached; anything new or updated is downloaded via `downloadDevice(slug, info)`.
-- `fetchForPid(pid)` is wired to `DeviceManager::unknownDeviceDetected(pid)`. When an unrecognized Logitech device appears, `DeviceFetcher` looks up that PID in the cached manifest (`findDeviceForPid`), downloads the matching descriptor + images, and writes them into `deviceCachePath(slug)`.
+`DeviceFetcher` (`src/core/DeviceFetcher.{h,cpp}`) brings community-contributed descriptors from GitHub into the user's local devices directory. `fetchManifest()` is called at startup (when `isCacheFresh()` returns false; the TTL is `kCacheTtlSeconds = 3600`), GETs `kManifestUrl` (the `manifest.json` in the `logitune-devices` GitHub repository), and compares each listed slug's `manifestVersion` against what is already cached. `fetchForPid(pid)` is wired to `DeviceManager::unknownDeviceDetected(pid)`: when an unrecognized Logitech device appears, the fetcher looks up that PID in the cached manifest, downloads the matching descriptor plus images, and writes them into `deviceCachePath(slug)`.
 
 On successful fetch, `DeviceFetcher` emits `descriptorsUpdated()`, which `DeviceRegistry` subscribes to so it can rescan the local directory and expose the new device without a restart. The HTTP cache is keyed on ETag (`saveEtag` / `loadEtag`) and timestamp (`saveTimestamp` / `isCacheFresh`) to avoid re-downloading unchanged manifests.
+
+**Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `fetchManifest()` | Downloads `manifest.json` and kicks off targeted descriptor downloads for anything new or updated. |
+| `fetchForPid(uint16_t pid)` | On-demand fetch path: finds the slug for `pid` in the cached manifest and downloads its descriptor plus images. |
+| `setCacheDir(const QString &dir)` | Overrides the cache directory (used by tests). |
+| `isCacheFresh()` | Returns true if the manifest timestamp is younger than `kCacheTtlSeconds = 3600`. |
+| `saveTimestamp()` | Writes the current time to the timestamp file after a successful manifest fetch. |
+| `saveEtag(const QString &etag)` | Persists the HTTP `ETag` from the manifest response for conditional requests. |
+| `loadEtag()` | Returns the last-saved ETag, or an empty string. |
+| `saveManifest(const QJsonObject &manifest)` | Persists the downloaded manifest JSON to disk. |
+| `loadManifest()` | Returns the cached manifest as a `QJsonObject`. |
+| `findDeviceForPid(const QJsonObject &manifest, uint16_t pid)` | Returns `(slug, deviceInfo)` for the first manifest entry that claims `pid`, or an empty pair. |
+| `deviceNeedsUpdate(const QString &slug, int manifestVersion)` | Returns true if the cached descriptor for `slug` is older than `manifestVersion`. |
+| `deviceCachePath(const QString &slug)` | Returns the on-disk cache path for the device `slug`. |
+
+**Signals:**
+
+| Signal | Emitted when |
+|--------|--------------|
+| `descriptorsUpdated()` | Any fetch writes new descriptor files; wired in `AppRoot::wireSignals` to `DeviceRegistry::reloadAll`. |
 
 ## Disconnect and Reconnect
 
@@ -1035,13 +1212,23 @@ The MX Master 3S reports `defaultDirection = 0` (positive when left/back), so `t
 - **Injector routing.** `injectKeystroke(combo)`, `injectCtrlScroll(direction)`, `injectHorizontalScroll(direction)`, `executeDBusCall(spec)`, `launchApp(command)` are one-line passthroughs to the injector.
 - **Gesture detection.** Owns a `GestureDetector` instance accessible via `gestureDetector()`. `GestureDetector::addDelta(dx, dy)` accumulates the raw XY deltas emitted during a held gesture button; `resolve()` returns the dominant-axis `GestureDirection` (`Up`, `Down`, `Left`, `Right`, or `Click` when neither axis exceeds `kThreshold = 50`). `reset()` is called between gestures.
 
-**Static helpers (testable without an injector):**
+**Methods:**
 
-- `parseKeystroke(combo)` forwards to `UinputInjector::parseKeystroke` so tests can exercise the parser without opening `/dev/uinput`.
-- `parseDBusAction(spec)` splits a `service,path,interface,method` string into a `DBusCall` struct; returns an empty struct when the spec is malformed.
-- `gestureDirectionName(dir)` maps the enum to its display string.
+| Method | Purpose |
+|--------|---------|
+| `setInjector(IInputInjector *injector)` | Swaps the injector post-construction (used by `AppRoot` DI and test fixtures). |
+| `executeAction(const ButtonAction &action)` | Switches on `action.type` and forwards to the appropriate injector call. `Default`, `GestureTrigger`, and `SmartShiftToggle` are handled upstream and no-op here. |
+| `injectKeystroke(const QString &combo)` | Passthrough to `IInputInjector::injectKeystroke`. |
+| `injectCtrlScroll(int direction)` | Passthrough to `IInputInjector::injectCtrlScroll`. |
+| `injectHorizontalScroll(int direction)` | Passthrough to `IInputInjector::injectHorizontalScroll`. |
+| `executeDBusCall(const QString &spec)` | Parses a `service,path,interface,method` spec and passes it to `IInputInjector::sendDBusCall`. |
+| `launchApp(const QString &command)` | Passthrough to `IInputInjector::launchApp`. |
+| `gestureDetector()` | Returns the owned `GestureDetector &` that accumulates raw XY deltas for gesture resolution. |
+| `parseKeystroke(const QString &combo)` | Static: forwards to `UinputInjector::parseKeystroke` so tests can exercise the parser without opening `/dev/uinput`. |
+| `parseDBusAction(const QString &spec)` | Static: splits a `service,path,interface,method` string into a `DBusCall` struct (empty on malformed input). |
+| `gestureDirectionName(GestureDirection dir)` | Static: maps the enum to its display string. |
 
-**Dependency injection:** `setInjector(IInputInjector*)` lets callers swap the injector post-construction (used by `AppRoot::Dependency Injection` and by test fixtures). `ActionExecutor` stores no state of its own other than the gesture accumulator and the injector pointer.
+`ActionExecutor` stores no state of its own other than the gesture accumulator and the injector pointer.
 
 ## Services
 
@@ -1055,44 +1242,106 @@ The dependency rule, enforced at the code level:
 
 Resolves the currently selected `PhysicalDevice` / `DeviceSession` / serial from `DeviceModel`'s selection index and its ordered device list. This is the single source of truth for "who is selected", so every other service asks here rather than re-deriving it.
 
+Constructor dependencies: `DeviceModel*`. State: none (pure projection over `DeviceModel`).
 
-- **Constructor dependencies:** `DeviceModel*`
-- **Public accessors:** `activeDevice()`, `activeSession()`, `activeSerial()`
-- **Public slots:** `onSelectionIndexChanged()`
-- **Signals:** `selectionChanged()`
-- **State:** none (pure projection over `DeviceModel`)
+**Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `activeDevice()` | Returns the currently selected `PhysicalDevice*`, or `nullptr` if none. |
+| `activeSession()` | Returns the primary `DeviceSession*` of the active device. |
+| `activeSerial()` | Returns the HID++ serial of the active device as a `QString`. |
+
+**Signals:**
+
+| Signal | Emitted when |
+|--------|--------------|
+| `selectionChanged()` | The resolved active device or session changes. |
+
+**Slots:**
+
+| Slot | Responds to |
+|------|-------------|
+| `onSelectionIndexChanged()` | `DeviceModel::selectedChanged`, wired in `AppRoot::wireSignals`. |
 
 ### DeviceCommandHandler
 
 Routes UI change requests (slider drag, toggle click) to the active `DeviceSession`. Every mutator is a no-op when there is no active session, which makes the service safe to invoke before any device attaches.
 
+Constructor dependencies: `ActiveDeviceResolver*`. State: none.
 
-- **Constructor dependencies:** `ActiveDeviceResolver*`
-- **Public slots:** `requestDpi(int)`, `requestSmartShift(bool, int)`, `requestScrollConfig(bool, bool)`, `requestThumbWheelMode(QString)`, `requestThumbWheelInvert(bool)`
-- **Signals:** `userChangedSomething()` emitted after every successful mutation, for `ProfileOrchestrator::saveCurrentProfile` to latch on to
-- **State:** none
-- **Note:** `applyProfileToHardware` (the burst during a profile switch) does *not* go through `DeviceCommandHandler`. It calls the session directly. `DeviceCommandHandler` is specifically for user-initiated control changes from the UI.
+**Signals:**
+
+| Signal | Emitted when |
+|--------|--------------|
+| `userChangedSomething()` | After every successful mutation, for `ProfileOrchestrator::saveCurrentProfile` to latch on to. |
+
+**Slots:**
+
+| Slot | Responds to |
+|------|-------------|
+| `requestDpi(int value)` | `DeviceModel::dpiChangeRequested`, wired in `AppRoot::wireSignals` (hardware-guarded lambda). |
+| `requestSmartShift(bool enabled, int threshold)` | `DeviceModel::smartShiftChangeRequested`, wired in `AppRoot::wireSignals`. |
+| `requestScrollConfig(bool hiRes, bool invert)` | `DeviceModel::scrollConfigChangeRequested`, wired in `AppRoot::wireSignals`. |
+| `requestThumbWheelMode(const QString &mode)` | `DeviceModel::thumbWheelModeChangeRequested`, wired in `AppRoot::wireSignals`. |
+| `requestThumbWheelInvert(bool invert)` | `DeviceModel::thumbWheelInvertChangeRequested`, wired in `AppRoot::wireSignals`. |
+
+**Note:** `applyProfileToHardware` (the burst during a profile switch) does *not* go through `DeviceCommandHandler`. It calls the session directly. `DeviceCommandHandler` is specifically for user-initiated control changes from the UI.
 
 ### ButtonActionDispatcher
 
 Interprets raw HID++ input events (`gestureRawXY`, `divertedButtonPressed`, `thumbWheelRotation`) and dispatches high-level actions: keystroke injection, app launch, DPI cycle, SmartShift toggle, gesture direction resolution, and thumb-wheel-mode actions. Owns the per-device gesture + thumb-wheel accumulator state.
 
+Constructor dependencies: `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceResolver*`. State: `QMap<QString, PerDeviceState>` keyed by serial. Each entry holds `gestureAccumX/Y`, `thumbAccum`, `gestureActive`, `gestureControlId`. Gesture threshold is 50, thumb threshold is 15.
 
-- **Constructor dependencies:** `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceResolver*`
-- **Public slots:** `onGestureRaw(int16_t, int16_t)`, `onDivertedButtonPressed(uint16_t, bool)`, `onThumbWheelRotation(int)`, `onProfileApplied(QString)`, `onCurrentDeviceChanged(const IDevice*)`
-- **Public methods:** `onDeviceRemoved(QString)` to drop per-device state
-- **State:** `QMap<QString, PerDeviceState>` keyed by serial. Each entry holds `gestureAccumX/Y`, `thumbAccum`, `gestureActive`, `gestureControlId`. Gesture threshold is 50, thumb threshold is 15.
+**Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `onDeviceRemoved(const QString &serial)` | Drops the `PerDeviceState` entry for a departing device. Called from `AppRoot::onPhysicalDeviceRemoved`. |
+
+**Slots:**
+
+| Slot | Responds to |
+|------|-------------|
+| `onGestureRaw(int16_t dx, int16_t dy)` | `PhysicalDevice::gestureRawXY`, wired per-device in `AppRoot::onPhysicalDeviceAdded`. |
+| `onDivertedButtonPressed(uint16_t controlId, bool pressed)` | `PhysicalDevice::divertedButtonPressed`, wired per-device in `AppRoot::onPhysicalDeviceAdded`. |
+| `onThumbWheelRotation(int delta)` | `PhysicalDevice::thumbWheelRotation`, wired per-device in `AppRoot::onPhysicalDeviceAdded`. |
+| `onProfileApplied(const QString &serial)` | `ProfileOrchestrator::profileApplied`, used to reset `thumbAccum` for the given serial. |
+| `onCurrentDeviceChanged(const IDevice *device)` | `ProfileOrchestrator::currentDeviceChanged`, keeps the local `IDevice*` pointer in sync. |
 
 ### ProfileOrchestrator
 
 Owns the save, apply, push, and window-focus flow. Holds no device state beyond a current `IDevice*` pointer; reads from models and engines, writes to them, and emits `profileApplied(serial)` after every hardware apply so the dispatcher can reset its thumb accumulator.
 
+Constructor dependencies: `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceResolver*`, `DeviceModel*`, `ButtonModel*`, `ActionModel*`, `ProfileModel*`, `IDesktopIntegration*`. State: `m_currentDevice` (non-owning `const IDevice*`).
 
-- **Constructor dependencies:** `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceResolver*`, `DeviceModel*`, `ButtonModel*`, `ActionModel*`, `ProfileModel*`, `IDesktopIntegration*`
-- **Public methods:** `setupProfileForDevice(PhysicalDevice*)`, `applyProfileToHardware(const Profile&)`, `applyDisplayedChange<Mutator, HardwareForward>(...)` (the templated bridge used by `AppRoot` for the five `DeviceModel` `*ChangeRequested` signals)
-- **Public slots:** `saveCurrentProfile()`, `onUserButtonChanged(int, QString, QString)`, `onTabSwitched(QString)`, `onDisplayProfileChanged(QString, const Profile&)`, `onWindowFocusChanged(QString, QString)`, `onTransportSetupComplete(PhysicalDevice*)`, `onCurrentDeviceChanged(const IDevice*)`
-- **Signals:** `profileApplied(QString serial)`, `currentDeviceChanged(const IDevice*)`
-- **State:** `m_currentDevice` (non-owning `const IDevice*`)
+**Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `setupProfileForDevice(PhysicalDevice *device)` | Initializes profile context for a newly-attached device (registers serial, seeds `default.conf` if missing). |
+| `applyProfileToHardware(const Profile &p)` | Enqueues DPI, SmartShift, scroll, thumb-wheel, and button-divert commands on the active session for the given profile. |
+| `applyDisplayedChange<Mutator, HardwareForward>(Mutator mutator, HardwareForward hardwareForward)` | Templated bridge for the five `DeviceModel::*ChangeRequested` signals: mutates the displayed profile's cached copy, persists it, refreshes the UI, and forwards to hardware only when the displayed profile is also the active one. |
+
+**Signals:**
+
+| Signal | Emitted when |
+|--------|--------------|
+| `profileApplied(const QString &serial)` | `applyProfileToHardware` finishes enqueuing all commands for `serial`. |
+| `currentDeviceChanged(const IDevice *device)` | `m_currentDevice` is updated (device selection change or descriptor reload). |
+
+**Slots:**
+
+| Slot | Responds to |
+|------|-------------|
+| `saveCurrentProfile()` | `DeviceCommandHandler::userChangedSomething` and `DeviceModel::userGestureChanged`, wired in `AppRoot::wireSignals`. |
+| `onUserButtonChanged(int buttonId, const QString &actionName, const QString &actionType)` | `ButtonModel::userActionChanged`, wired in `AppRoot::wireSignals`. |
+| `onTabSwitched(const QString &profileName)` | `ProfileModel::profileSwitched`, wired in `AppRoot::wireSignals`. |
+| `onDisplayProfileChanged(const QString &serial, const Profile &profile)` | `ProfileEngine::deviceDisplayProfileChanged`, wired in `AppRoot::wireSignals`. |
+| `onWindowFocusChanged(const QString &wmClass, const QString &title)` | `IDesktopIntegration::activeWindowChanged`, wired in `AppRoot::wireSignals`. |
+| `onTransportSetupComplete(PhysicalDevice *device)` | `PhysicalDevice::transportSetupComplete`, wired per-device in `AppRoot::onPhysicalDeviceAdded`. |
+| `onCurrentDeviceChanged(const IDevice *device)` | `ActiveDeviceResolver::selectionChanged` via `AppRoot::onSelectionChanged`. |
 
 ## AppRoot Wiring
 
@@ -1207,3 +1456,19 @@ This is the sole DI point: the rest of the subsystems are value members of AppRo
 **Tooltip.** `refreshTooltip()` populates the hover tooltip when no devices are attached (falls back to an app-level string) and when the device list changes.
 
 `TrayManager` does not own the `DeviceModel` or the `PhysicalDevice` objects in `m_entries`; lifetimes are guarded by the dtor disconnecting every `stateConn` before destruction.
+
+**Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `trayIcon()` | Returns the owned `QSystemTrayIcon *` (accessor used by `AppRoot` for tooltip and icon management). |
+| `menu()` | Returns the owned `QMenu *`. |
+| `showAction()` | Returns the `Show Logitune` `QAction *`. |
+| `quitAction()` | Returns the `Quit` `QAction *`, so the caller can wire it to `QApplication::quit` (kept external to simplify test suppression). |
+| `show()` | Installs the tray icon and makes it visible. |
+
+**Signals:**
+
+| Signal | Emitted when |
+|--------|--------------|
+| `showWindowRequested()` | User triggers `Show Logitune` or left-clicks the tray icon; `AppRoot` wires this to the main window's `show + raise + activate` sequence. |
