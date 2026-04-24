@@ -140,7 +140,7 @@ logitune/
 │   │   │   ├── HidrawDevice.h  # Raw hidraw fd wrapper
 │   │   │   ├── Transport.h     # Send/receive with timeout + retry
 │   │   │   ├── FeatureDispatcher.h  # Feature table, call(), callAsync()
-│   │   │   ├── CommandQueue.h  # Paced sequential command sending
+│   │   │   ├── CommandProcessor.h  # Paced sequential command sending
 │   │   │   └── features/       # Per-feature param builders + parsers
 │   │   ├── devices/
 │   │   │   └── MxMaster3sDescriptor.cpp/h

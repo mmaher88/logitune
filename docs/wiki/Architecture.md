@@ -49,7 +49,7 @@ sequenceDiagram
     participant PE as ProfileEngine
     participant DM as DeviceModel
     participant DSess as DeviceSession
-    participant CQ as CommandQueue
+    participant CQ as CommandProcessor
     participant FD as FeatureDispatcher
     participant TR as Transport
     participant PM as ProfileModel
@@ -134,7 +134,7 @@ graph TB
     end
 
     subgraph "Protocol"
-        CQ[CommandQueue<br/>10ms pacing, retry]
+        CQ[CommandProcessor<br/>10ms pacing, retry]
         FD[FeatureDispatcher<br/>Feature table, callAsync, softwareId]
         TR[Transport<br/>send/receive, timeout, error handling]
         HR[HidrawDevice<br/>open, read, write, poll]
@@ -195,14 +195,14 @@ Features with multiple variants (Battery, SmartShift) are resolved at enumeratio
 
 ### Command Queue
 
-The CommandQueue exists to solve a specific problem: **HwError flooding**.
+The CommandProcessor exists to solve a specific problem: **HwError flooding**.
 
 When a profile switch happens, Logitune needs to send many HID++ commands in rapid succession (divert 6 buttons + set DPI + set SmartShift + set scroll config + set thumb wheel = ~10 commands). Sending them all at once causes `HwError` (error code `0x04`) responses because the device's internal command processor cannot keep up.
 
 ```mermaid
 sequenceDiagram
     participant App as DeviceManager
-    participant CQ as CommandQueue
+    participant CQ as CommandProcessor
     participant Timer as QTimer (10ms)
     participant FD as FeatureDispatcher
     participant TR as Transport
@@ -245,7 +245,7 @@ Key properties:
 
 ```mermaid
 sequenceDiagram
-    participant CQ as CommandQueue
+    participant CQ as CommandProcessor
     participant FD as FeatureDispatcher
     participant TR as Transport
     participant Notif as QSocketNotifier
@@ -340,7 +340,7 @@ Display and hardware pointers are independent on purpose. See [Display vs Hardwa
 2. **First connect** — seeds `default.conf` from current device hardware state (DPI, SmartShift, scroll config, button defaults from descriptor, default gestures)
 3. **Profile load** — `setDeviceConfigDir()` scans the directory for `.conf` files and loads them into the in-memory cache
 4. **Focus change** — `profileForApp(wmClass)` looks up the app binding; if none found, returns "default"
-5. **Hardware apply** — `applyProfileToHardware()` sends all profile settings via CommandQueue
+5. **Hardware apply** — `applyProfileToHardware()` sends all profile settings via CommandProcessor
 6. **User edit** — UI changes go through DeviceModel -> DeviceCommandHandler -> ProfileOrchestrator -> ProfileEngine cache -> disk save
 7. **Cache vs disk** — the cache is the source of truth during runtime; saves to disk are immediate but loads only happen at startup
 
@@ -691,7 +691,7 @@ flowchart TD
     Features --> ReadState[Read battery, DPI, SmartShift, scroll, thumb wheel, Easy-Switch]
     ReadState --> LookupDesc[DeviceRegistry::findByPid/findByName]
     LookupDesc --> Undivert[Undivert all buttons + thumb wheel]
-    Undivert --> CreateQueue[Create CommandQueue]
+    Undivert --> CreateQueue[Create CommandProcessor]
     CreateQueue --> Signal[emit deviceSetupComplete]
 ```
 
@@ -766,7 +766,7 @@ sequenceDiagram
     Dev->>Recv: (device powers off)
     Recv->>DMgr: HID++ 1.0 notification<br/>featureIndex=0x41<br/>params[0] bit 6 = 1 (link not established)
     
-    Note over DMgr: Soft disconnect:<br/>- Clear CommandQueue<br/>- Reset features<br/>- Keep hidraw fd open<br/>- Emit deviceDisconnected
+    Note over DMgr: Soft disconnect:<br/>- Clear CommandProcessor<br/>- Reset features<br/>- Keep hidraw fd open<br/>- Emit deviceDisconnected
 
     Dev->>Recv: (device powers on)
     Recv->>DMgr: HID++ 1.0 notification<br/>featureIndex=0x41<br/>params[0] bit 6 = 0 (link established)
@@ -774,7 +774,7 @@ sequenceDiagram
     Note over DMgr: Start 1500ms reconnect timer<br/>(debounce — device sends multiple<br/>notifications during boot)
     
     DMgr->>DMgr: Timer fires: enumerateAndSetup()
-    Note over DMgr: Re-enumerate features,<br/>re-read state,<br/>re-create CommandQueue,<br/>emit deviceSetupComplete
+    Note over DMgr: Re-enumerate features,<br/>re-read state,<br/>re-create CommandProcessor,<br/>emit deviceSetupComplete
 ```
 
 Key details:

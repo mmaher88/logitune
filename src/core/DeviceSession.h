@@ -3,7 +3,7 @@
 #include "hidpp/HidrawDevice.h"
 #include "hidpp/Transport.h"
 #include "hidpp/FeatureDispatcher.h"
-#include "hidpp/CommandQueue.h"
+#include "hidpp/CommandProcessor.h"
 #include "hidpp/capabilities/BatteryCapability.h"
 #include "hidpp/capabilities/SmartShiftCapability.h"
 #include "hidpp/capabilities/ReprogControlsCapability.h"
@@ -78,7 +78,7 @@ public:
     void setScrollConfig(bool hiRes, bool invert);
     void divertButton(uint16_t controlId, bool divert, bool rawXY = false);
     void setThumbWheelMode(const QString &mode, bool invert = false);
-    void flushCommandQueue();
+    void flushCommandProcessor();
     void touchResponseTime();
 
     // Notification handling (called by DeviceManager from hidraw notifier)
@@ -135,7 +135,7 @@ private:
     std::unique_ptr<hidpp::HidrawDevice> m_device;
     std::unique_ptr<hidpp::Transport> m_transport;
     std::unique_ptr<hidpp::FeatureDispatcher> m_features;
-    std::unique_ptr<hidpp::CommandQueue> m_commandQueue;
+    std::unique_ptr<hidpp::CommandProcessor> m_commandProcessor;
 
     std::optional<hidpp::capabilities::BatteryVariant>         m_batteryDispatch;
     std::optional<hidpp::capabilities::SmartShiftVariant>      m_smartShiftDispatch;

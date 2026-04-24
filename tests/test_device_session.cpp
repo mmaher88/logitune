@@ -159,9 +159,9 @@ TEST_F(DeviceSessionTest, DivertButtonSkipsWhenNotConnected) {
     // No crash, no assertion — just a no-op
 }
 
-TEST_F(DeviceSessionTest, FlushCommandQueueWhenEmpty) {
+TEST_F(DeviceSessionTest, FlushCommandProcessorWhenEmpty) {
     auto session = makeSession();
-    session->flushCommandQueue();
+    session->flushCommandProcessor();
     // No crash — safe on null command queue
 }
 

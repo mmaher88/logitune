@@ -321,7 +321,7 @@ void ProfileOrchestrator::applyProfileToHardware(const Profile &p)
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session || !m_currentDevice) return;
 
-    session->flushCommandQueue();
+    session->flushCommandProcessor();
 
     session->touchResponseTime();
     const auto controls = m_currentDevice->controls();

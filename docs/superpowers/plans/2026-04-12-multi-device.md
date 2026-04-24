@@ -71,7 +71,7 @@ Read `src/core/DeviceManager.h` to understand the current per-device state and m
 
 **Setters** — copy from DeviceManager.h:
 - `setDPI`, `setSmartShift`, `setScrollConfig`, `divertButton`, `setThumbWheelMode`
-- `flushCommandQueue`, `touchResponseTime`
+- `flushCommandProcessor`, `touchResponseTime`
 
 **Signals** — these are NEW (DeviceManager currently emits these as flat signals):
 - `setupComplete()`
@@ -86,7 +86,7 @@ Read `src/core/DeviceManager.h` to understand the current per-device state and m
 - `deviceWoke()`
 
 **Private members** — move from DeviceManager.h:
-- `HidrawDevice`, `Transport`, `FeatureDispatcher`, `CommandQueue` unique_ptrs
+- `HidrawDevice`, `Transport`, `FeatureDispatcher`, `CommandProcessor` unique_ptrs
 - Capability dispatches (`BatteryVariant`, `SmartShiftVariant`)
 - All cached state fields (battery, DPI, smartShift, scroll, thumbWheel, easySwitch)
 - `QSocketNotifier` for hidraw
@@ -107,7 +107,7 @@ Read `src/core/DeviceManager.cpp` carefully. The following methods/blocks MOVE t
 - `enumerateAndSetup()` — the entire function (~150 lines)
 - `handleNotification()` — the entire function (~150 lines)
 - `setDPI()`, `setSmartShift()`, `setScrollConfig()`, `divertButton()`, `setThumbWheelMode()`
-- `flushCommandQueue()`, `touchResponseTime()`
+- `flushCommandProcessor()`, `touchResponseTime()`
 - `checkSleepWake()` — the sleep/wake detection
 - All state getter implementations (`batteryLevel()`, `deviceConnected()`, etc.)
 - `isDirectDevice()` — becomes a private helper

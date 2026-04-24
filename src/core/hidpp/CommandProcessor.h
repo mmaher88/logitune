@@ -20,10 +20,10 @@ struct Command {
 /// Sends HID++ commands sequentially with pacing and retry on the main thread.
 /// Commands are enqueued and processed one at a time via a QTimer.
 /// Runs on the main thread — no fd contention with QSocketNotifier.
-class CommandQueue : public QObject {
+class CommandProcessor : public QObject {
     Q_OBJECT
 public:
-    explicit CommandQueue(FeatureDispatcher *features, Transport *transport,
+    explicit CommandProcessor(FeatureDispatcher *features, Transport *transport,
                           uint8_t deviceIndex, QObject *parent = nullptr);
 
     /// Enqueue a command. Can be called from any thread.

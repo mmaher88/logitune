@@ -58,7 +58,7 @@ public:
     void setScrollConfig(bool hiRes, bool invert);
     void divertButton(uint16_t cid, bool divert, bool rawXY = false);
     void setThumbWheelMode(const QString &mode, bool invert = false);
-    void flushCommandQueue();
+    void flushCommandProcessor();
 
     // Notification handling (called by DeviceManager from hidraw notifier)
     void handleNotification(const hidpp::Report &report);
@@ -80,7 +80,7 @@ signals:
 
 private:
     // All current DeviceManager per-device state moves here:
-    // HidrawDevice, Transport, FeatureDispatcher, CommandQueue
+    // HidrawDevice, Transport, FeatureDispatcher, CommandProcessor
     // Capability dispatches (BatteryVariant, SmartShiftVariant)
     // Cached state (battery, DPI, smartShift, scroll, thumbWheel, easySwitch)
     // Sleep/wake detection

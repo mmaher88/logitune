@@ -165,7 +165,7 @@ Thumb wheel:
 - Add horizontal scroll injection (REL_HWHEEL) for scroll mode
 
 HID++ command queue:
-- New CommandQueue sends commands sequentially with 10ms pacing
+- New CommandProcessor sends commands sequentially with 10ms pacing
 - Eliminates HwError from flooding device during profile switches
 ```
 
@@ -212,7 +212,7 @@ For the full walkthrough, see [Editor Mode](Editor-Mode) and
 | Add a new model | `src/app/models/` — create class, register in `main.cpp` as QML singleton |
 | Add a new test | `tests/test_*.cpp` and add to `tests/CMakeLists.txt` |
 | Add a new QML test | `tests/qml/tst_*.qml` and add to `tests/qml/CMakeLists.txt` |
-| Change the protocol layer | `src/core/hidpp/` — Transport, FeatureDispatcher, CommandQueue |
+| Change the protocol layer | `src/core/hidpp/` — Transport, FeatureDispatcher, CommandProcessor |
 | Change signal wiring | `src/app/AppRoot.cpp` — `wireSignals()` method |
 | Change the UI layout | `src/app/qml/Main.qml` (sidebar + page switcher) |
 | Debug device communication | Run with `--debug`, check `lcHidpp` and `lcDevice` log categories |
@@ -225,7 +225,7 @@ These are intentional choices — please don't "fix" them:
 
 2. **Direct hidraw**: No libhidapi, no libusb. Direct `open()/read()/write()` on `/dev/hidrawN` with `QSocketNotifier` for async I/O.
 
-3. **CommandQueue for pacing**: All hardware writes go through a 10ms-paced queue. This prevents HwError from command flooding. Do not bypass the queue.
+3. **CommandProcessor for pacing**: All hardware writes go through a 10ms-paced queue. This prevents HwError from command flooding. Do not bypass the queue.
 
 4. **Display vs hardware profile**: The UI can show a different profile than what's running on hardware. This prevents accidental hardware writes when browsing profiles.
 

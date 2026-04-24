@@ -402,7 +402,7 @@ stateDiagram-v2
     [*] --> Connected : Device on receiver slot
 
     Connected --> SoftDisconnect : Register 0x41, bit 6 = 1
-    Note right of SoftDisconnect : Keep hidraw fd open\nClear CommandQueue\nReset features\nEmit deviceDisconnected
+    Note right of SoftDisconnect : Keep hidraw fd open\nClear CommandProcessor\nReset features\nEmit deviceDisconnected
     
     SoftDisconnect --> Reconnecting : Register 0x41, bit 6 = 0
     Note right of Reconnecting : Start 1500ms debounce timer\nCancel any pending timer
@@ -498,9 +498,9 @@ flowchart TD
     Retry -->|No| ReturnNone[Return nullopt]
 ```
 
-### CommandQueue Layer
+### CommandProcessor Layer
 
-The CommandQueue adds its own retry logic on top:
+The CommandProcessor adds its own retry logic on top:
 
 - **3 retries** per command (`kMaxRetries = 3`)
 - **50ms retry delay** (`kRetryDelayMs = 50`)
@@ -510,7 +510,7 @@ The CommandQueue adds its own retry logic on top:
 
 | Scenario | Error | Solution |
 |----------|-------|---------|
-| Commands sent too fast | HwError (0x04) | CommandQueue 10ms pacing |
+| Commands sent too fast | HwError (0x04) | CommandProcessor 10ms pacing |
 | Device sleeping | Timeout / HwError | Sleep/wake detection + re-enumeration |
 | Device disconnected from receiver | Timeout | DeviceConnection notification handling |
 | Wrong hidraw interface | Timeout | sysfs report descriptor check before opening |
