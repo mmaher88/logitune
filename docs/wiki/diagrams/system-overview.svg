@@ -46,7 +46,7 @@
     <text x="220" y="131">AppRoot</text>
     <text x="580" y="131">Models + TrayManager</text>
     <text x="115" y="191">DeviceSelection</text>
-    <text x="305" y="191">DeviceCommands</text>
+    <text x="305" y="191">DeviceCommandHandler</text>
     <text x="495" y="191">ButtonActionDispatcher</text>
     <text x="685" y="191">ProfileOrchestrator</text>
     <text x="170" y="292">Desktop integration</text>

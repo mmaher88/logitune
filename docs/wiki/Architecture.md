@@ -6,11 +6,11 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 
 At a glance, one button press on the mouse turns into one row update in the QML UI. Each layer has one job, and `AppRoot` is a thin composition root that wires them together (not a place where behavior lives):
 
-<img src="diagrams/system-overview.png" alt="Logitune system overview: QML UI on top, then the app library band showing AppRoot, the four services (DeviceSelection, DeviceCommands, ButtonActionDispatcher, ProfileOrchestrator), and Models + TrayManager; below that the core library with three sub-bands (integration, aggregation, protocol), then Linux kernel and hardware at the bottom" width="800"/>
+<img src="diagrams/system-overview.png" alt="Logitune system overview: QML UI on top, then the app library band showing AppRoot, the four services (DeviceSelection, DeviceCommandHandler, ButtonActionDispatcher, ProfileOrchestrator), and Models + TrayManager; below that the core library with three sub-bands (integration, aggregation, protocol), then Linux kernel and hardware at the bottom" width="800"/>
 
 > Source: `docs/wiki/diagrams/system-overview.svg`. Re-render with `rsvg-convert -w 1600 -h 1240 docs/wiki/diagrams/system-overview.svg -o docs/wiki/diagrams/system-overview.png` after edits.
 
-The app-lib band contains AppRoot plus four focused services (`DeviceSelection`, `DeviceCommands`, `ButtonActionDispatcher`, `ProfileOrchestrator`) that sit between the QML UI / ViewModels and the core library's engines + HID++ stack. Each layer below has its own detailed diagram elsewhere on this page:
+The app-lib band contains AppRoot plus four focused services (`DeviceSelection`, `DeviceCommandHandler`, `ButtonActionDispatcher`, `ProfileOrchestrator`) that sit between the QML UI / ViewModels and the core library's engines + HID++ stack. Each layer below has its own detailed diagram elsewhere on this page:
 
 | Layer | Detail |
 |---|---|
@@ -79,7 +79,7 @@ sequenceDiagram
     PO->>DS: activeSession()
     DS-->>PO: DeviceSession* (active transport)
 
-    Note over PO: applyProfileToHardware calls the session directly. DeviceCommands is only used for user UI changes.
+    Note over PO: applyProfileToHardware calls the session directly. DeviceCommandHandler is only used for user UI changes.
 
     par Apply all settings on the selected session
         PO->>DSess: setDPI(value)
@@ -329,7 +329,7 @@ graph TB
 3. **Profile load** — `setDeviceConfigDir()` scans the directory for `.conf` files and loads them into the in-memory cache
 4. **Focus change** — `profileForApp(wmClass)` looks up the app binding; if none found, returns "default"
 5. **Hardware apply** — `applyProfileToHardware()` sends all profile settings via CommandQueue
-6. **User edit** — UI changes go through DeviceModel -> DeviceCommands -> ProfileOrchestrator -> ProfileEngine cache -> disk save
+6. **User edit** — UI changes go through DeviceModel -> DeviceCommandHandler -> ProfileOrchestrator -> ProfileEngine cache -> disk save
 7. **Cache vs disk** — the cache is the source of truth during runtime; saves to disk are immediate but loads only happen at startup
 
 ### ProfileDelta
@@ -356,7 +356,7 @@ The four services split into **translators** and **a coordinator**.
 
 **Translators** do one focused conversion each and do not own multi-step flows:
 - `DeviceSelection` — converts ViewModel state (selected index + device list) into a resolved active device pointer
-- `DeviceCommands` — converts ViewModel intent (UI slider drag, toggle click) into Model operations (`DeviceSession::setDPI`, etc.)
+- `DeviceCommandHandler` — converts ViewModel intent (UI slider drag, toggle click) into Model operations (`DeviceSession::setDPI`, etc.)
 - `ButtonActionDispatcher` — converts hardware events (button press, thumb wheel rotation) into domain actions (keystroke injection, app launch)
 
 **Coordinator** — `ProfileOrchestrator` owns a multi-step workflow that reads and writes across both layers. `onWindowFocusChanged` alone does: ViewModel write (active wmClass), Model read (profile-for-app lookup), Model write (set hardware profile), Model command fan-out (apply DPI / SmartShift / scroll / buttons to session), cross-service signal emission (`profileApplied` to dispatcher), ViewModel write (hardware-active profile name). Seven steps spanning both layers per user window-focus change. That is coordination, not translation — which is why it warrants the MVVM-C "Coordinator" role rather than fitting into the same VM-to-Model bridge category as the translators.
@@ -385,7 +385,7 @@ graph LR
 
     subgraph "Services (VM to Model bridges)"
         DSel[DeviceSelection]
-        DCmd[DeviceCommands]
+        DCmd[DeviceCommandHandler]
         BAD[ButtonActionDispatcher]
     end
 
@@ -861,7 +861,7 @@ Resolves the currently selected `PhysicalDevice` / `DeviceSession` / serial from
 - **Signals:** `selectionChanged()`
 - **State:** none (pure projection over `DeviceModel`)
 
-### DeviceCommands
+### DeviceCommandHandler
 
 Routes UI change requests (slider drag, toggle click) to the active `DeviceSession`. Every mutator is a no-op when there is no active session, which makes the service safe to invoke before any device attaches.
 
@@ -869,7 +869,7 @@ Routes UI change requests (slider drag, toggle click) to the active `DeviceSessi
 - **Public slots:** `requestDpi(int)`, `requestSmartShift(bool, int)`, `requestScrollConfig(bool, bool)`, `requestThumbWheelMode(QString)`, `requestThumbWheelInvert(bool)`
 - **Signals:** `userChangedSomething()` emitted after every successful mutation, for `ProfileOrchestrator::saveCurrentProfile` to latch on to
 - **State:** none
-- **Note:** `applyProfileToHardware` (the burst during a profile switch) does *not* go through `DeviceCommands`. It calls the session directly. `DeviceCommands` is specifically for user-initiated control changes from the UI.
+- **Note:** `applyProfileToHardware` (the burst during a profile switch) does *not* go through `DeviceCommandHandler`. It calls the session directly. `DeviceCommandHandler` is specifically for user-initiated control changes from the UI.
 
 ### ButtonActionDispatcher
 
@@ -913,16 +913,16 @@ Key edges wired in `AppRoot::wireSignals()` and `AppRoot::onPhysicalDeviceAdded(
 | 5 | DeviceModel | `selectedChanged` | DeviceSelection::`onSelectionIndexChanged` | a |
 | 6 | DeviceSelection | `selectionChanged` | AppRoot::`onSelectionChanged` (internal refresh) | b |
 | 7 | DeviceModel | `userGestureChanged` | lambda → ProfileOrchestrator::`saveCurrentProfile` | a |
-| 8 | DeviceCommands | `userChangedSomething` | ProfileOrchestrator::`saveCurrentProfile` | b |
+| 8 | DeviceCommandHandler | `userChangedSomething` | ProfileOrchestrator::`saveCurrentProfile` | b |
 | 9 | ProfileOrchestrator | `profileApplied` | ButtonActionDispatcher::`onProfileApplied` | b |
 | 10 | ProfileOrchestrator | `currentDeviceChanged` | ButtonActionDispatcher::`onCurrentDeviceChanged` | b |
-| 11 | DeviceModel | `dpiChangeRequested` / `smartShiftChangeRequested` / `scrollConfigChangeRequested` / `thumbWheelModeChangeRequested` / `thumbWheelInvertChangeRequested` | lambda → `ProfileOrchestrator::applyDisplayedChange` + `DeviceCommands::request*` | a |
+| 11 | DeviceModel | `dpiChangeRequested` / `smartShiftChangeRequested` / `scrollConfigChangeRequested` / `thumbWheelModeChangeRequested` / `thumbWheelInvertChangeRequested` | lambda → `ProfileOrchestrator::applyDisplayedChange` + `DeviceCommandHandler::request*` | a |
 | 12 | ProfileModel | `profileAdded` / `profileRemoved` | lambda → ProfileEngine::`createProfileForApp` / `removeAppProfile` | a |
 | 13 | DeviceManager | `physicalDeviceAdded` / `physicalDeviceRemoved` | AppRoot::`onPhysicalDeviceAdded` / `onPhysicalDeviceRemoved` | c |
 | 14 | PhysicalDevice | `gestureRawXY` / `divertedButtonPressed` / `thumbWheelRotation` | ButtonActionDispatcher equivalents | c |
 | 15 | PhysicalDevice | `transportSetupComplete` | lambda → ProfileOrchestrator::`onTransportSetupComplete` | c |
 
-Rows 13 to 15 are per-device runtime wiring in `onPhysicalDeviceAdded`; the rest are startup wiring in `wireSignals()`. Row 11 is a single `applyDisplayedChange` bridge reused for all five `*ChangeRequested` signals; it persists the cached profile, refreshes the UI, and only forwards to hardware via `DeviceCommands` when the displayed profile is also the active hardware profile.
+Rows 13 to 15 are per-device runtime wiring in `onPhysicalDeviceAdded`; the rest are startup wiring in `wireSignals()`. Row 11 is a single `applyDisplayedChange` bridge reused for all five `*ChangeRequested` signals; it persists the cached profile, refreshes the UI, and only forwards to hardware via `DeviceCommandHandler` when the displayed profile is also the active hardware profile.
 
 ### Dependency Injection
 

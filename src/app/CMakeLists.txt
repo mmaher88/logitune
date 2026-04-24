@@ -9,7 +9,7 @@ add_library(logitune-app-lib STATIC
     models/ProfileModel.cpp
     models/EditorModel.cpp
     services/DeviceSelection.cpp
-    services/DeviceCommands.cpp
+    services/DeviceCommandHandler.cpp
     services/ButtonActionDispatcher.cpp
     services/ProfileOrchestrator.cpp
     dialogs/GitHubIssueBuilder.cpp

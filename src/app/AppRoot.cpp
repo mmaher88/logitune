@@ -43,7 +43,7 @@ AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject
     , m_injector(injector ? injector : m_ownedInjector.get())
     , m_deviceManager(&m_registry)
     , m_deviceSelection(&m_deviceModel, this)
-    , m_deviceCommands(&m_deviceSelection, this)
+    , m_deviceCommandHandler(&m_deviceSelection, this)
     , m_actionExecutor(nullptr)
     , m_buttonDispatcher(&m_profileEngine, &m_actionExecutor, &m_deviceSelection, this)
     , m_profileOrchestrator(&m_profileEngine, &m_actionExecutor, &m_deviceSelection,
@@ -144,7 +144,7 @@ void AppRoot::wireSignals()
 
     // Gesture keystroke edits in the UI. saveCurrentProfile re-serializes
     // the displayed profile; the orchestrator's own userChangedSomething
-    // subscription covers point/scroll tweaks from DeviceCommands.
+    // subscription covers point/scroll tweaks from DeviceCommandHandler.
     connect(&m_deviceModel, &DeviceModel::userGestureChanged,
             &m_profileOrchestrator,
             [this](const QString &, const QString &, const QString &) {
@@ -172,11 +172,11 @@ void AppRoot::wireSignals()
     connect(&m_deviceManager, &DeviceManager::unknownDeviceDetected,
             &m_deviceFetcher, &DeviceFetcher::fetchForPid);
 
-    // DeviceCommands emits userChangedSomething after any HID++ mutation
+    // DeviceCommandHandler emits userChangedSomething after any HID++ mutation
     // from point/scroll controls. The orchestrator persists the displayed
     // profile in response (it's already pushed into the cache by the
     // applyDisplayedChange bridge below).
-    connect(&m_deviceCommands, &DeviceCommands::userChangedSomething,
+    connect(&m_deviceCommandHandler, &DeviceCommandHandler::userChangedSomething,
             &m_profileOrchestrator, &ProfileOrchestrator::saveCurrentProfile);
 
     // Cross-service bridge: after any hardware apply, reset the dispatcher's
@@ -194,7 +194,7 @@ void AppRoot::wireSignals()
         [this](int value) {
             m_profileOrchestrator.applyDisplayedChange(
                 [&](Profile &p) { p.dpi = value; },
-                [&]{ m_deviceCommands.requestDpi(value); });
+                [&]{ m_deviceCommandHandler.requestDpi(value); });
         });
     connect(&m_deviceModel, &DeviceModel::smartShiftChangeRequested, this,
         [this](bool enabled, int threshold) {
@@ -203,7 +203,7 @@ void AppRoot::wireSignals()
                     p.smartShiftEnabled = enabled;
                     p.smartShiftThreshold = threshold;
                 },
-                [&]{ m_deviceCommands.requestSmartShift(enabled, threshold); });
+                [&]{ m_deviceCommandHandler.requestSmartShift(enabled, threshold); });
         });
     connect(&m_deviceModel, &DeviceModel::scrollConfigChangeRequested, this,
         [this](bool hiRes, bool invert) {
@@ -213,19 +213,19 @@ void AppRoot::wireSignals()
                     p.scrollDirection = invert ? QStringLiteral("natural")
                                                 : QStringLiteral("standard");
                 },
-                [&]{ m_deviceCommands.requestScrollConfig(hiRes, invert); });
+                [&]{ m_deviceCommandHandler.requestScrollConfig(hiRes, invert); });
         });
     connect(&m_deviceModel, &DeviceModel::thumbWheelModeChangeRequested, this,
         [this](const QString &mode) {
             m_profileOrchestrator.applyDisplayedChange(
                 [&](Profile &p) { p.thumbWheelMode = mode; },
-                [&]{ m_deviceCommands.requestThumbWheelMode(mode); });
+                [&]{ m_deviceCommandHandler.requestThumbWheelMode(mode); });
         });
     connect(&m_deviceModel, &DeviceModel::thumbWheelInvertChangeRequested, this,
         [this](bool invert) {
             m_profileOrchestrator.applyDisplayedChange(
                 [&](Profile &p) { p.thumbWheelInvert = invert; },
-                [&]{ m_deviceCommands.requestThumbWheelInvert(invert); });
+                [&]{ m_deviceCommandHandler.requestThumbWheelInvert(invert); });
         });
 }
 

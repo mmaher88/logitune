@@ -21,7 +21,7 @@ class ProfileModel;
 /// after every hardware apply.
 ///
 /// Zero `connect()` calls in the .cpp — AppRoot wires the inbound
-/// signals (from models, ProfileEngine, desktop, DeviceCommands) and the
+/// signals (from models, ProfileEngine, desktop, DeviceCommandHandler) and the
 /// outbound signals (to ButtonActionDispatcher).
 class ProfileOrchestrator : public QObject {
     Q_OBJECT

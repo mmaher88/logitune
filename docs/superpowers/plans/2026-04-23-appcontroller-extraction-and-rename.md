@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Extract behavior out of `AppController` into 4 focused services (`DeviceSelection`, `DeviceCommands`, `ButtonActionDispatcher`, `ProfileOrchestrator`), move translation helpers to `ActionModel`, add a contract docstring, and rename `AppController` to `AppRoot`. Preserve all existing behavior.
+**Goal:** Extract behavior out of `AppController` into 4 focused services (`DeviceSelection`, `DeviceCommandHandler`, `ButtonActionDispatcher`, `ProfileOrchestrator`), move translation helpers to `ActionModel`, add a contract docstring, and rename `AppController` to `AppRoot`. Preserve all existing behavior.
 
 **Architecture:** `AppRoot` becomes a pure composition root: owns singletons, wires signals, handles runtime device lifecycle, exposes ViewModels for QML registration. All user-facing behavior lives in services. Services hold pointers only to models, engines, and `DeviceSelection` — never to other services. All `connect()` calls live in `AppRoot`.
 
@@ -17,11 +17,11 @@
 Files created across all tasks:
 
 - `src/app/services/DeviceSelection.h` / `.cpp` (Task 1)
-- `src/app/services/DeviceCommands.h` / `.cpp` (Task 2)
+- `src/app/services/DeviceCommandHandler.h` / `.cpp` (Task 2)
 - `src/app/services/ButtonActionDispatcher.h` / `.cpp` (Task 3)
 - `src/app/services/ProfileOrchestrator.h` / `.cpp` (Task 4)
 - `tests/services/DeviceSelectionFixture.h` (Task 1)
-- `tests/services/DeviceCommandsFixture.h` (Task 2)
+- `tests/services/DeviceCommandHandlerFixture.h` (Task 2)
 - `tests/services/ButtonActionDispatcherFixture.h` (Task 3)
 - `tests/services/ProfileOrchestratorFixture.h` (Task 4)
 - `tests/services/test_device_selection.cpp` (Task 1)
@@ -320,19 +320,19 @@ Part of #107."
 
 ---
 
-## Task 2: Extract `DeviceCommands` service
+## Task 2: Extract `DeviceCommandHandler` service
 
 **Files:**
-- Create: `src/app/services/DeviceCommands.h` / `.cpp`
-- Create: `tests/services/DeviceCommandsFixture.h`
+- Create: `src/app/services/DeviceCommandHandler.h` / `.cpp`
+- Create: `tests/services/DeviceCommandHandlerFixture.h`
 - Create: `tests/services/test_device_commands.cpp`
 - Modify: `src/app/AppController.h` (remove the 5 `*ChangeRequested` slots)
-- Modify: `src/app/AppController.cpp` (remove slot bodies, wire DeviceCommands into signal graph)
+- Modify: `src/app/AppController.cpp` (remove slot bodies, wire DeviceCommandHandler into signal graph)
 - Modify: `src/app/CMakeLists.txt` and `tests/CMakeLists.txt`
 
 ### Steps
 
-- [ ] **Step 1: Write `src/app/services/DeviceCommands.h`**
+- [ ] **Step 1: Write `src/app/services/DeviceCommandHandler.h`**
 
 ```cpp
 #pragma once
@@ -348,10 +348,10 @@ class DeviceSelection;
 /// ProfileOrchestrator can trigger a save.
 ///
 /// No-op if there is no active session (DeviceSelection returns null).
-class DeviceCommands : public QObject {
+class DeviceCommandHandler : public QObject {
     Q_OBJECT
 public:
-    explicit DeviceCommands(DeviceSelection *selection, QObject *parent = nullptr);
+    explicit DeviceCommandHandler(DeviceSelection *selection, QObject *parent = nullptr);
 
 public slots:
     void requestDpi(int value);
@@ -372,21 +372,21 @@ private:
 } // namespace logitune
 ```
 
-- [ ] **Step 2: Write `src/app/services/DeviceCommands.cpp`**
+- [ ] **Step 2: Write `src/app/services/DeviceCommandHandler.cpp`**
 
 ```cpp
-#include "DeviceCommands.h"
+#include "DeviceCommandHandler.h"
 #include "DeviceSelection.h"
 #include "DeviceSession.h"
 
 namespace logitune {
 
-DeviceCommands::DeviceCommands(DeviceSelection *selection, QObject *parent)
+DeviceCommandHandler::DeviceCommandHandler(DeviceSelection *selection, QObject *parent)
     : QObject(parent)
     , m_selection(selection)
 {}
 
-void DeviceCommands::requestDpi(int value)
+void DeviceCommandHandler::requestDpi(int value)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
@@ -394,7 +394,7 @@ void DeviceCommands::requestDpi(int value)
     emit userChangedSomething();
 }
 
-void DeviceCommands::requestSmartShift(bool enabled, int threshold)
+void DeviceCommandHandler::requestSmartShift(bool enabled, int threshold)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
@@ -402,7 +402,7 @@ void DeviceCommands::requestSmartShift(bool enabled, int threshold)
     emit userChangedSomething();
 }
 
-void DeviceCommands::requestScrollConfig(bool hiRes, bool invert)
+void DeviceCommandHandler::requestScrollConfig(bool hiRes, bool invert)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
@@ -410,7 +410,7 @@ void DeviceCommands::requestScrollConfig(bool hiRes, bool invert)
     emit userChangedSomething();
 }
 
-void DeviceCommands::requestThumbWheelMode(const QString &mode)
+void DeviceCommandHandler::requestThumbWheelMode(const QString &mode)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
@@ -421,7 +421,7 @@ void DeviceCommands::requestThumbWheelMode(const QString &mode)
     emit userChangedSomething();
 }
 
-void DeviceCommands::requestThumbWheelInvert(bool invert)
+void DeviceCommandHandler::requestThumbWheelInvert(bool invert)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
@@ -434,16 +434,16 @@ void DeviceCommands::requestThumbWheelInvert(bool invert)
 
 Cross-reference against `AppController.cpp:604-688` to confirm the two-arg shape of `setThumbWheelMode` / existing getter names; adjust if the real `DeviceSession` API differs.
 
-- [ ] **Step 3: Add `services/DeviceCommands.cpp` to `src/app/CMakeLists.txt`**
+- [ ] **Step 3: Add `services/DeviceCommandHandler.cpp` to `src/app/CMakeLists.txt`**
 
-- [ ] **Step 4: Write `tests/services/DeviceCommandsFixture.h`**
+- [ ] **Step 4: Write `tests/services/DeviceCommandHandlerFixture.h`**
 
 ```cpp
 #pragma once
 #include <gtest/gtest.h>
 #include <QSignalSpy>
 #include <memory>
-#include "services/DeviceCommands.h"
+#include "services/DeviceCommandHandler.h"
 #include "services/DeviceSelection.h"
 #include "DeviceManager.h"
 #include "DeviceSession.h"
@@ -454,7 +454,7 @@ Cross-reference against `AppController.cpp:604-688` to confirm the two-arg shape
 
 namespace logitune::test {
 
-class DeviceCommandsFixture : public ::testing::Test {
+class DeviceCommandHandlerFixture : public ::testing::Test {
 protected:
     void SetUp() override {
         ensureApp();
@@ -463,7 +463,7 @@ protected:
         m_profileModel  = std::make_unique<ProfileModel>();
         m_selection = std::make_unique<DeviceSelection>(
             m_deviceManager.get(), m_deviceModel.get(), m_profileModel.get());
-        m_commands = std::make_unique<DeviceCommands>(m_selection.get());
+        m_commands = std::make_unique<DeviceCommandHandler>(m_selection.get());
     }
 
     /// Attach a mock session so the commands have a target. Mirrors the
@@ -485,7 +485,7 @@ protected:
     std::unique_ptr<DeviceModel>     m_deviceModel;
     std::unique_ptr<ProfileModel>    m_profileModel;
     std::unique_ptr<DeviceSelection> m_selection;
-    std::unique_ptr<DeviceCommands>  m_commands;
+    std::unique_ptr<DeviceCommandHandler>  m_commands;
     MockDevice       m_device;
     DeviceSession   *m_session  = nullptr;
     PhysicalDevice  *m_physical = nullptr;
@@ -497,50 +497,50 @@ protected:
 - [ ] **Step 5: Write `tests/services/test_device_commands.cpp`**
 
 ```cpp
-#include "services/DeviceCommandsFixture.h"
+#include "services/DeviceCommandHandlerFixture.h"
 
 using namespace logitune;
 using namespace logitune::test;
 
-TEST_F(DeviceCommandsFixture, NullSessionNoOpDoesNotEmit) {
-    QSignalSpy spy(m_commands.get(), &DeviceCommands::userChangedSomething);
+TEST_F(DeviceCommandHandlerFixture, NullSessionNoOpDoesNotEmit) {
+    QSignalSpy spy(m_commands.get(), &DeviceCommandHandler::userChangedSomething);
     m_commands->requestDpi(1600);
     EXPECT_EQ(spy.count(), 0);
 }
 
-TEST_F(DeviceCommandsFixture, RequestDpiCallsSetDPI) {
+TEST_F(DeviceCommandHandlerFixture, RequestDpiCallsSetDPI) {
     attachMockSession();
     m_commands->requestDpi(1600);
     EXPECT_EQ(m_session->currentDPI(), 1600);
 }
 
-TEST_F(DeviceCommandsFixture, RequestDpiEmitsUserChangedExactlyOnce) {
+TEST_F(DeviceCommandHandlerFixture, RequestDpiEmitsUserChangedExactlyOnce) {
     attachMockSession();
-    QSignalSpy spy(m_commands.get(), &DeviceCommands::userChangedSomething);
+    QSignalSpy spy(m_commands.get(), &DeviceCommandHandler::userChangedSomething);
     m_commands->requestDpi(1600);
     EXPECT_EQ(spy.count(), 1);
 }
 
-TEST_F(DeviceCommandsFixture, RequestSmartShiftForwardsBothArgs) {
+TEST_F(DeviceCommandHandlerFixture, RequestSmartShiftForwardsBothArgs) {
     attachMockSession();
     m_commands->requestSmartShift(true, 200);
     EXPECT_TRUE(m_session->smartShiftEnabled());
     EXPECT_EQ(m_session->smartShiftThreshold(), 200);
 }
 
-TEST_F(DeviceCommandsFixture, RequestScrollConfigForwardsBothArgs) {
+TEST_F(DeviceCommandHandlerFixture, RequestScrollConfigForwardsBothArgs) {
     attachMockSession();
     m_commands->requestScrollConfig(true, false);
     // Verify via session getters; exact assertions depend on DeviceSession API
 }
 
-TEST_F(DeviceCommandsFixture, RequestThumbWheelModeForwardsString) {
+TEST_F(DeviceCommandHandlerFixture, RequestThumbWheelModeForwardsString) {
     attachMockSession();
     m_commands->requestThumbWheelMode(QStringLiteral("hscroll"));
     EXPECT_EQ(m_session->thumbWheelMode(), QStringLiteral("hscroll"));
 }
 
-TEST_F(DeviceCommandsFixture, RequestThumbWheelInvertForwardsBool) {
+TEST_F(DeviceCommandHandlerFixture, RequestThumbWheelInvertForwardsBool) {
     attachMockSession();
     m_commands->requestThumbWheelInvert(true);
     EXPECT_TRUE(m_session->thumbWheelInvert());
@@ -552,14 +552,14 @@ Add `services/test_device_commands.cpp` to `tests/CMakeLists.txt` alongside `tes
 - [ ] **Step 6: Integrate into `AppController`**
 
 In `AppController.h`:
-- Add `#include "services/DeviceCommands.h"`
-- Add member: `DeviceCommands m_deviceCommands{&m_deviceSelection, this};`
+- Add `#include "services/DeviceCommandHandler.h"`
+- Add member: `DeviceCommandHandler m_deviceCommands{&m_deviceSelection, this};`
 - Remove the 5 `on*ChangeRequested` slot declarations from `private slots:`
 
 In `AppController.cpp`:
 - Delete the 5 slot bodies (lines 604-688)
-- In `wireSignals()`, replace `connect(&m_deviceModel, &DeviceModel::dpiChangeRequested, this, &AppController::onDpiChangeRequested);` (and the 4 siblings) with `connect(&m_deviceModel, &DeviceModel::dpiChangeRequested, &m_deviceCommands, &DeviceCommands::requestDpi);` etc.
-- Add: `connect(&m_deviceCommands, &DeviceCommands::userChangedSomething, this, &AppController::saveCurrentProfile);` (temporary; gets redirected to `ProfileOrchestrator` in Task 4)
+- In `wireSignals()`, replace `connect(&m_deviceModel, &DeviceModel::dpiChangeRequested, this, &AppController::onDpiChangeRequested);` (and the 4 siblings) with `connect(&m_deviceModel, &DeviceModel::dpiChangeRequested, &m_deviceCommands, &DeviceCommandHandler::requestDpi);` etc.
+- Add: `connect(&m_deviceCommands, &DeviceCommandHandler::userChangedSomething, this, &AppController::saveCurrentProfile);` (temporary; gets redirected to `ProfileOrchestrator` in Task 4)
 
 - [ ] **Step 7: Build, run all tests, smoke test, commit**
 
@@ -567,7 +567,7 @@ In `AppController.cpp`:
 cmake --build build -j$(nproc)
 QT_QPA_PLATFORM=offscreen ./build/tests/logitune-tests
 # Smoke test: change DPI, SmartShift, scroll config in UI; confirm each still applies and saves to the profile.
-git add -A && git commit -m "refactor(app): extract DeviceCommands service from AppController
+git add -A && git commit -m "refactor(app): extract DeviceCommandHandler service from AppController
 
 Move the 5 *ChangeRequested passthrough slots (DPI, SmartShift, scroll,
 thumbwheel mode, thumbwheel invert) into a dedicated service that holds
@@ -882,8 +882,8 @@ In `AppController.cpp`:
 - In `wireSignals()`:
 
 ```cpp
-// DeviceCommands save signal now goes to orchestrator
-connect(&m_deviceCommands, &DeviceCommands::userChangedSomething,
+// DeviceCommandHandler save signal now goes to orchestrator
+connect(&m_deviceCommands, &DeviceCommandHandler::userChangedSomething,
         &m_profileOrchestrator, &ProfileOrchestrator::saveCurrentProfile);
 
 // ButtonModel signal goes directly to orchestrator
@@ -929,7 +929,7 @@ In `AppController::onPhysicalDeviceAdded`:
 - Replace the inline `transportSetupComplete` lambda with: `connect(device, &PhysicalDevice::transportSetupComplete, &m_profileOrchestrator, [this, device](){ m_profileOrchestrator.onTransportSetupComplete(device); });`
 - Replace the direct `setupProfileForDevice(device)` call with `m_profileOrchestrator.setupProfileForDevice(device);`
 
-Remove the temporary wiring from Task 2 (`DeviceCommands::userChangedSomething -> AppController::saveCurrentProfile`).
+Remove the temporary wiring from Task 2 (`DeviceCommandHandler::userChangedSomething -> AppController::saveCurrentProfile`).
 
 - [ ] **Step 5: Build, run all tests, smoke test, commit**
 
@@ -1024,7 +1024,7 @@ Part of #107."
 ///
 /// This class does not implement user-facing behavior. Profile flow lives
 /// in ProfileOrchestrator, input interpretation in ButtonActionDispatcher,
-/// hardware command relays in DeviceCommands, and active-device resolution
+/// hardware command relays in DeviceCommandHandler, and active-device resolution
 /// in DeviceSelection. If you find yourself adding a method here that
 /// responds to a user event or mutates application state, it belongs in
 /// a service instead.
@@ -1131,7 +1131,7 @@ composition root: owns singletons, wires signals, handles runtime device
 lifecycle, exposes ViewModels for QML registration. The 'Controller'
 name in an MVVM stack is misleading because it implies MVC-style
 behavior that now lives in ProfileOrchestrator, ButtonActionDispatcher,
-and DeviceCommands.
+and DeviceCommandHandler.
 
 Closes #107."
 ```

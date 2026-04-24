@@ -11,10 +11,10 @@ class DeviceSelection;
 /// ProfileOrchestrator (wired in AppRoot) can trigger a save.
 ///
 /// No-op if there is no active session (DeviceSelection returns null).
-class DeviceCommands : public QObject {
+class DeviceCommandHandler : public QObject {
     Q_OBJECT
 public:
-    explicit DeviceCommands(DeviceSelection *selection, QObject *parent = nullptr);
+    explicit DeviceCommandHandler(DeviceSelection *selection, QObject *parent = nullptr);
 
 public slots:
     void requestDpi(int value);

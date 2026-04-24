@@ -23,7 +23,7 @@ After extraction and rename, `AppRoot`'s role is:
 
 Equivalent to a hand-written DI container plus a signal wiring layer. `AppRoot` does not implement any user-facing behavior.
 
-The name `AppController` is misleading in an MVVM stack because "Controller" implies MVC-style behavior that, after this refactor, lives in `ProfileOrchestrator`, `ButtonActionDispatcher`, and `DeviceCommands`. Renaming to `AppRoot` locks in the composition-root terminology and prevents future drift of behavior back into the class.
+The name `AppController` is misleading in an MVVM stack because "Controller" implies MVC-style behavior that, after this refactor, lives in `ProfileOrchestrator`, `ButtonActionDispatcher`, and `DeviceCommandHandler`. Renaming to `AppRoot` locks in the composition-root terminology and prevents future drift of behavior back into the class.
 
 ## New architecture
 
@@ -36,7 +36,7 @@ All new service classes live in `src/app/services/`, with matching fixtures in `
 - Exposes `activeDevice()`, `activeSession()`, `activeSerial()` + `selectionChanged()` signal
 - Read-only; single source of truth for "who is selected"
 
-**`DeviceCommands`** (~80 LOC, replaces 5 passthrough slots on AppController)
+**`DeviceCommandHandler`** (~80 LOC, replaces 5 passthrough slots on AppController)
 - Receives UI change requests: `requestDpi`, `requestSmartShift`, `requestScrollConfig`, `requestThumbWheelMode`, `requestThumbWheelInvert`
 - Resolves active session via `DeviceSelection`, calls the corresponding `DeviceSession::setXxx`
 - Emits `userChangedSomething()` after each successful mutation
@@ -51,7 +51,7 @@ All new service classes live in `src/app/services/`, with matching fixtures in `
 **`ProfileOrchestrator`** (~350 LOC, the main behavior extraction)
 - Owns: `applyProfileToHardware`, `saveCurrentProfile`, `pushDisplayValues`, `restoreButtonModelFromProfile`, `setupProfileForDevice`, `onWindowFocusChanged`, `onTabSwitched`, `onDisplayProfileChanged`, `onUserButtonChanged`
 - Emits `profileApplied(serial)` after every hardware apply so `ButtonActionDispatcher` can reset its state
-- Subscribes to `DeviceCommands::userChangedSomething` and `ButtonModel::userActionChanged` (existing signal) to trigger `saveCurrentProfile`
+- Subscribes to `DeviceCommandHandler::userChangedSomething` and `ButtonModel::userActionChanged` (existing signal) to trigger `saveCurrentProfile`
 
 ### `ActionModel` gains
 
@@ -87,7 +87,7 @@ This is the dependency rule:
 Per-service fixtures for unit coverage, plus the existing integration fixture (renamed in the final commit) for end-to-end coverage.
 
 - `DeviceSelectionFixture` — selection resolution edge cases (out-of-range index, transport switch within a `PhysicalDevice`)
-- `DeviceCommandsFixture` — null session no-op, signal emission exactly once per request, clamping pass-through
+- `DeviceCommandHandlerFixture` — null session no-op, signal emission exactly once per request, clamping pass-through
 - `ButtonActionDispatcherFixture` — gesture threshold math, thumb wheel accumulation, action dispatch for each `ButtonAction` type
 - `ProfileOrchestratorFixture` — save/apply cycle, window-focus profile switch, display vs hardware profile divergence, `thumbAccum` reset signal on apply
 - `AppControllerFixture` (existing, renamed to `AppRootFixture` in the final commit) — end-to-end integration covering the wired signal graph
@@ -99,9 +99,9 @@ Real-hardware smoke test on MX Master 3S is mandatory after each commit in the s
 Seven commits, each independently building, passing tests, and smoke-tested on hardware. The rename is the last commit so all extraction commits read naturally against the familiar `AppController` name.
 
 1. **Add `DeviceSelection`** — new service + fixture. Replace `AppController::selectedDevice/Session/Serial` helpers and `onSelectedDeviceChanged` with calls into `DeviceSelection`. Update any slot that used those helpers.
-2. **Add `DeviceCommands`** — new service + fixture. Move the 5 `*ChangeRequested` slots into it; delete from `AppController`. Temporarily wire `DeviceCommands::userChangedSomething` to `AppController::saveCurrentProfile` (the method still lives on AppController until commit 4; this one `connect()` call gets redirected to `ProfileOrchestrator` then).
+2. **Add `DeviceCommandHandler`** — new service + fixture. Move the 5 `*ChangeRequested` slots into it; delete from `AppController`. Temporarily wire `DeviceCommandHandler::userChangedSomething` to `AppController::saveCurrentProfile` (the method still lives on AppController until commit 4; this one `connect()` call gets redirected to `ProfileOrchestrator` then).
 3. **Add `ButtonActionDispatcher`** — new service + fixture. Move `onDivertedButtonPressed`, `onThumbWheelRotation`, `PerDeviceState`, `kGestureThreshold`, `kThumbThreshold`, and the `gestureRawXY` lambda. Rewire the per-device connects in `onPhysicalDeviceAdded` to point at the dispatcher. Delete from `AppController`.
-4. **Add `ProfileOrchestrator`** — new service + fixture. Move the 9 profile-related methods and slots. Wire `profileApplied` signal into `ButtonActionDispatcher` and the `userChangedSomething` signals from `DeviceCommands` / `ButtonModel` into `ProfileOrchestrator::saveCurrentProfile`. Remove the shim from commit 2.
+4. **Add `ProfileOrchestrator`** — new service + fixture. Move the 9 profile-related methods and slots. Wire `profileApplied` signal into `ButtonActionDispatcher` and the `userChangedSomething` signals from `DeviceCommandHandler` / `ButtonModel` into `ProfileOrchestrator::saveCurrentProfile`. Remove the shim from commit 2.
 5. **Move translation helpers** — `buttonActionToName` / `buttonEntryToAction` go onto `ActionModel`; update callers in `ProfileOrchestrator`.
 6. **Cleanup** — add contract docstring to the class stating its composition-root role, remove now-unused `#include`s, remove dead code. Class is still named `AppController` at this point.
 7. **Rename `AppController` to `AppRoot`** — rename class, rename `src/app/AppController.{h,cpp}` to `src/app/AppRoot.{h,cpp}`, rename `AppControllerFixture` to `AppRootFixture`, update every `#include`, forward declaration, friend class, CMake source list, wiki page, diagram label, and docstring reference. Purely mechanical. No behavior changes.

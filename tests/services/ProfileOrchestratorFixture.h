@@ -30,7 +30,7 @@ namespace logitune::test {
 /// dir, real ProfileEngine + models) but constructs a ProfileOrchestrator
 /// directly instead of an AppRoot. Wires only the signals the
 /// orchestrator cares about (from the engine and desktop); the cross-
-/// service bridges to ButtonActionDispatcher / DeviceCommands are not
+/// service bridges to ButtonActionDispatcher / DeviceCommandHandler are not
 /// wired here because the orchestrator is the subject under test.
 class ProfileOrchestratorFixture : public ::testing::Test {
 protected:

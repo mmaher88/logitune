@@ -1,15 +1,15 @@
-#include "DeviceCommands.h"
+#include "DeviceCommandHandler.h"
 #include "DeviceSelection.h"
 #include "DeviceSession.h"
 
 namespace logitune {
 
-DeviceCommands::DeviceCommands(DeviceSelection *selection, QObject *parent)
+DeviceCommandHandler::DeviceCommandHandler(DeviceSelection *selection, QObject *parent)
     : QObject(parent)
     , m_selection(selection)
 {}
 
-void DeviceCommands::requestDpi(int value)
+void DeviceCommandHandler::requestDpi(int value)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
@@ -17,7 +17,7 @@ void DeviceCommands::requestDpi(int value)
     emit userChangedSomething();
 }
 
-void DeviceCommands::requestSmartShift(bool enabled, int threshold)
+void DeviceCommandHandler::requestSmartShift(bool enabled, int threshold)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
@@ -25,7 +25,7 @@ void DeviceCommands::requestSmartShift(bool enabled, int threshold)
     emit userChangedSomething();
 }
 
-void DeviceCommands::requestScrollConfig(bool hiRes, bool invert)
+void DeviceCommandHandler::requestScrollConfig(bool hiRes, bool invert)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
@@ -37,7 +37,7 @@ void DeviceCommands::requestScrollConfig(bool hiRes, bool invert)
 // setters below read the other value from the session (not the profile)
 // to avoid clobbering hardware state with a stale profile value if an
 // earlier HID++ write silently failed.
-void DeviceCommands::requestThumbWheelMode(const QString &mode)
+void DeviceCommandHandler::requestThumbWheelMode(const QString &mode)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
@@ -45,7 +45,7 @@ void DeviceCommands::requestThumbWheelMode(const QString &mode)
     emit userChangedSomething();
 }
 
-void DeviceCommands::requestThumbWheelInvert(bool invert)
+void DeviceCommandHandler::requestThumbWheelInvert(bool invert)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
