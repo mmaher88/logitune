@@ -3,7 +3,7 @@
 #include <QSignalSpy>
 #include <memory>
 #include "services/DeviceCommandHandler.h"
-#include "services/DeviceSelection.h"
+#include "services/ActiveDeviceResolver.h"
 #include "DeviceSession.h"
 #include "PhysicalDevice.h"
 #include "models/DeviceModel.h"
@@ -18,7 +18,7 @@ protected:
     void SetUp() override {
         ensureApp();
         m_deviceModel = std::make_unique<DeviceModel>();
-        m_selection   = std::make_unique<DeviceSelection>(m_deviceModel.get());
+        m_selection   = std::make_unique<ActiveDeviceResolver>(m_deviceModel.get());
         m_commands    = std::make_unique<DeviceCommandHandler>(m_selection.get());
     }
 
@@ -49,7 +49,7 @@ protected:
     }
 
     std::unique_ptr<DeviceModel>     m_deviceModel;
-    std::unique_ptr<DeviceSelection> m_selection;
+    std::unique_ptr<ActiveDeviceResolver> m_selection;
     std::unique_ptr<DeviceCommandHandler>  m_commands;
     MockDevice       m_device;
     DeviceSession   *m_session  = nullptr;

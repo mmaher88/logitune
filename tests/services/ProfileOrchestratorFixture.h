@@ -14,7 +14,7 @@
 #include "models/ButtonModel.h"
 #include "models/DeviceModel.h"
 #include "models/ProfileModel.h"
-#include "services/DeviceSelection.h"
+#include "services/ActiveDeviceResolver.h"
 #include "services/ProfileOrchestrator.h"
 
 #include "helpers/TestFixtures.h"
@@ -58,7 +58,7 @@ protected:
         m_actionModel   = std::make_unique<ActionModel>();
         m_profileModel  = std::make_unique<ProfileModel>();
         m_profileEngine = std::make_unique<ProfileEngine>();
-        m_selection     = std::make_unique<DeviceSelection>(m_deviceModel.get());
+        m_selection     = std::make_unique<ActiveDeviceResolver>(m_deviceModel.get());
         m_injector      = std::make_unique<MockInjector>();
         m_executor      = std::make_unique<ActionExecutor>(m_injector.get());
         m_desktop       = std::make_unique<MockDesktop>();
@@ -68,12 +68,12 @@ protected:
             m_deviceModel.get(), m_buttonModel.get(), m_actionModel.get(),
             m_profileModel.get(), m_desktop.get());
 
-        // Wire the DeviceModel -> DeviceSelection -> selectionChanged chain
+        // Wire the DeviceModel -> ActiveDeviceResolver -> selectionChanged chain
         // and the engine's display-profile signal. These are normally wired
         // by AppRoot::wireSignals(); tests need the same plumbing to
         // exercise the orchestrator's slots the way production code does.
         QObject::connect(m_deviceModel.get(), &DeviceModel::selectedChanged,
-                         m_selection.get(), &DeviceSelection::onSelectionIndexChanged);
+                         m_selection.get(), &ActiveDeviceResolver::onSelectionIndexChanged);
         QObject::connect(m_profileEngine.get(), &ProfileEngine::deviceDisplayProfileChanged,
                          m_orchestrator.get(), &ProfileOrchestrator::onDisplayProfileChanged);
         QObject::connect(m_desktop.get(), &IDesktopIntegration::activeWindowChanged,
@@ -131,7 +131,7 @@ protected:
     std::unique_ptr<ActionModel>         m_actionModel;
     std::unique_ptr<ProfileModel>        m_profileModel;
     std::unique_ptr<ProfileEngine>       m_profileEngine;
-    std::unique_ptr<DeviceSelection>     m_selection;
+    std::unique_ptr<ActiveDeviceResolver>     m_selection;
     std::unique_ptr<MockInjector>        m_injector;
     std::unique_ptr<ActionExecutor>      m_executor;
     std::unique_ptr<MockDesktop>         m_desktop;

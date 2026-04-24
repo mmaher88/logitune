@@ -42,11 +42,11 @@ AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject
     , m_desktop(desktop ? desktop : m_ownedDesktop.get())
     , m_injector(injector ? injector : m_ownedInjector.get())
     , m_deviceManager(&m_registry)
-    , m_deviceSelection(&m_deviceModel, this)
-    , m_deviceCommandHandler(&m_deviceSelection, this)
+    , m_deviceResolver(&m_deviceModel, this)
+    , m_deviceCommandHandler(&m_deviceResolver, this)
     , m_actionExecutor(nullptr)
-    , m_buttonDispatcher(&m_profileEngine, &m_actionExecutor, &m_deviceSelection, this)
-    , m_profileOrchestrator(&m_profileEngine, &m_actionExecutor, &m_deviceSelection,
+    , m_buttonDispatcher(&m_profileEngine, &m_actionExecutor, &m_deviceResolver, this)
+    , m_profileOrchestrator(&m_profileEngine, &m_actionExecutor, &m_deviceResolver,
                             &m_deviceModel, &m_buttonModel, &m_actionModel,
                             &m_profileModel, m_desktop, this)
 {
@@ -130,8 +130,8 @@ void AppRoot::wireSignals()
             &m_profileOrchestrator, &ProfileOrchestrator::onDisplayProfileChanged);
 
     connect(&m_deviceModel, &DeviceModel::selectedChanged,
-            &m_deviceSelection, &DeviceSelection::onSelectionIndexChanged);
-    connect(&m_deviceSelection, &DeviceSelection::selectionChanged,
+            &m_deviceResolver, &ActiveDeviceResolver::onSelectionIndexChanged);
+    connect(&m_deviceResolver, &ActiveDeviceResolver::selectionChanged,
             this, &AppRoot::onSelectionChanged);
 
     // Physical device lifecycle — one per unique serial, survives transport
@@ -153,13 +153,13 @@ void AppRoot::wireSignals()
 
     connect(&m_profileModel, &ProfileModel::profileAdded, this,
             [this](const QString &wmClass, const QString &profileName) {
-        const QString serial = m_deviceSelection.activeSerial();
+        const QString serial = m_deviceResolver.activeSerial();
         if (!serial.isEmpty())
             m_profileEngine.createProfileForApp(serial, wmClass, profileName);
     });
     connect(&m_profileModel, &ProfileModel::profileRemoved, this,
             [this](const QString &wmClass) {
-        const QString serial = m_deviceSelection.activeSerial();
+        const QString serial = m_deviceResolver.activeSerial();
         if (!serial.isEmpty())
             m_profileEngine.removeAppProfile(serial, wmClass);
     });
@@ -277,7 +277,7 @@ void AppRoot::onPhysicalDeviceRemoved(PhysicalDevice *device)
 // one-time device provisioning happens in onPhysicalDeviceAdded.
 void AppRoot::onSelectionChanged()
 {
-    auto *device = m_deviceSelection.activeDevice();
+    auto *device = m_deviceResolver.activeDevice();
     if (!device) return;
 
     // Tell the orchestrator about the new IDevice; it in turn emits

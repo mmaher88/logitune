@@ -9,7 +9,7 @@ class ActionExecutor;
 class ActionModel;
 class ButtonModel;
 class DeviceModel;
-class DeviceSelection;
+class ActiveDeviceResolver;
 class IDesktopIntegration;
 class IDevice;
 class PhysicalDevice;
@@ -28,7 +28,7 @@ class ProfileOrchestrator : public QObject {
 public:
     ProfileOrchestrator(ProfileEngine *profileEngine,
                         ActionExecutor *actionExecutor,
-                        DeviceSelection *selection,
+                        ActiveDeviceResolver *selection,
                         DeviceModel *deviceModel,
                         ButtonModel *buttonModel,
                         ActionModel *actionModel,
@@ -82,7 +82,7 @@ private:
 
     ProfileEngine       *m_profileEngine;
     ActionExecutor      *m_actionExecutor;
-    DeviceSelection     *m_selection;
+    ActiveDeviceResolver     *m_selection;
     DeviceModel         *m_deviceModel;
     ButtonModel         *m_buttonModel;
     ActionModel         *m_actionModel;

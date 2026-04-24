@@ -6,11 +6,11 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 
 At a glance, one button press on the mouse turns into one row update in the QML UI. Each layer has one job, and `AppRoot` is a thin composition root that wires them together (not a place where behavior lives):
 
-<img src="diagrams/system-overview.png" alt="Logitune system overview: QML UI on top, then the app library band showing AppRoot, the four services (DeviceSelection, DeviceCommandHandler, ButtonActionDispatcher, ProfileOrchestrator), and Models + TrayManager; below that the core library with three sub-bands (integration, aggregation, protocol), then Linux kernel and hardware at the bottom" width="800"/>
+<img src="diagrams/system-overview.png" alt="Logitune system overview: QML UI on top, then the app library band showing AppRoot, the four services (ActiveDeviceResolver, DeviceCommandHandler, ButtonActionDispatcher, ProfileOrchestrator), and Models + TrayManager; below that the core library with three sub-bands (integration, aggregation, protocol), then Linux kernel and hardware at the bottom" width="800"/>
 
 > Source: `docs/wiki/diagrams/system-overview.svg`. Re-render with `rsvg-convert -w 1600 -h 1240 docs/wiki/diagrams/system-overview.svg -o docs/wiki/diagrams/system-overview.png` after edits.
 
-The app-lib band contains AppRoot plus four focused services (`DeviceSelection`, `DeviceCommandHandler`, `ButtonActionDispatcher`, `ProfileOrchestrator`) that sit between the QML UI / ViewModels and the core library's engines + HID++ stack. Each layer below has its own detailed diagram elsewhere on this page:
+The app-lib band contains AppRoot plus four focused services (`ActiveDeviceResolver`, `DeviceCommandHandler`, `ButtonActionDispatcher`, `ProfileOrchestrator`) that sit between the QML UI / ViewModels and the core library's engines + HID++ stack. Each layer below has its own detailed diagram elsewhere on this page:
 
 | Layer | Detail |
 |---|---|
@@ -45,7 +45,7 @@ sequenceDiagram
     participant KDE as KDeDesktop
     participant AR as AppRoot
     participant PO as ProfileOrchestrator
-    participant DS as DeviceSelection
+    participant DS as ActiveDeviceResolver
     participant PE as ProfileEngine
     participant DM as DeviceModel
     participant DSess as DeviceSession
@@ -355,7 +355,7 @@ Logitune uses a Model-View-ViewModel pattern where C++ models serve as the ViewM
 The four services split into **translators** and **a coordinator**.
 
 **Translators** do one focused conversion each and do not own multi-step flows:
-- `DeviceSelection` — converts ViewModel state (selected index + device list) into a resolved active device pointer
+- `ActiveDeviceResolver` — converts ViewModel state (selected index + device list) into a resolved active device pointer
 - `DeviceCommandHandler` — converts ViewModel intent (UI slider drag, toggle click) into Model operations (`DeviceSession::setDPI`, etc.)
 - `ButtonActionDispatcher` — converts hardware events (button press, thumb wheel rotation) into domain actions (keystroke injection, app launch)
 
@@ -384,7 +384,7 @@ graph LR
     end
 
     subgraph "Services (VM to Model bridges)"
-        DSel[DeviceSelection]
+        DSel[ActiveDeviceResolver]
         DCmd[DeviceCommandHandler]
         BAD[ButtonActionDispatcher]
     end
@@ -845,13 +845,13 @@ The MX Master 3S reports `defaultDirection = 0` (positive when left/back), so `t
 
 ## Services
 
-Behavior that responds to user events or mutates application state lives in one of four focused services in `src/app/services/`. Each service holds non-owning pointers to the models, engines, or `DeviceSelection` instance it needs, has zero `connect()` calls of its own, and communicates with its peers only via Qt signals wired by `AppRoot`.
+Behavior that responds to user events or mutates application state lives in one of four focused services in `src/app/services/`. Each service holds non-owning pointers to the models, engines, or `ActiveDeviceResolver` instance it needs, has zero `connect()` calls of its own, and communicates with its peers only via Qt signals wired by `AppRoot`.
 
 The dependency rule, enforced at the code level:
 
-> Services hold pointers only to models, engines, and `DeviceSelection`. Cross-service communication is always via signal, wired in `AppRoot`.
+> Services hold pointers only to models, engines, and `ActiveDeviceResolver`. Cross-service communication is always via signal, wired in `AppRoot`.
 
-### DeviceSelection
+### ActiveDeviceResolver
 
 Resolves the currently selected `PhysicalDevice` / `DeviceSession` / serial from `DeviceModel`'s selection index and its ordered device list. This is the single source of truth for "who is selected", so every other service asks here rather than re-deriving it.
 
@@ -865,7 +865,7 @@ Resolves the currently selected `PhysicalDevice` / `DeviceSession` / serial from
 
 Routes UI change requests (slider drag, toggle click) to the active `DeviceSession`. Every mutator is a no-op when there is no active session, which makes the service safe to invoke before any device attaches.
 
-- **Constructor dependencies:** `DeviceSelection*`
+- **Constructor dependencies:** `ActiveDeviceResolver*`
 - **Public slots:** `requestDpi(int)`, `requestSmartShift(bool, int)`, `requestScrollConfig(bool, bool)`, `requestThumbWheelMode(QString)`, `requestThumbWheelInvert(bool)`
 - **Signals:** `userChangedSomething()` emitted after every successful mutation, for `ProfileOrchestrator::saveCurrentProfile` to latch on to
 - **State:** none
@@ -875,7 +875,7 @@ Routes UI change requests (slider drag, toggle click) to the active `DeviceSessi
 
 Interprets raw HID++ input events (`gestureRawXY`, `divertedButtonPressed`, `thumbWheelRotation`) and dispatches high-level actions: keystroke injection, app launch, DPI cycle, SmartShift toggle, gesture direction resolution, and thumb-wheel-mode actions. Owns the per-device gesture + thumb-wheel accumulator state.
 
-- **Constructor dependencies:** `ProfileEngine*`, `ActionExecutor*`, `DeviceSelection*`
+- **Constructor dependencies:** `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceResolver*`
 - **Public slots:** `onGestureRaw(int16_t, int16_t)`, `onDivertedButtonPressed(uint16_t, bool)`, `onThumbWheelRotation(int)`, `onProfileApplied(QString)`, `onCurrentDeviceChanged(const IDevice*)`
 - **Public methods:** `onDeviceRemoved(QString)` to drop per-device state
 - **State:** `QMap<QString, PerDeviceState>` keyed by serial. Each entry holds `gestureAccumX/Y`, `thumbAccum`, `gestureActive`, `gestureControlId`. Gesture threshold is 50, thumb threshold is 15.
@@ -884,7 +884,7 @@ Interprets raw HID++ input events (`gestureRawXY`, `divertedButtonPressed`, `thu
 
 Owns the save, apply, push, and window-focus flow. Holds no device state beyond a current `IDevice*` pointer; reads from models and engines, writes to them, and emits `profileApplied(serial)` after every hardware apply so the dispatcher can reset its thumb accumulator.
 
-- **Constructor dependencies:** `ProfileEngine*`, `ActionExecutor*`, `DeviceSelection*`, `DeviceModel*`, `ButtonModel*`, `ActionModel*`, `ProfileModel*`, `IDesktopIntegration*`
+- **Constructor dependencies:** `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceResolver*`, `DeviceModel*`, `ButtonModel*`, `ActionModel*`, `ProfileModel*`, `IDesktopIntegration*`
 - **Public methods:** `setupProfileForDevice(PhysicalDevice*)`, `applyProfileToHardware(const Profile&)`, `applyDisplayedChange<Mutator, HardwareForward>(...)` (the templated bridge used by `AppRoot` for the five `DeviceModel` `*ChangeRequested` signals)
 - **Public slots:** `saveCurrentProfile()`, `onUserButtonChanged(int, QString, QString)`, `onTabSwitched(QString)`, `onDisplayProfileChanged(QString, const Profile&)`, `onWindowFocusChanged(QString, QString)`, `onTransportSetupComplete(PhysicalDevice*)`, `onCurrentDeviceChanged(const IDevice*)`
 - **Signals:** `profileApplied(QString serial)`, `currentDeviceChanged(const IDevice*)`
@@ -910,8 +910,8 @@ Key edges wired in `AppRoot::wireSignals()` and `AppRoot::onPhysicalDeviceAdded(
 | 2 | IDesktopIntegration | `activeWindowChanged` | ProfileOrchestrator::`onWindowFocusChanged` | a |
 | 3 | ProfileModel | `profileSwitched` | ProfileOrchestrator::`onTabSwitched` | a |
 | 4 | ProfileEngine | `deviceDisplayProfileChanged` | ProfileOrchestrator::`onDisplayProfileChanged` | a |
-| 5 | DeviceModel | `selectedChanged` | DeviceSelection::`onSelectionIndexChanged` | a |
-| 6 | DeviceSelection | `selectionChanged` | AppRoot::`onSelectionChanged` (internal refresh) | b |
+| 5 | DeviceModel | `selectedChanged` | ActiveDeviceResolver::`onSelectionIndexChanged` | a |
+| 6 | ActiveDeviceResolver | `selectionChanged` | AppRoot::`onSelectionChanged` (internal refresh) | b |
 | 7 | DeviceModel | `userGestureChanged` | lambda → ProfileOrchestrator::`saveCurrentProfile` | a |
 | 8 | DeviceCommandHandler | `userChangedSomething` | ProfileOrchestrator::`saveCurrentProfile` | b |
 | 9 | ProfileOrchestrator | `profileApplied` | ButtonActionDispatcher::`onProfileApplied` | b |

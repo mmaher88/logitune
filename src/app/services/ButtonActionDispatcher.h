@@ -12,7 +12,7 @@ class ButtonActionDispatcherFixture;
 namespace logitune {
 
 class ActionExecutor;
-class DeviceSelection;
+class ActiveDeviceResolver;
 class ProfileEngine;
 class IDevice;
 
@@ -26,7 +26,7 @@ class ButtonActionDispatcher : public QObject {
 public:
     ButtonActionDispatcher(ProfileEngine *profileEngine,
                            ActionExecutor *actionExecutor,
-                           DeviceSelection *selection,
+                           ActiveDeviceResolver *selection,
                            QObject *parent = nullptr);
 
     void onDeviceRemoved(const QString &serial);
@@ -54,7 +54,7 @@ private:
 
     ProfileEngine   *m_profileEngine;
     ActionExecutor  *m_actionExecutor;
-    DeviceSelection *m_selection;
+    ActiveDeviceResolver *m_selection;
     const IDevice   *m_currentDevice = nullptr;
     QMap<QString, PerDeviceState> m_state;
 };

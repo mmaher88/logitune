@@ -1,6 +1,6 @@
 #include "ButtonActionDispatcher.h"
 #include "ActionExecutor.h"
-#include "DeviceSelection.h"
+#include "ActiveDeviceResolver.h"
 #include "DeviceSession.h"
 #include "ProfileEngine.h"
 #include "interfaces/IDevice.h"
@@ -11,7 +11,7 @@ namespace logitune {
 
 ButtonActionDispatcher::ButtonActionDispatcher(ProfileEngine *profileEngine,
                                                ActionExecutor *actionExecutor,
-                                               DeviceSelection *selection,
+                                               ActiveDeviceResolver *selection,
                                                QObject *parent)
     : QObject(parent)
     , m_profileEngine(profileEngine)

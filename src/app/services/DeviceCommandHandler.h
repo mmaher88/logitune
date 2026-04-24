@@ -4,17 +4,17 @@
 
 namespace logitune {
 
-class DeviceSelection;
+class ActiveDeviceResolver;
 
 /// Routes UI change requests (from DeviceModel signals) to the active
 /// DeviceSession. Emits userChangedSomething() after each mutation so
 /// ProfileOrchestrator (wired in AppRoot) can trigger a save.
 ///
-/// No-op if there is no active session (DeviceSelection returns null).
+/// No-op if there is no active session (ActiveDeviceResolver returns null).
 class DeviceCommandHandler : public QObject {
     Q_OBJECT
 public:
-    explicit DeviceCommandHandler(DeviceSelection *selection, QObject *parent = nullptr);
+    explicit DeviceCommandHandler(ActiveDeviceResolver *selection, QObject *parent = nullptr);
 
 public slots:
     void requestDpi(int value);
@@ -29,7 +29,7 @@ signals:
     void userChangedSomething();
 
 private:
-    DeviceSelection *m_selection;
+    ActiveDeviceResolver *m_selection;
 };
 
 } // namespace logitune

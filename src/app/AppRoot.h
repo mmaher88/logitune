@@ -13,7 +13,7 @@
 #include "models/ActionModel.h"
 #include "models/ProfileModel.h"
 #include "models/SettingsModel.h"
-#include "services/DeviceSelection.h"
+#include "services/ActiveDeviceResolver.h"
 #include "services/DeviceCommandHandler.h"
 #include "services/ButtonActionDispatcher.h"
 #include "services/ProfileOrchestrator.h"
@@ -36,7 +36,7 @@ class EditorModel;
 /// This class does not implement user-facing behavior. Profile flow lives
 /// in ProfileOrchestrator, input interpretation in ButtonActionDispatcher,
 /// hardware command relays in DeviceCommandHandler, and active-device resolution
-/// in DeviceSelection. If you find yourself adding a method here that
+/// in ActiveDeviceResolver. If you find yourself adding a method here that
 /// responds to a user event or mutates application state, it belongs in
 /// a service instead.
 class AppRoot : public QObject {
@@ -97,7 +97,7 @@ private:
     ActionModel    m_actionModel;
     std::unique_ptr<ActionFilterModel> m_actionFilterModel;
     ProfileModel   m_profileModel;
-    DeviceSelection m_deviceSelection;
+    ActiveDeviceResolver m_deviceResolver;
     DeviceCommandHandler  m_deviceCommandHandler;
     ProfileEngine  m_profileEngine;
     ActionExecutor m_actionExecutor;

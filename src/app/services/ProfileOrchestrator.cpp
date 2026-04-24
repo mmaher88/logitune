@@ -1,6 +1,6 @@
 #include "ProfileOrchestrator.h"
 #include "ActionExecutor.h"
-#include "DeviceSelection.h"
+#include "ActiveDeviceResolver.h"
 #include "DeviceSession.h"
 #include "PhysicalDevice.h"
 #include "ProfileEngine.h"
@@ -20,7 +20,7 @@ namespace logitune {
 
 ProfileOrchestrator::ProfileOrchestrator(ProfileEngine *profileEngine,
                                          ActionExecutor *actionExecutor,
-                                         DeviceSelection *selection,
+                                         ActiveDeviceResolver *selection,
                                          DeviceModel *deviceModel,
                                          ButtonModel *buttonModel,
                                          ActionModel *actionModel,

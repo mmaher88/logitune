@@ -1,10 +1,10 @@
 #include "DeviceCommandHandler.h"
-#include "DeviceSelection.h"
+#include "ActiveDeviceResolver.h"
 #include "DeviceSession.h"
 
 namespace logitune {
 
-DeviceCommandHandler::DeviceCommandHandler(DeviceSelection *selection, QObject *parent)
+DeviceCommandHandler::DeviceCommandHandler(ActiveDeviceResolver *selection, QObject *parent)
     : QObject(parent)
     , m_selection(selection)
 {}

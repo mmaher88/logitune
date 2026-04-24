@@ -31,14 +31,14 @@ The name `AppController` is misleading in an MVVM stack because "Controller" imp
 
 All new service classes live in `src/app/services/`, with matching fixtures in `tests/services/`.
 
-**`DeviceSelection`** (~40 LOC)
+**`ActiveDeviceResolver`** (~40 LOC)
 - Resolves the currently selected `PhysicalDevice` / `DeviceSession` / serial from `ProfileModel::selectedDeviceIndex()` and `DeviceManager`
 - Exposes `activeDevice()`, `activeSession()`, `activeSerial()` + `selectionChanged()` signal
 - Read-only; single source of truth for "who is selected"
 
 **`DeviceCommandHandler`** (~80 LOC, replaces 5 passthrough slots on AppController)
 - Receives UI change requests: `requestDpi`, `requestSmartShift`, `requestScrollConfig`, `requestThumbWheelMode`, `requestThumbWheelInvert`
-- Resolves active session via `DeviceSelection`, calls the corresponding `DeviceSession::setXxx`
+- Resolves active session via `ActiveDeviceResolver`, calls the corresponding `DeviceSession::setXxx`
 - Emits `userChangedSomething()` after each successful mutation
 - Handles "no active session" as a no-op (no crash)
 
@@ -62,14 +62,14 @@ All new service classes live in `src/app/services/`, with matching fixtures in `
 These rules apply to the final state (post-rename). During extraction commits, `AppController` holds the role; the rename in the final commit swaps the class name without changing any role boundaries.
 
 - `AppRoot` owns all ViewModels, services, engines, the `DeviceRegistry`, `DeviceManager`, and `DeviceFetcher`
-- Services hold raw (non-owning) pointers to: models they read/write, engines (`ProfileEngine`, `ActionExecutor`), and `DeviceSelection`
+- Services hold raw (non-owning) pointers to: models they read/write, engines (`ProfileEngine`, `ActionExecutor`), and `ActiveDeviceResolver`
 - Services do not hold pointers to other services
 - Services do not call `connect()`; they expose signals and slots and are wired by `AppRoot`
 - Cross-service communication is via Qt signals, wired in `AppRoot::wireSignals()` or `onPhysicalDeviceAdded`
 
 This is the dependency rule:
 
-> Services hold pointers only to models, engines, and `DeviceSelection`. Cross-service communication is always via signal, wired in `AppRoot`.
+> Services hold pointers only to models, engines, and `ActiveDeviceResolver`. Cross-service communication is always via signal, wired in `AppRoot`.
 
 ### Runtime device attach
 
@@ -86,7 +86,7 @@ This is the dependency rule:
 
 Per-service fixtures for unit coverage, plus the existing integration fixture (renamed in the final commit) for end-to-end coverage.
 
-- `DeviceSelectionFixture` — selection resolution edge cases (out-of-range index, transport switch within a `PhysicalDevice`)
+- `ActiveDeviceResolverFixture` — selection resolution edge cases (out-of-range index, transport switch within a `PhysicalDevice`)
 - `DeviceCommandHandlerFixture` — null session no-op, signal emission exactly once per request, clamping pass-through
 - `ButtonActionDispatcherFixture` — gesture threshold math, thumb wheel accumulation, action dispatch for each `ButtonAction` type
 - `ProfileOrchestratorFixture` — save/apply cycle, window-focus profile switch, display vs hardware profile divergence, `thumbAccum` reset signal on apply
@@ -98,7 +98,7 @@ Real-hardware smoke test on MX Master 3S is mandatory after each commit in the s
 
 Seven commits, each independently building, passing tests, and smoke-tested on hardware. The rename is the last commit so all extraction commits read naturally against the familiar `AppController` name.
 
-1. **Add `DeviceSelection`** — new service + fixture. Replace `AppController::selectedDevice/Session/Serial` helpers and `onSelectedDeviceChanged` with calls into `DeviceSelection`. Update any slot that used those helpers.
+1. **Add `ActiveDeviceResolver`** — new service + fixture. Replace `AppController::selectedDevice/Session/Serial` helpers and `onSelectedDeviceChanged` with calls into `ActiveDeviceResolver`. Update any slot that used those helpers.
 2. **Add `DeviceCommandHandler`** — new service + fixture. Move the 5 `*ChangeRequested` slots into it; delete from `AppController`. Temporarily wire `DeviceCommandHandler::userChangedSomething` to `AppController::saveCurrentProfile` (the method still lives on AppController until commit 4; this one `connect()` call gets redirected to `ProfileOrchestrator` then).
 3. **Add `ButtonActionDispatcher`** — new service + fixture. Move `onDivertedButtonPressed`, `onThumbWheelRotation`, `PerDeviceState`, `kGestureThreshold`, `kThumbThreshold`, and the `gestureRawXY` lambda. Rewire the per-device connects in `onPhysicalDeviceAdded` to point at the dispatcher. Delete from `AppController`.
 4. **Add `ProfileOrchestrator`** — new service + fixture. Move the 9 profile-related methods and slots. Wire `profileApplied` signal into `ButtonActionDispatcher` and the `userChangedSomething` signals from `DeviceCommandHandler` / `ButtonModel` into `ProfileOrchestrator::saveCurrentProfile`. Remove the shim from commit 2.

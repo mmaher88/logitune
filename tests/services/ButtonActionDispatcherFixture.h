@@ -8,7 +8,7 @@
 #include "ProfileEngine.h"
 #include "models/DeviceModel.h"
 #include "services/ButtonActionDispatcher.h"
-#include "services/DeviceSelection.h"
+#include "services/ActiveDeviceResolver.h"
 
 #include "helpers/TestFixtures.h"
 #include "hidpp/HidrawDevice.h"
@@ -18,7 +18,7 @@
 namespace logitune::test {
 
 /// Fixture for ButtonActionDispatcher tests. Constructs the full dependency
-/// graph (ProfileEngine, DeviceModel, DeviceSelection, MockInjector,
+/// graph (ProfileEngine, DeviceModel, ActiveDeviceResolver, MockInjector,
 /// ActionExecutor) and registers a MockDevice + DeviceSession via
 /// applySimulation so the dispatcher has an active session+descriptor to
 /// dispatch against.
@@ -28,7 +28,7 @@ protected:
         ensureApp();
 
         m_deviceModel   = std::make_unique<DeviceModel>();
-        m_selection     = std::make_unique<DeviceSelection>(m_deviceModel.get());
+        m_selection     = std::make_unique<ActiveDeviceResolver>(m_deviceModel.get());
         m_profileEngine = std::make_unique<ProfileEngine>();
         m_injector      = std::make_unique<MockInjector>();
         m_executor      = std::make_unique<ActionExecutor>(m_injector.get());
@@ -110,7 +110,7 @@ protected:
     }
 
     std::unique_ptr<DeviceModel>             m_deviceModel;
-    std::unique_ptr<DeviceSelection>         m_selection;
+    std::unique_ptr<ActiveDeviceResolver>         m_selection;
     std::unique_ptr<ProfileEngine>           m_profileEngine;
     std::unique_ptr<MockInjector>            m_injector;
     std::unique_ptr<ActionExecutor>          m_executor;

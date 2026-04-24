@@ -1,16 +1,16 @@
-#include "DeviceSelection.h"
+#include "ActiveDeviceResolver.h"
 #include "PhysicalDevice.h"
 #include "DeviceSession.h"
 #include "models/DeviceModel.h"
 
 namespace logitune {
 
-DeviceSelection::DeviceSelection(DeviceModel *deviceModel, QObject *parent)
+ActiveDeviceResolver::ActiveDeviceResolver(DeviceModel *deviceModel, QObject *parent)
     : QObject(parent)
     , m_deviceModel(deviceModel)
 {}
 
-PhysicalDevice *DeviceSelection::activeDevice() const
+PhysicalDevice *ActiveDeviceResolver::activeDevice() const
 {
     if (!m_deviceModel) return nullptr;
     const int idx = m_deviceModel->selectedIndex();
@@ -19,19 +19,19 @@ PhysicalDevice *DeviceSelection::activeDevice() const
     return devices[idx];
 }
 
-DeviceSession *DeviceSelection::activeSession() const
+DeviceSession *ActiveDeviceResolver::activeSession() const
 {
     auto *d = activeDevice();
     return d ? d->primary() : nullptr;
 }
 
-QString DeviceSelection::activeSerial() const
+QString ActiveDeviceResolver::activeSerial() const
 {
     auto *d = activeDevice();
     return d ? d->deviceSerial() : QString();
 }
 
-void DeviceSelection::onSelectionIndexChanged()
+void ActiveDeviceResolver::onSelectionIndexChanged()
 {
     emit selectionChanged();
 }

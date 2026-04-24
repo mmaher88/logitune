@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Extract behavior out of `AppController` into 4 focused services (`DeviceSelection`, `DeviceCommandHandler`, `ButtonActionDispatcher`, `ProfileOrchestrator`), move translation helpers to `ActionModel`, add a contract docstring, and rename `AppController` to `AppRoot`. Preserve all existing behavior.
+**Goal:** Extract behavior out of `AppController` into 4 focused services (`ActiveDeviceResolver`, `DeviceCommandHandler`, `ButtonActionDispatcher`, `ProfileOrchestrator`), move translation helpers to `ActionModel`, add a contract docstring, and rename `AppController` to `AppRoot`. Preserve all existing behavior.
 
-**Architecture:** `AppRoot` becomes a pure composition root: owns singletons, wires signals, handles runtime device lifecycle, exposes ViewModels for QML registration. All user-facing behavior lives in services. Services hold pointers only to models, engines, and `DeviceSelection` — never to other services. All `connect()` calls live in `AppRoot`.
+**Architecture:** `AppRoot` becomes a pure composition root: owns singletons, wires signals, handles runtime device lifecycle, exposes ViewModels for QML registration. All user-facing behavior lives in services. Services hold pointers only to models, engines, and `ActiveDeviceResolver` — never to other services. All `connect()` calls live in `AppRoot`.
 
 **Tech Stack:** C++20, Qt 6, GoogleTest, CMake
 
@@ -16,11 +16,11 @@
 
 Files created across all tasks:
 
-- `src/app/services/DeviceSelection.h` / `.cpp` (Task 1)
+- `src/app/services/ActiveDeviceResolver.h` / `.cpp` (Task 1)
 - `src/app/services/DeviceCommandHandler.h` / `.cpp` (Task 2)
 - `src/app/services/ButtonActionDispatcher.h` / `.cpp` (Task 3)
 - `src/app/services/ProfileOrchestrator.h` / `.cpp` (Task 4)
-- `tests/services/DeviceSelectionFixture.h` (Task 1)
+- `tests/services/ActiveDeviceResolverFixture.h` (Task 1)
 - `tests/services/DeviceCommandHandlerFixture.h` (Task 2)
 - `tests/services/ButtonActionDispatcherFixture.h` (Task 3)
 - `tests/services/ProfileOrchestratorFixture.h` (Task 4)
@@ -41,7 +41,7 @@ Files modified:
 
 Dependency order between tasks:
 
-- Task 1 blocks 2, 3, 4 (they use `DeviceSelection`)
+- Task 1 blocks 2, 3, 4 (they use `ActiveDeviceResolver`)
 - Task 4 depends on 2 and 3 (needs their signals for wiring)
 - Task 5 depends on 4 (updates `ProfileOrchestrator` callers)
 - Task 6 depends on 5
@@ -49,19 +49,19 @@ Dependency order between tasks:
 
 ---
 
-## Task 1: Extract `DeviceSelection` service
+## Task 1: Extract `ActiveDeviceResolver` service
 
 **Files:**
-- Create: `src/app/services/DeviceSelection.h`
-- Create: `src/app/services/DeviceSelection.cpp`
-- Create: `tests/services/DeviceSelectionFixture.h`
+- Create: `src/app/services/ActiveDeviceResolver.h`
+- Create: `src/app/services/ActiveDeviceResolver.cpp`
+- Create: `tests/services/ActiveDeviceResolverFixture.h`
 - Create: `tests/services/test_device_selection.cpp`
 - Modify: `src/app/AppController.h` (remove `selectedDevice/Session/Serial`, `onSelectedDeviceChanged`)
-- Modify: `src/app/AppController.cpp` (construct `m_deviceSelection`, redirect callers of old helpers)
+- Modify: `src/app/AppController.cpp` (construct `m_deviceResolver`, redirect callers of old helpers)
 - Modify: `src/app/CMakeLists.txt` (add new sources)
 - Modify: `tests/CMakeLists.txt` (add new test sources)
 
-### Step 1: Create `src/app/services/DeviceSelection.h`
+### Step 1: Create `src/app/services/ActiveDeviceResolver.h`
 
 - [ ] **Step 1: Write the service header**
 
@@ -84,10 +84,10 @@ class ProfileModel;
 ///
 /// Read-only, single source of truth. Other services hold a pointer to this
 /// and either query on demand (active*()) or subscribe to selectionChanged.
-class DeviceSelection : public QObject {
+class ActiveDeviceResolver : public QObject {
     Q_OBJECT
 public:
-    DeviceSelection(DeviceManager *deviceManager,
+    ActiveDeviceResolver(DeviceManager *deviceManager,
                     DeviceModel *deviceModel,
                     ProfileModel *profileModel,
                     QObject *parent = nullptr);
@@ -113,10 +113,10 @@ private:
 } // namespace logitune
 ```
 
-- [ ] **Step 2: Write the implementation at `src/app/services/DeviceSelection.cpp`**
+- [ ] **Step 2: Write the implementation at `src/app/services/ActiveDeviceResolver.cpp`**
 
 ```cpp
-#include "DeviceSelection.h"
+#include "ActiveDeviceResolver.h"
 #include "DeviceManager.h"
 #include "PhysicalDevice.h"
 #include "DeviceSession.h"
@@ -125,7 +125,7 @@ private:
 
 namespace logitune {
 
-DeviceSelection::DeviceSelection(DeviceManager *deviceManager,
+ActiveDeviceResolver::ActiveDeviceResolver(DeviceManager *deviceManager,
                                  DeviceModel *deviceModel,
                                  ProfileModel *profileModel,
                                  QObject *parent)
@@ -135,7 +135,7 @@ DeviceSelection::DeviceSelection(DeviceManager *deviceManager,
     , m_profileModel(profileModel)
 {}
 
-PhysicalDevice *DeviceSelection::activeDevice() const
+PhysicalDevice *ActiveDeviceResolver::activeDevice() const
 {
     if (!m_deviceModel) return nullptr;
     const int idx = m_deviceModel->selectedIndex();
@@ -145,19 +145,19 @@ PhysicalDevice *DeviceSelection::activeDevice() const
     return list.at(idx);
 }
 
-DeviceSession *DeviceSelection::activeSession() const
+DeviceSession *ActiveDeviceResolver::activeSession() const
 {
     auto *d = activeDevice();
     return d ? d->primary() : nullptr;
 }
 
-QString DeviceSelection::activeSerial() const
+QString ActiveDeviceResolver::activeSerial() const
 {
     auto *d = activeDevice();
     return d ? d->deviceSerial() : QString();
 }
 
-void DeviceSelection::onSelectionIndexChanged()
+void ActiveDeviceResolver::onSelectionIndexChanged()
 {
     emit selectionChanged();
 }
@@ -172,7 +172,7 @@ Note: Check the actual `DeviceModel` and `DeviceManager` API — the `selectedIn
 ```cmake
 add_library(logitune-app-lib STATIC
     AppController.cpp
-    services/DeviceSelection.cpp      # ← add
+    services/ActiveDeviceResolver.cpp      # ← add
     models/DeviceModel.cpp
     ...
 )
@@ -188,35 +188,35 @@ target_include_directories(logitune-app-lib PUBLIC
 )
 ```
 
-- [ ] **Step 4: Write `tests/services/DeviceSelectionFixture.h`**
+- [ ] **Step 4: Write `tests/services/ActiveDeviceResolverFixture.h`**
 
 ```cpp
 #pragma once
 #include <gtest/gtest.h>
 #include <QCoreApplication>
 #include <memory>
-#include "services/DeviceSelection.h"
+#include "services/ActiveDeviceResolver.h"
 #include "DeviceManager.h"
 #include "helpers/TestFixtures.h"
 #include "mocks/MockDevice.h"
 
 namespace logitune::test {
 
-class DeviceSelectionFixture : public ::testing::Test {
+class ActiveDeviceResolverFixture : public ::testing::Test {
 protected:
     void SetUp() override {
         ensureApp();
         m_deviceManager  = std::make_unique<DeviceManager>();
         m_deviceModel    = std::make_unique<DeviceModel>();
         m_profileModel   = std::make_unique<ProfileModel>();
-        m_selection = std::make_unique<DeviceSelection>(
+        m_selection = std::make_unique<ActiveDeviceResolver>(
             m_deviceManager.get(), m_deviceModel.get(), m_profileModel.get());
     }
 
     std::unique_ptr<DeviceManager>   m_deviceManager;
     std::unique_ptr<DeviceModel>     m_deviceModel;
     std::unique_ptr<ProfileModel>    m_profileModel;
-    std::unique_ptr<DeviceSelection> m_selection;
+    std::unique_ptr<ActiveDeviceResolver> m_selection;
 };
 
 } // namespace logitune::test
@@ -225,24 +225,24 @@ protected:
 - [ ] **Step 5: Write `tests/services/test_device_selection.cpp`**
 
 ```cpp
-#include "services/DeviceSelectionFixture.h"
+#include "services/ActiveDeviceResolverFixture.h"
 
 using namespace logitune;
 using namespace logitune::test;
 
-TEST_F(DeviceSelectionFixture, NoDevicesReturnsNulls) {
+TEST_F(ActiveDeviceResolverFixture, NoDevicesReturnsNulls) {
     EXPECT_EQ(m_selection->activeDevice(), nullptr);
     EXPECT_EQ(m_selection->activeSession(), nullptr);
     EXPECT_TRUE(m_selection->activeSerial().isEmpty());
 }
 
-TEST_F(DeviceSelectionFixture, OutOfRangeIndexReturnsNulls) {
+TEST_F(ActiveDeviceResolverFixture, OutOfRangeIndexReturnsNulls) {
     m_deviceModel->setSelectedIndex(99);
     EXPECT_EQ(m_selection->activeDevice(), nullptr);
 }
 
-TEST_F(DeviceSelectionFixture, SelectionChangedEmitsOnSlot) {
-    QSignalSpy spy(m_selection.get(), &DeviceSelection::selectionChanged);
+TEST_F(ActiveDeviceResolverFixture, SelectionChangedEmitsOnSlot) {
+    QSignalSpy spy(m_selection.get(), &ActiveDeviceResolver::selectionChanged);
     m_selection->onSelectionIndexChanged();
     EXPECT_EQ(spy.count(), 1);
 }
@@ -262,7 +262,7 @@ add_executable(logitune-tests
 
 ```bash
 cmake --build build -j$(nproc)
-QT_QPA_PLATFORM=offscreen ./build/tests/logitune-tests --gtest_filter='DeviceSelectionFixture.*'
+QT_QPA_PLATFORM=offscreen ./build/tests/logitune-tests --gtest_filter='ActiveDeviceResolverFixture.*'
 ```
 
 Expected: all 3 tests pass.
@@ -271,17 +271,17 @@ Expected: all 3 tests pass.
 
 In `src/app/AppController.h`:
 
-- Add `#include "services/DeviceSelection.h"` near the top
-- Add member: `DeviceSelection m_deviceSelection{&m_deviceManager, &m_deviceModel, &m_profileModel, this};` (or construct in ctor body to control ordering)
+- Add `#include "services/ActiveDeviceResolver.h"` near the top
+- Add member: `ActiveDeviceResolver m_deviceResolver{&m_deviceManager, &m_deviceModel, &m_profileModel, this};` (or construct in ctor body to control ordering)
 - Remove declarations of `selectedDevice()`, `selectedSession()`, `selectedSerial()`, `onSelectedDeviceChanged()`
 
 In `src/app/AppController.cpp`:
 
 - Delete the bodies of `selectedDevice()`, `selectedSession()`, `selectedSerial()`, `onSelectedDeviceChanged()`
-- Replace every internal call to `selectedDevice()` → `m_deviceSelection.activeDevice()`
-- Replace every internal call to `selectedSession()` → `m_deviceSelection.activeSession()`
-- Replace every internal call to `selectedSerial()` → `m_deviceSelection.activeSerial()`
-- In `wireSignals()`, add: `connect(&m_profileModel, &ProfileModel::selectedDeviceIndexChanged, &m_deviceSelection, &DeviceSelection::onSelectionIndexChanged);` (check actual `ProfileModel` signal name and wire accordingly)
+- Replace every internal call to `selectedDevice()` → `m_deviceResolver.activeDevice()`
+- Replace every internal call to `selectedSession()` → `m_deviceResolver.activeSession()`
+- Replace every internal call to `selectedSerial()` → `m_deviceResolver.activeSerial()`
+- In `wireSignals()`, add: `connect(&m_profileModel, &ProfileModel::selectedDeviceIndexChanged, &m_deviceResolver, &ActiveDeviceResolver::onSelectionIndexChanged);` (check actual `ProfileModel` signal name and wire accordingly)
 
 - [ ] **Step 9: Build and run the full test suite**
 
@@ -305,11 +305,11 @@ Manually verify: device is detected, switching devices in the sidebar still work
 - [ ] **Step 11: Commit**
 
 ```bash
-git add src/app/services/DeviceSelection.h src/app/services/DeviceSelection.cpp \
-        tests/services/DeviceSelectionFixture.h tests/services/test_device_selection.cpp \
+git add src/app/services/ActiveDeviceResolver.h src/app/services/ActiveDeviceResolver.cpp \
+        tests/services/ActiveDeviceResolverFixture.h tests/services/test_device_selection.cpp \
         src/app/AppController.h src/app/AppController.cpp \
         src/app/CMakeLists.txt tests/CMakeLists.txt
-git commit -m "refactor(app): extract DeviceSelection service from AppController
+git commit -m "refactor(app): extract ActiveDeviceResolver service from AppController
 
 Resolves active PhysicalDevice / DeviceSession / serial from ProfileModel
 selection + DeviceManager. Replaces the three selectedDevice/Session/Serial
@@ -341,17 +341,17 @@ Part of #107."
 
 namespace logitune {
 
-class DeviceSelection;
+class ActiveDeviceResolver;
 
 /// Routes UI change requests (from DeviceModel signals) to the active
 /// DeviceSession. Emits userChangedSomething() after each mutation so
 /// ProfileOrchestrator can trigger a save.
 ///
-/// No-op if there is no active session (DeviceSelection returns null).
+/// No-op if there is no active session (ActiveDeviceResolver returns null).
 class DeviceCommandHandler : public QObject {
     Q_OBJECT
 public:
-    explicit DeviceCommandHandler(DeviceSelection *selection, QObject *parent = nullptr);
+    explicit DeviceCommandHandler(ActiveDeviceResolver *selection, QObject *parent = nullptr);
 
 public slots:
     void requestDpi(int value);
@@ -366,7 +366,7 @@ signals:
     void userChangedSomething();
 
 private:
-    DeviceSelection *m_selection;
+    ActiveDeviceResolver *m_selection;
 };
 
 } // namespace logitune
@@ -376,12 +376,12 @@ private:
 
 ```cpp
 #include "DeviceCommandHandler.h"
-#include "DeviceSelection.h"
+#include "ActiveDeviceResolver.h"
 #include "DeviceSession.h"
 
 namespace logitune {
 
-DeviceCommandHandler::DeviceCommandHandler(DeviceSelection *selection, QObject *parent)
+DeviceCommandHandler::DeviceCommandHandler(ActiveDeviceResolver *selection, QObject *parent)
     : QObject(parent)
     , m_selection(selection)
 {}
@@ -444,7 +444,7 @@ Cross-reference against `AppController.cpp:604-688` to confirm the two-arg shape
 #include <QSignalSpy>
 #include <memory>
 #include "services/DeviceCommandHandler.h"
-#include "services/DeviceSelection.h"
+#include "services/ActiveDeviceResolver.h"
 #include "DeviceManager.h"
 #include "DeviceSession.h"
 #include "PhysicalDevice.h"
@@ -461,7 +461,7 @@ protected:
         m_deviceManager = std::make_unique<DeviceManager>();
         m_deviceModel   = std::make_unique<DeviceModel>();
         m_profileModel  = std::make_unique<ProfileModel>();
-        m_selection = std::make_unique<DeviceSelection>(
+        m_selection = std::make_unique<ActiveDeviceResolver>(
             m_deviceManager.get(), m_deviceModel.get(), m_profileModel.get());
         m_commands = std::make_unique<DeviceCommandHandler>(m_selection.get());
     }
@@ -484,7 +484,7 @@ protected:
     std::unique_ptr<DeviceManager>   m_deviceManager;
     std::unique_ptr<DeviceModel>     m_deviceModel;
     std::unique_ptr<ProfileModel>    m_profileModel;
-    std::unique_ptr<DeviceSelection> m_selection;
+    std::unique_ptr<ActiveDeviceResolver> m_selection;
     std::unique_ptr<DeviceCommandHandler>  m_commands;
     MockDevice       m_device;
     DeviceSession   *m_session  = nullptr;
@@ -553,7 +553,7 @@ Add `services/test_device_commands.cpp` to `tests/CMakeLists.txt` alongside `tes
 
 In `AppController.h`:
 - Add `#include "services/DeviceCommandHandler.h"`
-- Add member: `DeviceCommandHandler m_deviceCommands{&m_deviceSelection, this};`
+- Add member: `DeviceCommandHandler m_deviceCommands{&m_deviceResolver, this};`
 - Remove the 5 `on*ChangeRequested` slot declarations from `private slots:`
 
 In `AppController.cpp`:
@@ -571,7 +571,7 @@ git add -A && git commit -m "refactor(app): extract DeviceCommandHandler service
 
 Move the 5 *ChangeRequested passthrough slots (DPI, SmartShift, scroll,
 thumbwheel mode, thumbwheel invert) into a dedicated service that holds
-a DeviceSelection pointer and emits userChangedSomething after each
+a ActiveDeviceResolver pointer and emits userChangedSomething after each
 successful mutation.
 
 AppController temporarily subscribes to userChangedSomething -> saveCurrentProfile;
@@ -606,7 +606,7 @@ Part of #107."
 namespace logitune {
 
 class ActionExecutor;
-class DeviceSelection;
+class ActiveDeviceResolver;
 class ProfileEngine;
 class IDevice;
 
@@ -621,7 +621,7 @@ class ButtonActionDispatcher : public QObject {
 public:
     ButtonActionDispatcher(ProfileEngine *profileEngine,
                            ActionExecutor *actionExecutor,
-                           DeviceSelection *selection,
+                           ActiveDeviceResolver *selection,
                            QObject *parent = nullptr);
 
     void onDeviceRemoved(const QString &serial);
@@ -646,7 +646,7 @@ private:
 
     ProfileEngine   *m_profileEngine;
     ActionExecutor  *m_actionExecutor;
-    DeviceSelection *m_selection;
+    ActiveDeviceResolver *m_selection;
     const IDevice   *m_currentDevice = nullptr;
     QMap<QString, PerDeviceState> m_state;
 };
@@ -675,7 +675,7 @@ void ButtonActionDispatcher::onDeviceRemoved(const QString &serial)
 
 - [ ] **Step 3: Write fixture and tests**
 
-`tests/services/ButtonActionDispatcherFixture.h` constructs: `ProfileEngine` (real), `MockInjector` (existing), `ActionExecutor` (real, using mock), `DeviceSelection` with a mock device setup, `ButtonActionDispatcher`.
+`tests/services/ButtonActionDispatcherFixture.h` constructs: `ProfileEngine` (real), `MockInjector` (existing), `ActionExecutor` (real, using mock), `ActiveDeviceResolver` with a mock device setup, `ButtonActionDispatcher`.
 
 Tests in `tests/services/test_button_action_dispatcher.cpp`:
 
@@ -697,7 +697,7 @@ TEST_F(ButtonActionDispatcherFixture, OnDeviceRemovedDropsEntry) { ... }
 
 In `AppController.h`:
 - Add `#include "services/ButtonActionDispatcher.h"`
-- Add member: `ButtonActionDispatcher m_buttonDispatcher{&m_profileEngine, &m_actionExecutor, &m_deviceSelection, this};`
+- Add member: `ButtonActionDispatcher m_buttonDispatcher{&m_profileEngine, &m_actionExecutor, &m_deviceResolver, this};`
 - Remove `onDivertedButtonPressed`, `onThumbWheelRotation` declarations
 - Remove `PerDeviceState` struct, `m_perDeviceState`, `kGestureThreshold`, `kThumbThreshold`
 
@@ -763,7 +763,7 @@ namespace logitune {
 class ActionExecutor;
 class ButtonModel;
 class DeviceModel;
-class DeviceSelection;
+class ActiveDeviceResolver;
 class IDevice;
 class IDesktopIntegration;
 class PhysicalDevice;
@@ -778,7 +778,7 @@ class ProfileOrchestrator : public QObject {
 public:
     ProfileOrchestrator(ProfileEngine *profileEngine,
                         ActionExecutor *actionExecutor,
-                        DeviceSelection *selection,
+                        ActiveDeviceResolver *selection,
                         DeviceModel *deviceModel,
                         ButtonModel *buttonModel,
                         ProfileModel *profileModel,
@@ -811,7 +811,7 @@ private:
 
     ProfileEngine   *m_profileEngine;
     ActionExecutor  *m_actionExecutor;
-    DeviceSelection *m_selection;
+    ActiveDeviceResolver *m_selection;
     DeviceModel     *m_deviceModel;
     ButtonModel     *m_buttonModel;
     ProfileModel    *m_profileModel;
@@ -853,7 +853,7 @@ Note: `buttonActionToName` and `buttonEntryToAction` are used by `saveCurrentPro
 
 - [ ] **Step 3: Write fixture and tests**
 
-`tests/services/ProfileOrchestratorFixture.h` clones the mock setup pattern from `tests/helpers/AppControllerFixture.h` (mock desktop, mock injector, mock hidraw session, seeded default profile in `QTemporaryDir`), but constructs the orchestrator directly with real `ProfileEngine`, real `DeviceModel`/`ButtonModel`/`ProfileModel`, a real `DeviceSelection`, and a `MockDesktop` reference. The fixture attaches one mock `PhysicalDevice` via `DeviceManager::addPhysicalDevice` so `DeviceSelection::activeDevice()` returns a valid pointer for tests.
+`tests/services/ProfileOrchestratorFixture.h` clones the mock setup pattern from `tests/helpers/AppControllerFixture.h` (mock desktop, mock injector, mock hidraw session, seeded default profile in `QTemporaryDir`), but constructs the orchestrator directly with real `ProfileEngine`, real `DeviceModel`/`ButtonModel`/`ProfileModel`, a real `ActiveDeviceResolver`, and a `MockDesktop` reference. The fixture attaches one mock `PhysicalDevice` via `DeviceManager::addPhysicalDevice` so `ActiveDeviceResolver::activeDevice()` returns a valid pointer for tests.
 
 Tests:
 
@@ -873,7 +873,7 @@ Add to `tests/CMakeLists.txt`.
 
 In `AppController.h`:
 - Add `#include "services/ProfileOrchestrator.h"`
-- Add member: `ProfileOrchestrator m_profileOrchestrator{&m_profileEngine, &m_actionExecutor, &m_deviceSelection, &m_deviceModel, &m_buttonModel, &m_profileModel, this};`
+- Add member: `ProfileOrchestrator m_profileOrchestrator{&m_profileEngine, &m_actionExecutor, &m_deviceResolver, &m_deviceModel, &m_buttonModel, &m_profileModel, this};`
 - Remove the 9 method/slot declarations
 - Remove `m_currentDevice` (moves to ProfileOrchestrator and ButtonActionDispatcher)
 
@@ -1025,7 +1025,7 @@ Part of #107."
 /// This class does not implement user-facing behavior. Profile flow lives
 /// in ProfileOrchestrator, input interpretation in ButtonActionDispatcher,
 /// hardware command relays in DeviceCommandHandler, and active-device resolution
-/// in DeviceSelection. If you find yourself adding a method here that
+/// in ActiveDeviceResolver. If you find yourself adding a method here that
 /// responds to a user event or mutates application state, it belongs in
 /// a service instead.
 class AppController : public QObject {

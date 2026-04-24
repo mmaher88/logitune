@@ -14,10 +14,10 @@ class DeviceSession;
 ///
 /// Read-only, single source of truth. Other services hold a pointer to this
 /// and either query on demand (active*()) or subscribe to selectionChanged.
-class DeviceSelection : public QObject {
+class ActiveDeviceResolver : public QObject {
     Q_OBJECT
 public:
-    explicit DeviceSelection(DeviceModel *deviceModel, QObject *parent = nullptr);
+    explicit ActiveDeviceResolver(DeviceModel *deviceModel, QObject *parent = nullptr);
 
     PhysicalDevice *activeDevice() const;
     DeviceSession  *activeSession() const;
