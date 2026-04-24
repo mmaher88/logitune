@@ -187,6 +187,8 @@ TEST(ActionFilterModel, ShowsPresetSupportedByVariantKey) {
 
     MockDesktop desktop;
     desktop.setVariantKey("kde");
+    desktop.scriptResolve("show-desktop",
+                          ButtonAction{ButtonAction::Keystroke, "Super+D"});
 
     ActionFilterModel filter(&dev, &desktop, &reg);
     filter.setSourceModel(&src);
@@ -199,6 +201,47 @@ TEST(ActionFilterModel, ShowsPresetWhenDesktopOrRegistryIsNull) {
     ActionModel src;
     DeviceModel dev;
     ActionFilterModel filter(&dev, nullptr, nullptr);
+    filter.setSourceModel(&src);
+
+    EXPECT_EQ(proxyCountByName(filter, QStringLiteral("Show desktop")), 1);
+}
+
+TEST(ActionFilterModel, HidesPresetWhenLiveResolutionReturnsNullopt) {
+    ActionModel src;
+    DeviceModel dev;
+
+    ActionPresetRegistry reg;
+    reg.loadFromJson(R"([
+        { "id": "show-desktop", "label": "Show Desktop",
+          "variants": { "mock": {"anything": {}} } }
+    ])");
+
+    MockDesktop desktop;
+    desktop.setVariantKey("mock");
+    // No scriptResolve -> resolveNamedAction returns nullopt
+
+    ActionFilterModel filter(&dev, &desktop, &reg);
+    filter.setSourceModel(&src);
+
+    EXPECT_EQ(proxyCountByName(filter, QStringLiteral("Show desktop")), 0);
+}
+
+TEST(ActionFilterModel, ShowsPresetWhenLiveResolutionSucceeds) {
+    ActionModel src;
+    DeviceModel dev;
+
+    ActionPresetRegistry reg;
+    reg.loadFromJson(R"([
+        { "id": "show-desktop", "label": "Show Desktop",
+          "variants": { "mock": {"anything": {}} } }
+    ])");
+
+    MockDesktop desktop;
+    desktop.setVariantKey("mock");
+    desktop.scriptResolve("show-desktop",
+                          ButtonAction{ButtonAction::Keystroke, "Super+D"});
+
+    ActionFilterModel filter(&dev, &desktop, &reg);
     filter.setSourceModel(&src);
 
     EXPECT_EQ(proxyCountByName(filter, QStringLiteral("Show desktop")), 1);

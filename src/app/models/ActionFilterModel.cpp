@@ -35,7 +35,10 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
         const QString id = sourceModel()->data(
             sourceModel()->index(sourceRow, 0, sourceParent),
             ActionModel::PayloadRole).toString();
-        return m_registry->supportedBy(id, m_desktop->variantKey());
+        if (!m_registry->supportedBy(id, m_desktop->variantKey()))
+            return false;
+        // Second gate: live resolution (catches empty user bindings on GNOME etc.)
+        return m_desktop->resolveNamedAction(id).has_value();
     }
 
     // Capability filtering (unchanged): hide actions whose required device
