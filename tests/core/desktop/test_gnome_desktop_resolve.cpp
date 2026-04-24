@@ -139,3 +139,67 @@ TEST(GnomeDesktopResolve, ResolveReturnsNulloptWithoutRegistry) {
     GnomeDesktop d;
     EXPECT_FALSE(d.resolveNamedAction("show-desktop").has_value());
 }
+
+TEST(GnomeDesktopResolve, TransformHandlesAtAsPrefix) {
+    EXPECT_EQ(GnomeDesktop::gsettingsToKeystroke("@as ['<Super>d']"), "Super+d");
+}
+
+TEST(GnomeDesktopResolve, TransformHyperMapsToSuper) {
+    EXPECT_EQ(GnomeDesktop::gsettingsToKeystroke("['<Hyper>d']"), "Super+d");
+}
+
+TEST(GnomeDesktopResolve, TransformAltGrDropped) {
+    EXPECT_EQ(GnomeDesktop::gsettingsToKeystroke("['<AltGr>q']"), "q");
+}
+
+TEST(GnomeDesktopResolve, TransformIsoLevel3ShiftDropped) {
+    EXPECT_EQ(GnomeDesktop::gsettingsToKeystroke("['<ISO_Level3_Shift>q']"), "q");
+}
+
+TEST(GnomeDesktopResolve, ResolveNulloptWhenSchemaEmpty) {
+    const QByteArray cat = R"([
+        { "id": "x", "label": "X",
+          "variants": { "gnome": { "gsettings": { "schema": "", "key": "k" } } } }
+    ])";
+    GnomeDesktop d;
+    ActionPresetRegistry reg;
+    reg.loadFromJson(cat);
+    d.setPresetRegistry(&reg);
+    EXPECT_FALSE(d.resolveNamedAction("x").has_value());
+}
+
+TEST(GnomeDesktopResolve, ResolveNulloptWhenKeyEmpty) {
+    const QByteArray cat = R"([
+        { "id": "x", "label": "X",
+          "variants": { "gnome": { "gsettings": { "schema": "s", "key": "" } } } }
+    ])";
+    GnomeDesktop d;
+    ActionPresetRegistry reg;
+    reg.loadFromJson(cat);
+    d.setPresetRegistry(&reg);
+    EXPECT_FALSE(d.resolveNamedAction("x").has_value());
+}
+
+TEST(GnomeDesktopResolve, ResolveNulloptForUnknownVariantKind) {
+    const QByteArray cat = R"([
+        { "id": "x", "label": "X",
+          "variants": { "gnome": { "future-kind": { "anything": "v" } } } }
+    ])";
+    GnomeDesktop d;
+    ActionPresetRegistry reg;
+    reg.loadFromJson(cat);
+    d.setPresetRegistry(&reg);
+    EXPECT_FALSE(d.resolveNamedAction("x").has_value());
+}
+
+TEST(GnomeDesktopResolve, ResolveNulloptWhenAppLaunchBinaryEmpty) {
+    const QByteArray cat = R"([
+        { "id": "x", "label": "X",
+          "variants": { "gnome": { "app-launch": { "binary": "" } } } }
+    ])";
+    GnomeDesktop d;
+    ActionPresetRegistry reg;
+    reg.loadFromJson(cat);
+    d.setPresetRegistry(&reg);
+    EXPECT_FALSE(d.resolveNamedAction("x").has_value());
+}

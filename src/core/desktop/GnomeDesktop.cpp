@@ -277,6 +277,9 @@ QString GnomeDesktop::gsettingsToKeystroke(const QString &gsettingsOutput)
     // gsettings returns GLib variant strings like "['<Super>d']" or
     // "['<Primary><Alt>Left', '<Super>D']". Find the first non-empty
     // single-quoted binding.
+    // Note: this regex does not handle GVariant's \' escape. Real gsettings
+    // keybinding values are alphanumeric or named keysyms (Print, F1, Left,
+    // etc.), so apostrophes never appear inside a binding string.
     static const QRegularExpression kBindingRe(QStringLiteral("'([^']*)'"));
     QRegularExpressionMatchIterator it = kBindingRe.globalMatch(gsettingsOutput);
 
@@ -295,7 +298,7 @@ QString GnomeDesktop::gsettingsToKeystroke(const QString &gsettingsOutput)
     // into the Logitune format: Super+, Ctrl+, Alt+, Shift+, Meta+.
     static const QRegularExpression kModifierRe(QStringLiteral("<([^>]+)>"));
     QString out;
-    int pos = 0;
+    int pos = 0;  // End of last matched modifier; remaining suffix is the keysym.
     auto mit = kModifierRe.globalMatch(binding);
     while (mit.hasNext()) {
         auto m = mit.next();
@@ -310,8 +313,13 @@ QString GnomeDesktop::gsettingsToKeystroke(const QString &gsettingsOutput)
         } else if (mod.compare(QStringLiteral("Shift"), Qt::CaseInsensitive) == 0) {
             norm = QStringLiteral("Shift");
         } else if (mod.compare(QStringLiteral("Super"), Qt::CaseInsensitive) == 0 ||
-                   mod.compare(QStringLiteral("Meta"), Qt::CaseInsensitive) == 0) {
+                   mod.compare(QStringLiteral("Meta"),  Qt::CaseInsensitive) == 0 ||
+                   mod.compare(QStringLiteral("Hyper"), Qt::CaseInsensitive) == 0) {
             norm = QStringLiteral("Super");
+        } else if (mod.compare(QStringLiteral("AltGr"), Qt::CaseInsensitive) == 0 ||
+                   mod.compare(QStringLiteral("ISO_Level3_Shift"), Qt::CaseInsensitive) == 0) {
+            pos = m.capturedEnd();
+            continue;   // Skip; not representable in Logitune keystroke format
         } else {
             norm = mod;
         }
@@ -356,8 +364,16 @@ std::optional<ButtonAction> GnomeDesktop::resolveNamedAction(const QString &id) 
             QProcess p;
             p.start(QStringLiteral("gsettings"),
                     {QStringLiteral("get"), schema, key});
-            if (!p.waitForFinished(1000))
+            if (!p.waitForFinished(3000)) {
+                qCWarning(lcFocus) << "gsettings get" << schema << key
+                                   << "did not finish; state:" << p.state();
                 return std::nullopt;
+            }
+            if (p.exitCode() != 0) {
+                qCWarning(lcFocus) << "gsettings failed for" << schema << key
+                                   << ":" << p.readAllStandardError().trimmed();
+                return std::nullopt;
+            }
             raw = QString::fromUtf8(p.readAllStandardOutput()).trimmed();
         }
 
