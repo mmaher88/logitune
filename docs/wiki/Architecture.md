@@ -1132,41 +1132,53 @@ How to decide the group for a new row:
 2. Else: is the source one of the four services or `ActiveDeviceResolver`? → **🟣 Cross-service**.
 3. Else (source is a ViewModel / engine / manager / interface, and the wire is made at startup): → **🔵 Startup**.
 
-| # | Source | Signal | Sink | Group |
-|---|--------|--------|------|-------|
-| 1 | ButtonModel | `userActionChanged` | ProfileOrchestrator::`onUserButtonChanged` | 🔵 Startup |
-| 2 | IDesktopIntegration | `activeWindowChanged` | ProfileOrchestrator::`onWindowFocusChanged` | 🔵 Startup |
-| 3 | ProfileModel | `profileSwitched` | ProfileOrchestrator::`onTabSwitched` | 🔵 Startup |
-| 4 | ProfileEngine | `deviceDisplayProfileChanged` | ProfileOrchestrator::`onDisplayProfileChanged` | 🔵 Startup |
-| 5 | DeviceModel | `selectedChanged` | ActiveDeviceResolver::`onSelectionIndexChanged` | 🔵 Startup |
-| 5b | DeviceModel | `selectedChanged` | lambda → EditorModel::`setActiveDevicePath` (editor mode only) | 🔵 Startup |
-| 6 | DeviceModel | `userGestureChanged` | lambda → ProfileOrchestrator::`saveCurrentProfile` | 🔵 Startup |
-| 7 | DeviceModel | `dpiChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) | 🔵 Startup |
-| 8 | DeviceModel | `dpiChangeRequested` | lambda → DeviceCommandHandler::`requestDpi` (hardware, guarded) | 🔵 Startup |
-| 9 | DeviceModel | `smartShiftChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) | 🔵 Startup |
-| 10 | DeviceModel | `smartShiftChangeRequested` | lambda → DeviceCommandHandler::`requestSmartShift` (hardware, guarded) | 🔵 Startup |
-| 11 | DeviceModel | `scrollConfigChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) | 🔵 Startup |
-| 12 | DeviceModel | `scrollConfigChangeRequested` | lambda → DeviceCommandHandler::`requestScrollConfig` (hardware, guarded) | 🔵 Startup |
-| 13 | DeviceModel | `thumbWheelModeChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) | 🔵 Startup |
-| 14 | DeviceModel | `thumbWheelModeChangeRequested` | lambda → DeviceCommandHandler::`requestThumbWheelMode` (hardware, guarded) | 🔵 Startup |
-| 15 | DeviceModel | `thumbWheelInvertChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) | 🔵 Startup |
-| 16 | DeviceModel | `thumbWheelInvertChangeRequested` | lambda → DeviceCommandHandler::`requestThumbWheelInvert` (hardware, guarded) | 🔵 Startup |
-| 17 | ProfileModel | `profileAdded` | lambda → ProfileEngine::`createProfileForApp` | 🔵 Startup |
-| 18 | ProfileModel | `profileRemoved` | lambda → ProfileEngine::`removeAppProfile` | 🔵 Startup |
-| 19 | DeviceManager | `physicalDeviceAdded` | AppRoot::`onPhysicalDeviceAdded` | 🔵 Startup |
-| 20 | DeviceManager | `physicalDeviceRemoved` | AppRoot::`onPhysicalDeviceRemoved` | 🔵 Startup |
-| 21 | DeviceManager | `unknownDeviceDetected` | DeviceFetcher::`fetchForPid` | 🔵 Startup |
-| 22 | DeviceFetcher | `descriptorsUpdated` | lambda → DeviceRegistry::`reloadAll` | 🔵 Startup |
-| 23 | ActiveDeviceResolver | `selectionChanged` | AppRoot::`onSelectionChanged` | 🟣 Cross-service |
-| 24 | DeviceCommandHandler | `userChangedSomething` | ProfileOrchestrator::`saveCurrentProfile` | 🟣 Cross-service |
-| 25 | ProfileOrchestrator | `profileApplied` | ButtonActionDispatcher::`onProfileApplied` | 🟣 Cross-service |
-| 26 | ProfileOrchestrator | `currentDeviceChanged` | ButtonActionDispatcher::`onCurrentDeviceChanged` | 🟣 Cross-service |
-| 27 | PhysicalDevice | `gestureRawXY` | ButtonActionDispatcher::`onGestureRaw` | 🟠 Per-device |
-| 28 | PhysicalDevice | `divertedButtonPressed` | ButtonActionDispatcher::`onDivertedButtonPressed` | 🟠 Per-device |
-| 29 | PhysicalDevice | `thumbWheelRotation` | ButtonActionDispatcher::`onThumbWheelRotation` | 🟠 Per-device |
-| 30 | PhysicalDevice | `transportSetupComplete` | lambda → ProfileOrchestrator::`onTransportSetupComplete` | 🟠 Per-device |
+#### 🔵 Startup
 
-The lambdas in rows 7 to 16 all call `applyDisplayedChange(mutator, hardwareForward)`. That helper persists the cached profile, refreshes the UI unconditionally, and only invokes `DeviceCommandHandler` when the displayed profile is also the active hardware profile. Rows 21 to 22 are the device-database integration path: an unknown PID triggers a targeted fetch, and a successful fetch reloads the local descriptor registry so the new device appears on the next enumeration without a restart.
+| Source | Signal | Sink |
+|--------|--------|------|
+| ButtonModel | `userActionChanged` | ProfileOrchestrator::`onUserButtonChanged` |
+| IDesktopIntegration | `activeWindowChanged` | ProfileOrchestrator::`onWindowFocusChanged` |
+| ProfileModel | `profileSwitched` | ProfileOrchestrator::`onTabSwitched` |
+| ProfileEngine | `deviceDisplayProfileChanged` | ProfileOrchestrator::`onDisplayProfileChanged` |
+| DeviceModel | `selectedChanged` | ActiveDeviceResolver::`onSelectionIndexChanged` |
+| DeviceModel | `selectedChanged` | lambda → EditorModel::`setActiveDevicePath` (editor mode only) |
+| DeviceModel | `userGestureChanged` | lambda → ProfileOrchestrator::`saveCurrentProfile` |
+| DeviceModel | `dpiChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) |
+| DeviceModel | `dpiChangeRequested` | lambda → DeviceCommandHandler::`requestDpi` (hardware, guarded) |
+| DeviceModel | `smartShiftChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) |
+| DeviceModel | `smartShiftChangeRequested` | lambda → DeviceCommandHandler::`requestSmartShift` (hardware, guarded) |
+| DeviceModel | `scrollConfigChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) |
+| DeviceModel | `scrollConfigChangeRequested` | lambda → DeviceCommandHandler::`requestScrollConfig` (hardware, guarded) |
+| DeviceModel | `thumbWheelModeChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) |
+| DeviceModel | `thumbWheelModeChangeRequested` | lambda → DeviceCommandHandler::`requestThumbWheelMode` (hardware, guarded) |
+| DeviceModel | `thumbWheelInvertChangeRequested` | lambda → ProfileOrchestrator::`applyDisplayedChange` (cache + UI) |
+| DeviceModel | `thumbWheelInvertChangeRequested` | lambda → DeviceCommandHandler::`requestThumbWheelInvert` (hardware, guarded) |
+| ProfileModel | `profileAdded` | lambda → ProfileEngine::`createProfileForApp` |
+| ProfileModel | `profileRemoved` | lambda → ProfileEngine::`removeAppProfile` |
+| DeviceManager | `physicalDeviceAdded` | AppRoot::`onPhysicalDeviceAdded` |
+| DeviceManager | `physicalDeviceRemoved` | AppRoot::`onPhysicalDeviceRemoved` |
+| DeviceManager | `unknownDeviceDetected` | DeviceFetcher::`fetchForPid` |
+| DeviceFetcher | `descriptorsUpdated` | lambda → DeviceRegistry::`reloadAll` |
+
+The lambdas in the `DeviceModel::*ChangeRequested` rows all call `applyDisplayedChange(mutator, hardwareForward)`. That helper persists the cached profile, refreshes the UI unconditionally, and only invokes `DeviceCommandHandler` when the displayed profile is also the active hardware profile. The `DeviceManager::unknownDeviceDetected` / `DeviceFetcher::descriptorsUpdated` pair is the device-database integration path: an unknown PID triggers a targeted fetch, and a successful fetch reloads the local descriptor registry so the new device appears on the next enumeration without a restart.
+
+#### 🟣 Cross-service
+
+| Source | Signal | Sink |
+|--------|--------|------|
+| ActiveDeviceResolver | `selectionChanged` | AppRoot::`onSelectionChanged` |
+| DeviceCommandHandler | `userChangedSomething` | ProfileOrchestrator::`saveCurrentProfile` |
+| ProfileOrchestrator | `profileApplied` | ButtonActionDispatcher::`onProfileApplied` |
+| ProfileOrchestrator | `currentDeviceChanged` | ButtonActionDispatcher::`onCurrentDeviceChanged` |
+
+#### 🟠 Per-device
+
+| Source | Signal | Sink |
+|--------|--------|------|
+| PhysicalDevice | `gestureRawXY` | ButtonActionDispatcher::`onGestureRaw` |
+| PhysicalDevice | `divertedButtonPressed` | ButtonActionDispatcher::`onDivertedButtonPressed` |
+| PhysicalDevice | `thumbWheelRotation` | ButtonActionDispatcher::`onThumbWheelRotation` |
+| PhysicalDevice | `transportSetupComplete` | lambda → ProfileOrchestrator::`onTransportSetupComplete` |
 
 ### Dependency Injection
 
