@@ -14,7 +14,7 @@
     "smoothScroll": true,
     "thumbWheel": false,
     "reprogControls": true,
-    "gestureV2": true,
+    "gestureV2": false,
     "mouseGesture": false,
     "hapticFeedback": false,
     "forceSensingButton": false,
