@@ -75,11 +75,15 @@ void AppRoot::init()
         qCWarning(lcApp) << "UinputInjector: uinput init failed (no /dev/uinput access?). Keystrokes will not be injected.";
     }
 
-    QMap<QString, QPair<QString, QString>> defaultGestures;
-    defaultGestures["down"]  = qMakePair(QStringLiteral("Show desktop"),          QStringLiteral("Super+D"));
-    defaultGestures["left"]  = qMakePair(QStringLiteral("Switch desktop left"),   QStringLiteral("Ctrl+Super+Left"));
-    defaultGestures["right"] = qMakePair(QStringLiteral("Switch desktop right"),  QStringLiteral("Ctrl+Super+Right"));
-    defaultGestures["click"] = qMakePair(QStringLiteral("Task switcher"),         QStringLiteral("Super+W"));
+    QMap<QString, GestureEntry> defaultGestures;
+    defaultGestures["down"]  = {QStringLiteral("Show desktop"),
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Super+D")}};
+    defaultGestures["left"]  = {QStringLiteral("Switch desktop left"),
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+Super+Left")}};
+    defaultGestures["right"] = {QStringLiteral("Switch desktop right"),
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+Super+Right")}};
+    defaultGestures["click"] = {QStringLiteral("Task switcher"),
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Super+W")}};
     m_deviceModel.loadGesturesFromProfile(defaultGestures);
 
     wireSignals();
@@ -155,7 +159,7 @@ void AppRoot::wireSignals()
     // subscription covers point/scroll tweaks from DeviceCommandHandler.
     connect(&m_deviceModel, &DeviceModel::userGestureChanged,
             &m_profileOrchestrator,
-            [this](const QString &, const QString &, const QString &) {
+            [this](const QString &, const QString &, const QString &, const QString &) {
                 m_profileOrchestrator.saveCurrentProfile();
             });
 

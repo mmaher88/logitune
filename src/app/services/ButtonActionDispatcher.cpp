@@ -77,10 +77,29 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
         }
 
         auto it = hwProfile.gestures.find(dir);
-        if (it != hwProfile.gestures.end() && it->second.type == ButtonAction::Keystroke
-            && !it->second.payload.isEmpty()) {
-            m_actionExecutor->injectKeystroke(it->second.payload);
+        if (it == hwProfile.gestures.end() || it->second.type == ButtonAction::Default)
+            return;
+
+        // Mirrors the PresetRef branch in the press path below: if the action
+        // is a PresetRef, resolve via the desktop integration to a concrete
+        // ButtonAction, then fire it via the executor. Otherwise fire the
+        // stored action directly.
+        ButtonAction toFire = it->second;
+        if (toFire.type == ButtonAction::PresetRef) {
+            if (!m_desktop) {
+                qCWarning(lcApp) << "gesture preset" << toFire.payload
+                                 << "requested but desktop integration is null";
+                return;
+            }
+            auto resolved = m_desktop->resolveNamedAction(toFire.payload);
+            if (!resolved.has_value()) {
+                qCWarning(lcApp) << "gesture preset" << toFire.payload
+                                 << "not resolvable on" << m_desktop->variantKey();
+                return;
+            }
+            toFire = *resolved;
         }
+        m_actionExecutor->executeAction(toFire);
         return;
     }
 

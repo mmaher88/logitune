@@ -302,20 +302,17 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
 
     m_buttonModel->loadFromProfile(assignments);
 
-    QMap<QString, QPair<QString, QString>> gestureMap;
+    // Translate the profile's per-direction ButtonAction map into the
+    // GestureEntry map the DeviceModel exposes to QML. The display name is
+    // resolved via ActionModel::buttonActionToName so it works for both
+    // PresetRef ("show-desktop" -> "Show desktop") and Keystroke
+    // ("Super+D" -> "Show desktop") payloads.
+    QMap<QString, GestureEntry> gestureMap;
     for (auto it = p.gestures.begin(); it != p.gestures.end(); ++it) {
-        if (it->second.type == ButtonAction::Keystroke && !it->second.payload.isEmpty()) {
-            QString name = it->second.payload;
-            int count = m_actionModel->rowCount();
-            for (int j = 0; j < count; ++j) {
-                QModelIndex mi = m_actionModel->index(j);
-                if (m_actionModel->data(mi, ActionModel::PayloadRole).toString() == it->second.payload) {
-                    name = m_actionModel->data(mi, ActionModel::NameRole).toString();
-                    break;
-                }
-            }
-            gestureMap[it->first] = qMakePair(name, it->second.payload);
-        }
+        if (it->second.type == ButtonAction::Default)
+            continue;
+        QString name = m_actionModel->buttonActionToName(it->second);
+        gestureMap[it->first] = GestureEntry{name, it->second};
     }
     m_deviceModel->loadGesturesFromProfile(gestureMap);
 }
@@ -377,9 +374,11 @@ void ProfileOrchestrator::saveCurrentProfile()
     }
 
     for (const auto &dir : {"up", "down", "left", "right", "click"}) {
-        QString ks = m_deviceModel->gestureKeystroke(dir);
-        if (!ks.isEmpty())
-            p.gestures[dir] = {ButtonAction::Keystroke, ks};
+        const auto ba = m_deviceModel->gestureAction(dir);
+        if (ba.type != ButtonAction::Default)
+            p.gestures[dir] = ba;
+        else
+            p.gestures.erase(dir);
     }
 
     m_profileEngine->saveProfileToDisk(serial, name);

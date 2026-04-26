@@ -565,30 +565,34 @@ Rectangle {
                     spacing: 6
 
                     Repeater {
+                        // Each direction is { name, type, payload }. type is one of
+                        // "preset" | "keystroke" | "none". Preset ids resolve via
+                        // IDesktopIntegration so they fire correctly on every DE
+                        // (KDE, GNOME, sway, ...) without a hardcoded keystroke.
                         model: [
                             {
                                 label: "Navigation",
-                                up: { name: "", keystroke: "" },
-                                down: { name: "Show desktop", keystroke: "Super+D" },
-                                left: { name: "Switch desktop left", keystroke: "Ctrl+Super+Left" },
-                                right: { name: "Switch desktop right", keystroke: "Ctrl+Super+Right" },
-                                click: { name: "Task switcher", keystroke: "Super+W" }
+                                up:    { name: "",                     type: "none",      payload: "" },
+                                down:  { name: "Show desktop",         type: "preset",    payload: "show-desktop" },
+                                left:  { name: "Switch desktop left",  type: "preset",    payload: "switch-desktop-left" },
+                                right: { name: "Switch desktop right", type: "preset",    payload: "switch-desktop-right" },
+                                click: { name: "Task switcher",        type: "preset",    payload: "task-switcher" }
                             },
                             {
                                 label: "Media",
-                                up: { name: "", keystroke: "" },
-                                down: { name: "Mute", keystroke: "Mute" },
-                                left: { name: "Play/Pause", keystroke: "Play" },
-                                right: { name: "Play/Pause", keystroke: "Play" },
-                                click: { name: "", keystroke: "" }
+                                up:    { name: "",            type: "none",      payload: "" },
+                                down:  { name: "Mute",        type: "keystroke", payload: "Mute" },
+                                left:  { name: "Play/Pause",  type: "keystroke", payload: "Play" },
+                                right: { name: "Play/Pause",  type: "keystroke", payload: "Play" },
+                                click: { name: "",            type: "none",      payload: "" }
                             },
                             {
                                 label: "Window",
-                                up: { name: "", keystroke: "" },
-                                down: { name: "Show desktop", keystroke: "Super+D" },
-                                left: { name: "", keystroke: "" },
-                                right: { name: "", keystroke: "" },
-                                click: { name: "Close window", keystroke: "Alt+F4" }
+                                up:    { name: "",             type: "none",   payload: "" },
+                                down:  { name: "Show desktop", type: "preset", payload: "show-desktop" },
+                                left:  { name: "",             type: "none",   payload: "" },
+                                right: { name: "",             type: "none",   payload: "" },
+                                click: { name: "Close window", type: "preset", payload: "close-window" }
                             }
                         ]
 
@@ -618,7 +622,7 @@ Rectangle {
                                     for (var i = 0; i < dirs.length; i++) {
                                         var d = dirs[i]
                                         var preset = modelData[d]
-                                        DeviceModel.setGestureAction(d, preset.name, preset.keystroke)
+                                        DeviceModel.setGestureAction(d, preset.name, preset.type, preset.payload)
                                     }
                                 }
                             }
@@ -693,11 +697,16 @@ Rectangle {
                 }
 
                 // ── Gesture direction action picker (inline) ─────────
+                // Bound to the registered ActionModel (an ActionFilterModel
+                // wrapper) so the rows shown here are exactly the actions
+                // supported on the active DE. Includes a "None" sentinel at
+                // the top to clear the binding. The ScrollView keeps the
+                // list from clipping when the panel is short.
                 Column {
                     id: gestureDirectionPicker
                     visible: false
                     width: parent.width
-                    spacing: 2
+                    spacing: 4
                     topPadding: 8
 
                     property string direction: ""
@@ -711,46 +720,69 @@ Rectangle {
                         bottomPadding: 4
                     }
 
-                    Repeater {
-                        model: [
-                            { name: "None",                 keystroke: "" },
-                            { name: "Show desktop",         keystroke: "Super+D" },
-                            { name: "Task switcher",        keystroke: "Super+W" },
-                            { name: "Switch desktop left",  keystroke: "Ctrl+Super+Left" },
-                            { name: "Switch desktop right", keystroke: "Ctrl+Super+Right" },
-                            { name: "Copy",                 keystroke: "Ctrl+C" },
-                            { name: "Paste",                keystroke: "Ctrl+V" },
-                            { name: "Undo",                 keystroke: "Ctrl+Z" },
-                            { name: "Redo",                 keystroke: "Ctrl+Shift+Z" },
-                            { name: "Close window",         keystroke: "Alt+F4" },
-                            { name: "Mute",                 keystroke: "Mute" },
-                            { name: "Play/Pause",           keystroke: "Play" },
-                        ]
-
-                        Rectangle {
-                            width: parent.width
-                            height: 28
-                            radius: 4
-                            color: gpHover.hovered ? Theme.hoverBg : "transparent"
-
-                            Text {
-                                anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
-                                text: modelData.name
-                                font.pixelSize: 11
-                                color: gpHover.hovered ? Theme.accent : Theme.text
+                    // "None" sentinel row, always at the top.
+                    Rectangle {
+                        width: parent.width
+                        height: 28
+                        radius: 4
+                        color: noneHover.hovered ? Theme.hoverBg : "transparent"
+                        Text {
+                            anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                            text: "None"
+                            font.pixelSize: 11
+                            color: noneHover.hovered ? Theme.accent : Theme.text
+                        }
+                        HoverHandler { id: noneHover }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                DeviceModel.setGestureAction(
+                                    gestureDirectionPicker.direction, "", "none", "")
+                                gestureDirectionPicker.visible = false
                             }
+                        }
+                    }
 
-                            HoverHandler { id: gpHover }
+                    // Scrollable list of all DE-supported actions
+                    // (filtered by ActionFilterModel).
+                    ScrollView {
+                        width: parent.width
+                        height: Math.min(actionsList.contentHeight, 280)
+                        clip: true
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    DeviceModel.setGestureAction(
-                                        gestureDirectionPicker.direction,
-                                        modelData.name === "None" ? "" : modelData.name,
-                                        modelData.keystroke)
-                                    gestureDirectionPicker.visible = false
+                        ListView {
+                            id: actionsList
+                            model: ActionModel
+                            spacing: 2
+                            interactive: true
+
+                            delegate: Rectangle {
+                                required property string name
+                                required property string actionType
+                                required property string payload
+                                width: actionsList.width
+                                height: 28
+                                radius: 4
+                                color: itemHover.hovered ? Theme.hoverBg : "transparent"
+
+                                Text {
+                                    anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                                    text: name
+                                    font.pixelSize: 11
+                                    color: itemHover.hovered ? Theme.accent : Theme.text
+                                }
+                                HoverHandler { id: itemHover }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        DeviceModel.setGestureAction(
+                                            gestureDirectionPicker.direction,
+                                            name, actionType, payload)
+                                        gestureDirectionPicker.visible = false
+                                    }
                                 }
                             }
                         }
