@@ -641,60 +641,9 @@ Rectangle {
                     bottomPadding: 4
                 }
 
-                Repeater {
-                    model: [
-                        { dir: "\u2191", label: "Up",    key: "up" },
-                        { dir: "\u2193", label: "Down",  key: "down" },
-                        { dir: "\u2190", label: "Left",  key: "left" },
-                        { dir: "\u2192", label: "Right", key: "right" },
-                        { dir: "\u25C9", label: "Click", key: "click" },
-                    ]
-
-                    delegate: Rectangle {
-                        width: parent.width
-                        height: 36
-                        radius: 4
-                        color: gestureRowHover.hovered ? Theme.hoverBg : Theme.cardBg
-                        border.color: gestureRowHover.hovered ? Theme.accentHover : Theme.border
-                        border.width: 1
-
-                        readonly property string actionName: root._gestureRefresh >= 0 ? DeviceModel.gestureActionName(modelData.key) : ""
-
-                        RowLayout {
-                            anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
-                            spacing: 8
-
-                            Text {
-                                text: modelData.dir
-                                font.pixelSize: 14
-                                color: Theme.accent
-                            }
-                            Text {
-                                text: modelData.label
-                                font.pixelSize: 12
-                                color: Theme.text
-                                Layout.fillWidth: true
-                            }
-                            Text {
-                                text: actionName || "None"
-                                font.pixelSize: 11
-                                color: actionName ? Theme.accent : "#AAAAAA"
-                            }
-                        }
-
-                        HoverHandler { id: gestureRowHover }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                gestureDirectionPicker.direction = modelData.key
-                                gestureDirectionPicker.dirLabel = modelData.label
-                                gestureDirectionPicker.visible = true
-                            }
-                        }
-                    }
-                }
+                // State for which direction row currently has the picker open.
+                property string expandedDirection: ""
+                property string expandedLabel: ""
 
                 // ── Gesture direction action picker (inline) ─────────
                 // Bound to the registered ActionModel (an ActionFilterModel
@@ -702,89 +651,158 @@ Rectangle {
                 // supported on the active DE. Includes a "None" sentinel at
                 // the top to clear the binding. The ScrollView keeps the
                 // list from clipping when the panel is short.
-                Column {
-                    id: gestureDirectionPicker
-                    visible: false
-                    width: parent.width
-                    spacing: 4
-                    topPadding: 8
+                Component {
+                    id: gesturePickerComponent
 
-                    property string direction: ""
-                    property string dirLabel: ""
-
-                    Text {
-                        text: "Assign action to " + gestureDirectionPicker.dirLabel + ":"
-                        font.pixelSize: 11
-                        font.bold: true
-                        color: "#444444"
-                        bottomPadding: 4
-                    }
-
-                    // "None" sentinel row, always at the top.
-                    Rectangle {
+                    Column {
                         width: parent.width
-                        height: 28
-                        radius: 4
-                        color: noneHover.hovered ? Theme.hoverBg : "transparent"
+                        spacing: 4
+                        topPadding: 8
+                        bottomPadding: 8
+
                         Text {
-                            anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
-                            text: "None"
+                            text: "Assign action to " + gestureCol.expandedLabel + ":"
                             font.pixelSize: 11
-                            color: noneHover.hovered ? Theme.accent : Theme.text
+                            font.bold: true
+                            color: "#444444"
+                            bottomPadding: 4
                         }
-                        HoverHandler { id: noneHover }
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                DeviceModel.setGestureAction(
-                                    gestureDirectionPicker.direction, "", "none", "")
-                                gestureDirectionPicker.visible = false
+
+                        // "None" sentinel row, always at the top.
+                        Rectangle {
+                            width: parent.width
+                            height: 28
+                            radius: 4
+                            color: noneHover.hovered ? Theme.hoverBg : "transparent"
+                            Text {
+                                anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                                text: "None"
+                                font.pixelSize: 11
+                                color: noneHover.hovered ? Theme.accent : Theme.text
+                            }
+                            HoverHandler { id: noneHover }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    DeviceModel.setGestureAction(
+                                        gestureCol.expandedDirection, "", "none", "")
+                                    gestureCol.expandedDirection = ""
+                                }
                             }
                         }
-                    }
 
-                    // Scrollable list of all DE-supported actions
-                    // (filtered by ActionFilterModel).
-                    ScrollView {
-                        width: parent.width
-                        height: Math.min(actionsList.contentHeight, 280)
-                        clip: true
-                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                        // Scrollable list of all DE-supported actions
+                        // (filtered by ActionFilterModel).
+                        ScrollView {
+                            width: parent.width
+                            height: Math.min(actionsList.contentHeight, 280)
+                            clip: true
+                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-                        ListView {
-                            id: actionsList
-                            model: ActionModel
-                            spacing: 2
-                            interactive: true
+                            ListView {
+                                id: actionsList
+                                model: ActionModel
+                                spacing: 2
+                                interactive: true
 
-                            delegate: Rectangle {
-                                required property string name
-                                required property string actionType
-                                required property string payload
-                                width: actionsList.width
-                                height: 28
-                                radius: 4
-                                color: itemHover.hovered ? Theme.hoverBg : "transparent"
+                                delegate: Rectangle {
+                                    required property string name
+                                    required property string actionType
+                                    required property string payload
+                                    width: actionsList.width
+                                    height: 28
+                                    radius: 4
+                                    color: itemHover.hovered ? Theme.hoverBg : "transparent"
 
-                                Text {
-                                    anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
-                                    text: name
-                                    font.pixelSize: 11
-                                    color: itemHover.hovered ? Theme.accent : Theme.text
-                                }
-                                HoverHandler { id: itemHover }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        DeviceModel.setGestureAction(
-                                            gestureDirectionPicker.direction,
-                                            name, actionType, payload)
-                                        gestureDirectionPicker.visible = false
+                                    Text {
+                                        anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                                        text: name
+                                        font.pixelSize: 11
+                                        color: itemHover.hovered ? Theme.accent : Theme.text
+                                    }
+                                    HoverHandler { id: itemHover }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            DeviceModel.setGestureAction(
+                                                gestureCol.expandedDirection,
+                                                name, actionType, payload)
+                                            gestureCol.expandedDirection = ""
+                                        }
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+
+                Repeater {
+                    model: [
+                        { dir: "↑", label: "Up",    key: "up" },
+                        { dir: "↓", label: "Down",  key: "down" },
+                        { dir: "←", label: "Left",  key: "left" },
+                        { dir: "→", label: "Right", key: "right" },
+                        { dir: "◉", label: "Click", key: "click" },
+                    ]
+
+                    delegate: Column {
+                        width: parent.width
+                        spacing: 0
+
+                        Rectangle {
+                            width: parent.width
+                            height: 36
+                            radius: 4
+                            color: gestureRowHover.hovered ? Theme.hoverBg : Theme.cardBg
+                            border.color: gestureRowHover.hovered ? Theme.accentHover : Theme.border
+                            border.width: 1
+
+                            readonly property string actionName: root._gestureRefresh >= 0 ? DeviceModel.gestureActionName(modelData.key) : ""
+
+                            RowLayout {
+                                anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
+                                spacing: 8
+
+                                Text {
+                                    text: modelData.dir
+                                    font.pixelSize: 14
+                                    color: Theme.accent
+                                }
+                                Text {
+                                    text: modelData.label
+                                    font.pixelSize: 12
+                                    color: Theme.text
+                                    Layout.fillWidth: true
+                                }
+                                Text {
+                                    text: actionName || "None"
+                                    font.pixelSize: 11
+                                    color: actionName ? Theme.accent : "#AAAAAA"
+                                }
+                            }
+
+                            HoverHandler { id: gestureRowHover }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (gestureCol.expandedDirection === modelData.key) {
+                                        gestureCol.expandedDirection = ""
+                                    } else {
+                                        gestureCol.expandedDirection = modelData.key
+                                        gestureCol.expandedLabel = modelData.label
+                                    }
+                                }
+                            }
+                        }
+
+                        Loader {
+                            width: parent.width
+                            active: gestureCol.expandedDirection === modelData.key
+                            sourceComponent: gesturePickerComponent
                         }
                     }
                 }
