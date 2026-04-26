@@ -803,6 +803,8 @@ Rectangle {
                             width: parent.width
                             active: gestureCol.expandedDirection === modelData.key
                             sourceComponent: gesturePickerComponent
+                            visible: active
+                            height: active ? implicitHeight : 0
                         }
                     }
                 }
