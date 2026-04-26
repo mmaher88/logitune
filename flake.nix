@@ -11,6 +11,8 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
+        version = "0.3.4";
+
         nativeBuildInputs = with pkgs; [
           cmake
           ninja
@@ -22,6 +24,7 @@
           qt6.qtbase
           qt6.qtdeclarative
           qt6.qtsvg
+          qt6.qtwayland
           systemd  # provides libudev
           gtest
         ];
@@ -29,7 +32,7 @@
       {
         packages.default = pkgs.stdenv.mkDerivation {
           pname = "logitune";
-          version = "0.2.3";
+          inherit version;
 
           src = ./.;
 
@@ -38,6 +41,7 @@
           cmakeFlags = [
             "-DCMAKE_BUILD_TYPE=Release"
             "-DBUILD_TESTING=OFF"
+            "-DLOGITUNE_VERSION=${version}"
           ];
 
           meta = with pkgs.lib; {
