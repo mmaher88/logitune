@@ -1,0 +1,530 @@
+{
+  "devices": [
+    {
+      "modelId": "2b034",
+      "displayName": "MX Master 3S",
+      "extendedDisplayName": "Wireless Mouse MX Master 3S",
+      "slotPrefix": "mx-master-3s-2b034",
+      "type": "MOUSE",
+      "depot": "mx_master_3s",
+      "comboDevices": [
+        {
+          "modelId": "10000000",
+          "considerForOnboarding": false
+        }
+      ],
+      "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s.png",
+      "supportPageId": "1477",
+      "modes": [
+        {
+          "interfaces": [
+            {
+              "type": "DEVIO",
+              "id": "046d_b034",
+              "derivatives": [
+                {
+                  "extendedModel": 1,
+                  "modelId": "2b034_ext1",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext1.png",
+                  "displayName": "MX Master 3S",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 2,
+                  "modelId": "2b034_ext2",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext2.png",
+                  "displayName": "MX Master 3S",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 3,
+                  "modelId": "2b034_ext3",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext1.png",
+                  "displayName": "MX Master 3S for Mac",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S for Mac",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 4,
+                  "modelId": "2b034_ext4",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext4.png",
+                  "displayName": "MX Master 3S for Mac",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S for Mac",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 10,
+                  "modelId": "2b034_ext10",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext10.png",
+                  "displayName": "MX Master 3S",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 11,
+                  "modelId": "2b034_ext11",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext12.png",
+                  "displayName": "MX Master 3S for Mac",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S for Mac",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 12,
+                  "modelId": "2b034_ext12",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext12.png",
+                  "displayName": "MX Master 3S",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 13,
+                  "modelId": "2b034_ext13",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext10.png",
+                  "displayName": "MX Master 3S",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "capabilities": {
+        "scroll_wheel_capabilities": {
+          "high_resolution": true,
+          "adjustable_speed": true,
+          "virtual_thumbwheel": false,
+          "smartshift": true,
+          "smooth_scroll": {
+            "win": true,
+            "mac": true
+          }
+        },
+        "hasBatteryStatus": true,
+        "unified_battery": true,
+        "hostInfos": true,
+        "flow": {
+          "hostCount": 3
+        },
+        "pointerSpeed": true,
+        "hasHighResolutionSensor": true,
+        "overrideHighResInfoFromFw": true,
+        "highResolutionSensorInfo": {
+          "defaultSensorEnabled": false,
+          "minDpiValueSensorOff": 200,
+          "maxDpiValueSensorOff": 4000,
+          "defaultDpiValueSensorOff": 1000,
+          "minDpiValueSensorOn": 200,
+          "maxDpiValueSensorOn": 8000,
+          "defaultDpiValueSensorOn": 2000,
+          "stepsSensorOn": 50,
+          "stepsSensorOff": 50
+        },
+        "specialKeys": {
+          "programmable": [
+            82,
+            83,
+            86,
+            195,
+            196
+          ]
+        },
+        "mouseThumbWheelOverride": {
+          "speed": 0,
+          "dir": "STANDARD",
+          "isSmooth": true
+        },
+        "mouseScrollWheelOverride": {
+          "speed": 0,
+          "dir": "STANDARD",
+          "isSmooth": false,
+          "smartshift": {
+            "is_enabled": true,
+            "sensitivity": 83,
+            "mode": "RATCHET",
+            "is_scroll_force_enabled": false,
+            "scroll_force": 0
+          }
+        },
+        "thumbWheelAdapterOverride": {
+          "winAdapterCardId": "card_global_presets_win_horizontal_scroll",
+          "osxAdapterCardId": "card_global_presets_osx_horizontal_scroll"
+        },
+        "is_action_ring_supported_device": true
+      },
+      "isPredefinedProfilesEnabled": true,
+      "supportedApps": [
+        "application_id_adobe_photoshop",
+        "application_id_google_chrome",
+        "application_id_microsoft_edge_chromium",
+        "application_id_apple_safari",
+        "application_id_microsoft_teams",
+        "application_id_microsoft_teams_new",
+        "application_id_zoom",
+        "application_id_microsoft_excel",
+        "application_id_microsoft_powerpoint",
+        "application_id_microsoft_word",
+        "application_id_adobe_premierepro",
+        "application_id_final_cut_pro",
+        "application_id_tencent_meeting",
+        "application_id_voov_meeting"
+      ]
+    },
+    {
+      "modelId": "2b043",
+      "displayName": "MX Master 3S",
+      "extendedDisplayName": "Wireless Mouse MX Master 3S",
+      "slotPrefix": "mx-master-3s-2b043",
+      "type": "MOUSE",
+      "depot": "mx_master_3s",
+      "comboDevices": [
+        {
+          "modelId": "10000000",
+          "considerForOnboarding": false
+        }
+      ],
+      "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext10.png",
+      "supportPageId": "1477",
+      "modes": [
+        {
+          "interfaces": [
+            {
+              "type": "DEVIO",
+              "id": "046d_b043",
+              "derivatives": [
+                {
+                  "extendedModel": 10,
+                  "modelId": "2b043_ext10",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext10.png",
+                  "displayName": "MX Master 3S",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 11,
+                  "modelId": "2b043_ext11",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext12.png",
+                  "displayName": "MX Master 3S for Mac",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S for Mac",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 12,
+                  "modelId": "2b043_ext12",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext12.png",
+                  "displayName": "MX Master 3S",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 13,
+                  "modelId": "2b043_ext13",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_3s_ext10.png",
+                  "displayName": "MX Master 3S",
+                  "extendedDisplayName": "Wireless Mouse MX Master 3S",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "capabilities": {
+        "scroll_wheel_capabilities": {
+          "high_resolution": true,
+          "adjustable_speed": true,
+          "virtual_thumbwheel": false,
+          "smartshift": true,
+          "smooth_scroll": {
+            "win": true,
+            "mac": true
+          }
+        },
+        "hasBatteryStatus": true,
+        "unified_battery": true,
+        "hostInfos": true,
+        "flow": {
+          "hostCount": 3
+        },
+        "pointerSpeed": true,
+        "hasHighResolutionSensor": true,
+        "overrideHighResInfoFromFw": true,
+        "highResolutionSensorInfo": {
+          "defaultSensorEnabled": false,
+          "minDpiValueSensorOff": 200,
+          "maxDpiValueSensorOff": 4000,
+          "defaultDpiValueSensorOff": 1000,
+          "minDpiValueSensorOn": 200,
+          "maxDpiValueSensorOn": 8000,
+          "defaultDpiValueSensorOn": 2000,
+          "stepsSensorOn": 50,
+          "stepsSensorOff": 50
+        },
+        "specialKeys": {
+          "programmable": [
+            82,
+            83,
+            86,
+            195,
+            196
+          ]
+        },
+        "mouseThumbWheelOverride": {
+          "speed": 0,
+          "dir": "STANDARD",
+          "isSmooth": true
+        },
+        "mouseScrollWheelOverride": {
+          "speed": 0,
+          "dir": "STANDARD",
+          "isSmooth": false,
+          "smartshift": {
+            "is_enabled": true,
+            "sensitivity": 83,
+            "mode": "RATCHET",
+            "is_scroll_force_enabled": false,
+            "scroll_force": 0
+          }
+        },
+        "thumbWheelAdapterOverride": {
+          "winAdapterCardId": "card_global_presets_win_horizontal_scroll",
+          "osxAdapterCardId": "card_global_presets_osx_horizontal_scroll"
+        },
+        "is_action_ring_supported_device": true
+      },
+      "isPredefinedProfilesEnabled": true,
+      "supportedApps": [
+        "application_id_adobe_photoshop",
+        "application_id_google_chrome",
+        "application_id_microsoft_edge_chromium",
+        "application_id_apple_safari",
+        "application_id_microsoft_teams",
+        "application_id_microsoft_teams_new",
+        "application_id_zoom",
+        "application_id_microsoft_excel",
+        "application_id_microsoft_powerpoint",
+        "application_id_microsoft_word",
+        "application_id_adobe_premierepro",
+        "application_id_final_cut_pro",
+        "application_id_tencent_meeting",
+        "application_id_voov_meeting"
+      ]
+    },
+    {
+      "modelId": "6b019",
+      "displayName": "MX Master 2S",
+      "extendedDisplayName": "Wireless Mouse MX Master 2S",
+      "slotPrefix": "mx-master-2s-6b019",
+      "type": "MOUSE",
+      "depot": "mx_master_2s",
+      "comboDevices": [
+        {
+          "modelId": "10000000",
+          "considerForOnboarding": false
+        }
+      ],
+      "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_2s.png",
+      "supportPageId": "12878",
+      "modes": [
+        {
+          "interfaces": [
+            {
+              "type": "DEVIO",
+              "id": "046d_b019",
+              "derivatives": [
+                {
+                  "extendedModel": 1,
+                  "modelId": "6b019_ext1",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_2s_ext1.png",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 2,
+                  "modelId": "6b019_ext2",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_2s_ext2.png",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 3,
+                  "modelId": "6b019_ext3",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_2s_ext3.png",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "interfaces": [
+            {
+              "type": "DEVIO",
+              "id": "046d_4069",
+              "derivatives": [
+                {
+                  "extendedModel": 1,
+                  "modelId": "6b019_ext1",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_2s_ext1.png",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 2,
+                  "modelId": "6b019_ext2",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_2s_ext2.png",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                },
+                {
+                  "extendedModel": 3,
+                  "modelId": "6b019_ext3",
+                  "thumbnail": "pipeline://logioptionsplus/thumbnails/mx_master_2s_ext3.png",
+                  "comboDevices": [
+                    {
+                      "modelId": "10000000",
+                      "considerForOnboarding": false
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "capabilities": {
+        "hasBatteryStatus": true,
+        "pointerSpeed": true,
+        "flow": {
+          "hostCount": 3
+        },
+        "scroll_wheel_capabilities": {
+          "high_resolution": true,
+          "adjustable_speed": true,
+          "virtual_thumbwheel": false,
+          "smartshift": true,
+          "smooth_scroll": {
+            "win": true,
+            "mac": true
+          }
+        },
+        "mouseThumbWheelOverride": {
+          "speed": 0,
+          "dir": "STANDARD"
+        },
+        "mouseScrollWheelOverride": {
+          "speed": 0,
+          "dir": "STANDARD",
+          "isSmooth": false,
+          "smartshift": {
+            "is_enabled": true,
+            "sensitivity": 26,
+            "mode": "RATCHET",
+            "is_scroll_force_enabled": false,
+            "scroll_force": 0
+          }
+        },
+        "specialKeys": {
+          "programmable": [
+            82,
+            83,
+            86,
+            195,
+            196
+          ]
+        },
+        "thumbWheelAdapterOverride": {
+          "winAdapterCardId": "card_global_presets_win_horizontal_scroll",
+          "osxAdapterCardId": "card_global_presets_osx_horizontal_scroll"
+        },
+        "rom_device_battery": true,
+        "is_action_ring_supported_device": true
+      },
+      "isPredefinedProfilesEnabled": false,
+      "supportedApps": []
+    }
+  ]
+}

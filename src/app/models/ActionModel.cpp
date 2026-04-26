@@ -14,6 +14,7 @@ ActionModel::ActionModel(QObject *parent)
         { "Close window",         "Close the active window",                    "keystroke",       "Alt+F4"      },
         { "Copy",                 "Copy selected content to clipboard",         "keystroke",       "Ctrl+C"      },
         { "Cut",                  "Cut selected content to clipboard",          "keystroke",       "Ctrl+X"      },
+        { "DPI cycle",            "Step through the device's DPI preset list",  "dpi-cycle",       ""            },
         { "Do nothing",           "Button is disabled",                         "none",            ""            },
         { "Forward",              "Navigate forward in browser/file manager",   "keystroke",       "Alt+Right"   },
         { "Gestures",             "Trigger gesture recognition",                "gesture-trigger", ""            },
@@ -97,6 +98,58 @@ QString ActionModel::payloadForName(const QString &name) const
             return a.payload;
     }
     return {};
+}
+
+QString ActionModel::buttonActionToName(const ButtonAction &ba) const
+{
+    if (ba.type == ButtonAction::Default)
+        return QString();
+    if (ba.type == ButtonAction::GestureTrigger)
+        return QStringLiteral("Gestures");
+    if (ba.type == ButtonAction::Keystroke) {
+        for (const auto &a : m_actions) {
+            if (a.actionType == QStringLiteral("keystroke") && a.payload == ba.payload)
+                return a.name;
+        }
+        return ba.payload;
+    }
+    return ba.payload;
+}
+
+ButtonAction ActionModel::buttonEntryToAction(const QString &actionType, const QString &actionName) const
+{
+    if (actionType == QStringLiteral("default"))
+        return {ButtonAction::Default, {}};
+    if (actionType == QStringLiteral("gesture-trigger"))
+        return {ButtonAction::GestureTrigger, {}};
+    if (actionType == QStringLiteral("smartshift-toggle"))
+        return {ButtonAction::SmartShiftToggle, {}};
+    if (actionType == QStringLiteral("dpi-cycle"))
+        return {ButtonAction::DpiCycle, {}};
+    if (actionType == QStringLiteral("media-controls")) {
+        static const QHash<QString, QString> mediaKeys = {
+            {"Play/Pause",     "Play"},
+            {"Next track",     "Next"},
+            {"Previous track", "Previous"},
+            {"Stop",           "Stop"},
+            {"Mute",           "Mute"},
+            {"Volume up",      "VolumeUp"},
+            {"Volume down",    "VolumeDown"},
+        };
+        return {ButtonAction::Media, mediaKeys.value(actionName, "Play")};
+    }
+    if (actionType == QStringLiteral("keystroke")) {
+        QString payload = payloadForName(actionName);
+        if (payload.isEmpty() && actionName != QStringLiteral("Keyboard shortcut"))
+            payload = actionName;
+        return {ButtonAction::Keystroke, payload};
+    }
+    if (actionType == QStringLiteral("app-launch")) {
+        QString payload = payloadForName(actionName);
+        if (payload.isEmpty()) payload = actionName;
+        return {ButtonAction::AppLaunch, payload};
+    }
+    return {ButtonAction::Default, {}};
 }
 
 } // namespace logitune

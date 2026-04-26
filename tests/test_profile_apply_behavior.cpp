@@ -3,11 +3,11 @@
 ///   - Thumb wheel accumulator resets on profile switch
 ///   - Command queue is flushed before applying a new profile
 ///   - Settings are applied before button diversions
-#include "helpers/AppControllerFixture.h"
+#include "helpers/AppRootFixture.h"
 
 namespace logitune::test {
 
-class ProfileApplyBehaviorTest : public AppControllerFixture {};
+class ProfileApplyBehaviorTest : public AppRootFixture {};
 
 // ---------------------------------------------------------------------------
 // Non-divertable button skip
@@ -15,7 +15,7 @@ class ProfileApplyBehaviorTest : public AppControllerFixture {};
 
 // When a control has configurable=false (e.g. left/right click), the profile
 // apply must skip it rather than trying to divert it via HID++.  Previously
-// this caused HwError 0x04 responses that clogged the command queue.
+// this caused HwError 0x04 responses that clogged the command processor.
 
 TEST_F(ProfileApplyBehaviorTest, NonConfigurableButtonsAreSkippedDuringProfileApply) {
     // Mark buttons 0 and 1 (left/right click, CID 0x0050 / 0x0051) as non-configurable
@@ -32,7 +32,7 @@ TEST_F(ProfileApplyBehaviorTest, NonConfigurableButtonsAreSkippedDuringProfileAp
     focusApp("firefox");
 
     // Verify profile was applied (DPI changed = hardware profile switched)
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Firefox");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Firefox");
 }
 
 TEST_F(ProfileApplyBehaviorTest, ConfigurableButtonsStillDivertedWhenNonConfigExist) {
@@ -44,11 +44,11 @@ TEST_F(ProfileApplyBehaviorTest, ConfigurableButtonsStillDivertedWhenNonConfigEx
     setProfileButton("VSCode", 2, {ButtonAction::Keystroke, "Ctrl+Z"});
 
     focusApp("code");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "VSCode");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "VSCode");
 
     // Switching back to default should also work
     focusApp("some-other-app");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
 // ---------------------------------------------------------------------------
@@ -94,17 +94,17 @@ TEST_F(ProfileApplyBehaviorTest, ProfileSwitchDoesNotAccumulateStaleState) {
 
     // Rapidly switch between profiles
     focusApp("firefox");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Firefox");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Firefox");
 
     focusApp("code");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "VSCode");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "VSCode");
 
     focusApp("firefox");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "Firefox");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "Firefox");
 
     // Final state should be clean — no stale profile lingering
     focusApp("some-other-app");
-    EXPECT_EQ(profileEngine().hardwareProfile(), "default");
+    EXPECT_EQ(profileEngine().hardwareProfile(QStringLiteral("mock-serial")), "default");
 }
 
 // ---------------------------------------------------------------------------

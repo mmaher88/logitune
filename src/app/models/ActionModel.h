@@ -1,4 +1,5 @@
 #pragma once
+#include "ButtonAction.h"
 #include <QAbstractListModel>
 #include <QObject>
 #include <qqmlintegration.h>
@@ -36,6 +37,14 @@ public:
 
     Q_INVOKABLE int indexForName(const QString &name) const;
     Q_INVOKABLE QString payloadForName(const QString &name) const;
+
+    /// Translate a ButtonAction (domain type) to the (typeName, displayName)
+    /// pair the UI uses. Inverse of buttonEntryToAction.
+    QString buttonActionToName(const ButtonAction &ba) const;
+
+    /// Translate the UI's (typeName, displayName) pair back to a ButtonAction.
+    /// Inverse of buttonActionToName.
+    ButtonAction buttonEntryToAction(const QString &actionType, const QString &actionName) const;
 
 signals:
     void selectedIndexChanged();

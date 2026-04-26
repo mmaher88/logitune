@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Logitune
+Comment=Configure your Logitech devices
+Exec=logitune --minimized
+Icon=com.logitune.Logitune
+Categories=Settings;HardwareSettings;
+Keywords=logitech;mouse;keyboard;
+X-GNOME-Autostart-enabled=true

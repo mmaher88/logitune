@@ -57,9 +57,16 @@ std::optional<Report> Transport::trySend(const Report &request, int timeoutMs, i
             continue;
         }
 
-        // Check if this response matches our request
+        // Check if this response matches our request.
+        // Must match on deviceIndex, featureIndex, functionId AND softwareId —
+        // all four are needed because multiple in-flight requests to the same
+        // feature (e.g. Root.getFeatureID during enumeration) only differ in
+        // softwareId. Without this, stale responses from before a reconnect
+        // get mis-matched to new requests, scrambling the feature table.
         if (response->deviceIndex == request.deviceIndex &&
-            response->featureIndex == request.featureIndex) {
+            response->featureIndex == request.featureIndex &&
+            response->functionId == request.functionId &&
+            response->softwareId == request.softwareId) {
             if (response->isError()) {
                 ErrorCode ec = response->errorCode();
                 qCDebug(lcHidpp) << "error response: code=" << static_cast<int>(ec);

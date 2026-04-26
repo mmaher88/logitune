@@ -1,17 +1,17 @@
 #include <gtest/gtest.h>
-#include "helpers/AppControllerFixture.h"
+#include "helpers/AppRootFixture.h"
 
 using namespace logitune;
 using namespace logitune::test;
 
-TEST_F(AppControllerFixture, ProfileSwitchUpdatesDPI) {
+TEST_F(AppRootFixture, ProfileSwitchUpdatesDPI) {
     createAppProfile("chrome", "Chrome", 1600, "scroll", false);
     EXPECT_EQ(deviceModel().currentDPI(), 1000);
     focusApp("chrome");
     EXPECT_EQ(deviceModel().currentDPI(), 1600);
 }
 
-TEST_F(AppControllerFixture, ProfileSwitchUpdatesSmartShift) {
+TEST_F(AppRootFixture, ProfileSwitchUpdatesSmartShift) {
     createAppProfile("chrome", "Chrome", 1000, "scroll", false,
                      false, 50);
     EXPECT_TRUE(deviceModel().smartShiftEnabled());
@@ -21,7 +21,7 @@ TEST_F(AppControllerFixture, ProfileSwitchUpdatesSmartShift) {
     EXPECT_EQ(deviceModel().smartShiftThreshold(), 50);
 }
 
-TEST_F(AppControllerFixture, ProfileSwitchUpdatesScrollDirection) {
+TEST_F(AppRootFixture, ProfileSwitchUpdatesScrollDirection) {
     createAppProfile("chrome", "Chrome", 1000, "scroll", false,
                      true, 128, "natural");
     EXPECT_FALSE(deviceModel().scrollInvert());
@@ -29,20 +29,20 @@ TEST_F(AppControllerFixture, ProfileSwitchUpdatesScrollDirection) {
     EXPECT_TRUE(deviceModel().scrollInvert());
 }
 
-TEST_F(AppControllerFixture, ProfileSwitchUpdatesThumbWheelMode) {
+TEST_F(AppRootFixture, ProfileSwitchUpdatesThumbWheelMode) {
     createAppProfile("chrome", "Chrome", 1000, "volume", false);
     focusApp("chrome");
     EXPECT_EQ(deviceModel().thumbWheelMode(), "volume");
 }
 
-TEST_F(AppControllerFixture, ProfileSwitchUpdatesThumbWheelInvert) {
+TEST_F(AppRootFixture, ProfileSwitchUpdatesThumbWheelInvert) {
     createAppProfile("chrome", "Chrome", 1000, "volume", true);
     EXPECT_FALSE(deviceModel().thumbWheelInvert());
     focusApp("chrome");
     EXPECT_TRUE(deviceModel().thumbWheelInvert());
 }
 
-TEST_F(AppControllerFixture, SwitchBackToDefaultRestoresAllSettings) {
+TEST_F(AppRootFixture, SwitchBackToDefaultRestoresAllSettings) {
     createAppProfile("chrome", "Chrome", 1600, "volume", true,
                      false, 50, "natural", false);
     focusApp("chrome");
@@ -60,7 +60,7 @@ TEST_F(AppControllerFixture, SwitchBackToDefaultRestoresAllSettings) {
     EXPECT_FALSE(deviceModel().thumbWheelInvert());
 }
 
-TEST_F(AppControllerFixture, ThreeProfilesAreIndependent) {
+TEST_F(AppRootFixture, ThreeProfilesAreIndependent) {
     createAppProfile("chrome", "Chrome", 1600, "zoom", false);
     createAppProfile("kwrite", "KWrite", 800, "scroll", true);
 

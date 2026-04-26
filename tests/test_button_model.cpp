@@ -5,6 +5,7 @@
 #include "helpers/TestFixtures.h"
 
 using logitune::ButtonModel;
+using logitune::ButtonAssignment;
 
 // ---------------------------------------------------------------------------
 // Fixture
@@ -67,18 +68,18 @@ TEST_F(ButtonModelTest, SetActionUpdatesActionType) {
 
 TEST_F(ButtonModelTest, LoadFromProfileEmitsDataChanged) {
     QSignalSpy spy(&model, &ButtonModel::dataChanged);
-    QList<QPair<QString, QString>> buttons;
+    QList<ButtonAssignment> buttons;
     for (int i = 0; i < 8; ++i)
-        buttons.append({ QStringLiteral("Action%1").arg(i), QStringLiteral("keystroke") });
+        buttons.append({ QStringLiteral("Action%1").arg(i), QStringLiteral("keystroke"), 0xFFFF });
     model.loadFromProfile(buttons);
     EXPECT_GE(spy.count(), 1);
 }
 
 TEST_F(ButtonModelTest, LoadFromProfileDoesNotEmitUserActionChanged) {
     QSignalSpy spy(&model, &ButtonModel::userActionChanged);
-    QList<QPair<QString, QString>> buttons;
+    QList<ButtonAssignment> buttons;
     for (int i = 0; i < 8; ++i)
-        buttons.append({ QStringLiteral("Action%1").arg(i), QStringLiteral("keystroke") });
+        buttons.append({ QStringLiteral("Action%1").arg(i), QStringLiteral("keystroke"), 0xFFFF });
     model.loadFromProfile(buttons);
     EXPECT_EQ(spy.count(), 0);
 }
@@ -88,9 +89,9 @@ TEST_F(ButtonModelTest, LoadFromProfileDoesNotEmitUserActionChanged) {
 // ---------------------------------------------------------------------------
 
 TEST_F(ButtonModelTest, LoadFromProfileUpdatesData) {
-    QList<QPair<QString, QString>> buttons;
+    QList<ButtonAssignment> buttons;
     for (int i = 0; i < 8; ++i)
-        buttons.append({ QStringLiteral("NewAction%1").arg(i), QStringLiteral("type%1").arg(i) });
+        buttons.append({ QStringLiteral("NewAction%1").arg(i), QStringLiteral("type%1").arg(i), 0xFFFF });
     model.loadFromProfile(buttons);
     // loadFromProfile maps by index position (button at index 0 has buttonId 0)
     EXPECT_EQ(model.actionNameForButton(0), QStringLiteral("NewAction0"));
@@ -152,11 +153,45 @@ TEST_F(ButtonModelTest, LoadFewerThanModelSizeButton0Changes) {
     // Record original value for button 1 before loading
     QString original1 = model.actionNameForButton(1);
 
-    QList<QPair<QString, QString>> buttons;
-    buttons.append({ QStringLiteral("OnlyOne"), QStringLiteral("custom") });
+    QList<ButtonAssignment> buttons;
+    buttons.append({ QStringLiteral("OnlyOne"), QStringLiteral("custom"), 0xFFFF });
     model.loadFromProfile(buttons);
 
     EXPECT_EQ(model.actionNameForButton(0), QStringLiteral("OnlyOne"));
     // Button 1 should be unchanged
     EXPECT_EQ(model.actionNameForButton(1), original1);
+}
+
+// ---------------------------------------------------------------------------
+// isThumbWheel
+// ---------------------------------------------------------------------------
+
+TEST_F(ButtonModelTest, IsThumbWheelDefault)
+{
+    logitune::ButtonModel m;
+    // Default constructor uses canonical CID layout — button 7 is thumb wheel.
+    EXPECT_TRUE(m.isThumbWheel(7));
+    EXPECT_FALSE(m.isThumbWheel(0));  // left click
+    EXPECT_FALSE(m.isThumbWheel(2));  // middle click
+    EXPECT_FALSE(m.isThumbWheel(99)); // nonexistent id
+}
+
+TEST_F(ButtonModelTest, IsThumbWheelAfterLoadFromProfile)
+{
+    logitune::ButtonModel m;
+    // Simulate a device with no thumb wheel (e.g., MX Vertical):
+    // 8-slot layout but slot 7 carries a real CID instead of 0x0000.
+    QList<logitune::ButtonAssignment> assignments = {
+        { "Left click",  "default", 0x0050 },
+        { "Right click", "default", 0x0051 },
+        { "Middle click","default", 0x0052 },
+        { "Back",        "default", 0x0053 },
+        { "Forward",     "default", 0x0056 },
+        { "DPI",         "default", 0x00FD },
+        { "Unused",      "default", 0xFFFF },
+        { "Unused",      "default", 0xFFFF },
+    };
+    m.loadFromProfile(assignments);
+    EXPECT_FALSE(m.isThumbWheel(7));
+    EXPECT_FALSE(m.isThumbWheel(5));
 }

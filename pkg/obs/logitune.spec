@@ -45,24 +45,35 @@ DPI, SmartShift, scroll, gesture, and thumb wheel settings.
 %autosetup -n logitune-%{version}
 
 %build
-%cmake -DBUILD_TESTING=OFF
+# OBS builds from a source tarball with no .git, so feed the version
+# through -DLOGITUNE_VERSION; CMakeLists.txt refuses to guess.
+%cmake -DBUILD_TESTING=OFF -DLOGITUNE_VERSION=%{version}
 %cmake_build
 
 %install
 %cmake_install
 
+%post
+# Reload udev rules and retag /dev/uinput + hidraw nodes so keystroke
+# injection and device access work on first install without a reboot.
+# /dev/uinput exists before the package is installed, so uaccess won't
+# be applied retroactively unless we trigger a change event.
+udevadm control --reload-rules >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=misc --subsystem-match=hidraw --action=change >/dev/null 2>&1 || :
+
+%postun
+if [ $1 -eq 0 ] ; then
+    udevadm control --reload-rules >/dev/null 2>&1 || :
+fi
+
 %files
 %{_bindir}/logitune
 %{_prefix}/lib/udev/rules.d/71-logitune.rules
 %{_datadir}/applications/logitune.desktop
-%{_prefix}/etc/xdg/autostart/logitune.desktop
+/etc/xdg/autostart/logitune.desktop
 %{_datadir}/icons/hicolor/scalable/apps/com.logitune.Logitune.svg
-%dir %{_datadir}/gnome-shell
-%dir %{_datadir}/gnome-shell/extensions
-%dir %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com
-%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/metadata.json
-%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/extension.js
-%dir %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v42
-%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v42/extension.js
-%dir %{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v45
-%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com/v45/extension.js
+# Device descriptors (JSON + images) and the GNOME shell extension live in
+# their own subtrees. Ship the directories so new devices and any
+# additional extension resources land automatically.
+%{_datadir}/logitune
+%{_datadir}/gnome-shell/extensions/logitune-focus@logitune.com

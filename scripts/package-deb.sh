@@ -1,7 +1,17 @@
 #!/bin/bash
 set -e
 
-VERSION=$(grep -oP 'project\(logitune VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+# Derive version from the tag when the workflow is triggered by a tag push,
+# otherwise fall back to the latest v*-prefixed git tag (same logic
+# CMakeLists.txt uses). Pre-release tags like v0.3.0-beta.1 encode as
+# 0.3.0~beta.1 so dpkg sorts them before 0.3.0.
+if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF_NAME" =~ ^v[0-9] ]]; then
+    TAG="${GITHUB_REF_NAME#v}"
+else
+    TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed 's/^v//')
+    : "${TAG:=0.2.3}"
+fi
+VERSION="${TAG//-/\~}"
 PKGDIR="/tmp/logitune-deb"
 ARCH=$(dpkg --print-architecture 2>/dev/null || echo "amd64")
 
@@ -9,7 +19,7 @@ echo "Building .deb package v$VERSION ($ARCH)"
 
 # Build release (offscreen for headless gtest_discover_tests)
 export QT_QPA_PLATFORM=offscreen
-cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -Wno-dev > /dev/null 2>&1
+cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -DLOGITUNE_VERSION="$VERSION" -Wno-dev > /dev/null 2>&1
 cmake --build build-release -j$(nproc)
 
 # Create package structure
@@ -24,7 +34,8 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Depends: libqt6core6 (>= 6.4), libqt6quick6, libqt6svg6, libqt6dbus6, libqt6widgets6, libudev1, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtquick-layouts, qml6-module-qtqml, qml6-module-qtqml-workerscript, qml6-module-qt5compat-graphicaleffects
+Depends: libqt6core6 (>= 6.4), libqt6qml6, libqt6quick6, libqt6svg6, libqt6dbus6, libqt6widgets6, libudev1, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-dialogs, qml6-module-qtquick-window, qml6-module-qtquick-templates, qml6-module-qtquick-layouts, qml6-module-qtqml-workerscript, qml6-module-qt5compat-graphicaleffects
+Recommends: gnome-shell-extension-appindicator
 Maintainer: Mina Maher <mina.maher88@hotmail.com>
 Description: Logitech device configurator for Linux
  Configure Logitech HID++ peripherals (MX Master 3S and more).

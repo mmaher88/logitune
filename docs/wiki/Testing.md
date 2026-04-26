@@ -6,7 +6,7 @@ Logitune tests are **behavioral, not structural**. Tests verify that features wo
 
 This means:
 
-- Tests exercise `AppController` through its real signal connections (not mocked)
+- Tests exercise `AppRoot` through its real signal connections (not mocked)
 - Tests simulate user actions (focus changes, button presses, UI interactions) and verify the observable results (mock injector calls, profile state, model data)
 - The only mocked components are hardware boundaries: `MockDesktop`, `MockInjector`, `MockTransport`, `MockDevice`
 - Internal implementation details can change freely without breaking tests
@@ -17,7 +17,7 @@ This means:
 graph TB
     subgraph "Tier 1: C++ Mock Tests (CI)"
         UnitTests[Unit Tests<br/>Profile, Action, Button, Transport, Features]
-        IntegTests[Integration Tests<br/>AppController, ProfileSwitching, ThumbWheel]
+        IntegTests[Integration Tests<br/>AppRoot, ProfileSwitching, ThumbWheel]
         ModelTests[Model Tests<br/>DeviceModel, ButtonModel, ProfileModel, ActionModel]
     end
 
@@ -41,8 +41,8 @@ graph TB
 
 | Tier | Binary | Runs In CI | Requires Device | Count |
 |------|--------|-----------|----------------|-------|
-| C++ Mock | `logitune-tests` | Yes | No | ~35 test files |
-| QML | `logitune-qml-tests` | Yes | No | 13 test files |
+| C++ Mock | `logitune-tests` | Yes | No | ~40 test files |
+| QML | `logitune-qml-tests` | No (pre-push hook only) | No | 15 test files |
 | Tray | `logitune-tray-tests` | Yes | No | 1 test file |
 | Hardware | `logitune-hw-tests` | No | Yes (MX Master 3S) | 5 test files |
 
@@ -98,17 +98,17 @@ Note: `QT_QPA_PLATFORM=offscreen` is required when running without a display (CI
 
 ## Test Infrastructure
 
-### AppControllerFixture
+### AppRootFixture
 
-`tests/helpers/AppControllerFixture.h` is the primary integration test fixture. It provides:
+`tests/helpers/AppRootFixture.h` is the primary integration test fixture. It provides:
 
 ```mermaid
 classDiagram
-    class AppControllerFixture {
+    class AppRootFixture {
         #MockDesktop* m_desktop
         #MockInjector* m_injector
         #MockDevice m_device
-        #unique_ptr~AppController~ m_ctrl
+        #unique_ptr~AppRoot~ m_ctrl
         #QString m_profilesDir
         #QTemporaryDir m_tmpDir
         
@@ -132,8 +132,8 @@ classDiagram
 
 **SetUp** creates:
 
-1. `MockDesktop` and `MockInjector` (raw pointers, not owned by AppController)
-2. `AppController` with injected mocks
+1. `MockDesktop` and `MockInjector` (raw pointers, not owned by AppRoot)
+2. `AppRoot` with injected mocks
 3. Temporary profile directory with a seeded `default.conf`
 4. `MockDevice` with MX Master 3S controls
 5. Sets `thumbWheelDefaultDirection = 1` (neutral, no direction normalization)
@@ -151,7 +151,7 @@ classDiagram
 | `gestureXY(dx, dy)` | Feeds raw gesture deltas |
 | `thumbWheel(delta)` | Feeds a thumb wheel rotation |
 
-**Friend access**: AppControllerFixture is a `friend` of `AppController`, giving it access to private members for state inspection and direct manipulation (e.g., setting `m_thumbWheelDefaultDirection`).
+**Friend access**: AppRootFixture is a `friend` of `AppRoot`, giving it access to private members for state inspection and direct manipulation (e.g., setting `m_thumbWheelDefaultDirection`).
 
 ### MockDesktop
 
@@ -181,9 +181,7 @@ Implements `ITransport` with:
 
 ### MockDevice
 
-Implements `IDevice` with all fields as public member variables for direct manipulation:
-
-- `setupMxControls()` — populates the 8 standard MX Master 3S control descriptors
+Implements `IDevice` with all fields as public member variables for direct manipulation. Used by `AppRootFixture` to supply a synthetic device to the controller under test; it is not used for device-descriptor tests (those load real JSON fixtures via `DeviceRegistry`).
 
 ### ProfileFixture
 
@@ -201,15 +199,15 @@ Suppose you've added a new "DPI shift" button action that temporarily sets DPI t
 
 #### 1. Choose the right fixture
 
-Since this involves AppController signal flow (button press -> action execution), use `AppControllerFixture`:
+Since this involves AppRoot signal flow (button press -> action execution), use `AppRootFixture`:
 
 ```cpp
 // tests/test_dpi_shift.cpp
-#include "helpers/AppControllerFixture.h"
+#include "helpers/AppRootFixture.h"
 
 namespace logitune::test {
 
-class DpiShiftTest : public AppControllerFixture {};
+class DpiShiftTest : public AppRootFixture {};
 
 TEST_F(DpiShiftTest, HoldDpiShiftLowersDpi) {
     // Set up: assign DPI shift to button 2 (middle click, CID 0x0052)
@@ -261,6 +259,32 @@ add_executable(logitune-tests
 cmake --build build
 QT_QPA_PLATFORM=offscreen ./build/tests/logitune-tests --gtest_filter="DpiShift*"
 ```
+
+### Adding a device test
+
+Device tests load a JSON fixture through `DeviceRegistry`; there is no
+per-device mock class to extend.
+
+1. Drop a fixture at `tests/fixtures/<slug>/descriptor.json` (plus
+   placeholder images if the test exercises image paths).
+2. In your test, point `XDG_DATA_HOME` at the directory containing your
+   fixture tree and construct a `DeviceRegistry` -- the constructor loads
+   all devices it finds under the XDG paths automatically:
+
+    ```cpp
+    QTemporaryDir tmp;
+    qputenv("XDG_DATA_HOME", tmp.path().toUtf8());
+    // copy your fixture into tmp.path() + "/logitune/devices/<slug>/"
+    DeviceRegistry registry;
+    const IDevice *dev = registry.findBySourcePath(
+        tmp.path() + "/logitune/devices/<slug>");
+    ASSERT_NE(dev, nullptr);
+    ```
+
+3. Use the parameterized `DeviceSpec` pattern in
+   `tests/test_device_registry.cpp` for smoke-testing every bundled
+   descriptor. Add your device to the `kDevices` array with its
+   expected field values.
 
 ## Hardware Tests
 
@@ -354,11 +378,13 @@ Qt Quick Test's `mouseClick` requires the target item to be within a `Window` or
 
 ## Pre-Push Hook
 
-The `scripts/pre-push` git hook runs all three test tiers before allowing a push:
+`hooks/pre-push` (auto-activated by `cmake -B build` via `core.hooksPath`) runs five stages before allowing a push:
 
 ```mermaid
 graph LR
-    Push[git push] --> Build{Build OK?}
+    Push[git push] --> Lint{README devices table<br/>matches descriptors?}
+    Lint -->|No| Abort0[Abort: README regenerated,<br/>amend + retry]
+    Lint -->|Yes| Build{Build OK?}
     Build -->|No| Abort1[Abort: build failed]
     Build -->|Yes| CPP{C++ tests pass?}
     CPP -->|No| Abort2[Abort: C++ tests failed]
@@ -366,14 +392,12 @@ graph LR
     Tray -->|No| Abort3[Abort: tray tests failed]
     Tray -->|Yes| QML{QML tests pass?}
     QML -->|No| Abort4[Abort: QML tests failed]
-    QML -->|Yes| Push2[Push proceeds]
+    QML -->|Yes| Py{Extractor pytest?}
+    Py -->|No| Abort5[Abort: extractor pytest failed]
+    Py -->|Yes| Push2[Push proceeds]
 ```
 
-Install the hook:
-
-```bash
-make setup-hooks
-```
+No install step needed — `cmake -B build` sets `core.hooksPath=hooks` in the repo's local git config during configure, so the tracked `hooks/pre-push` runs automatically on every `git push`.
 
 ## CI Pipeline
 
@@ -412,7 +436,7 @@ All tests run with `QT_QPA_PLATFORM=offscreen` (no display server required).
 | `test_action_model.cpp` | ActionModel catalog, indexForName, payloadForName |
 | `test_device_model.cpp` | DeviceModel display values, settings relay |
 | `test_wmclass_resolution.cpp` | Desktop file resolution logic |
-| `test_app_controller.cpp` | AppController init, wireSignals, device setup |
+| `test_app_controller.cpp` | AppRoot init, wireSignals, device setup |
 | `test_profile_switching.cpp` | Focus change triggers profile switch |
 | `test_profile_persistence.cpp` | Profile save/load round-trip |
 | `test_device_reconnect.cpp` | Disconnect/reconnect handling |
@@ -421,3 +445,29 @@ All tests run with `QT_QPA_PLATFORM=offscreen` (no display server required).
 | `test_notification_filtering.cpp` | softwareId filtering, notification dispatch |
 | `test_settings_change_behavior.cpp` | DPI/SmartShift/scroll change flow |
 | `test_tray_manager.cpp` | TrayManager menu, actions, battery display |
+| `test_action_filter_model.cpp` | ActionFilterModel hides entries the selected device can't run |
+| `test_capability_dispatch.cpp` | HID++ feature-variant capability table resolution |
+| `test_descriptor_writer.cpp` | DescriptorWriter round-trip preserves unknown fields |
+| `test_editor_model.cpp` | EditorModel mutations, undo/redo, per-device stacks |
+| `test_desktop_factory.cpp` | Desktop integration selection based on XDG_CURRENT_DESKTOP |
+| `test_device_session.cpp` | Per-transport state machine, feature enumeration |
+| `test_physical_device.cpp` | Transport aggregation, primary selection on failover |
+| `test_profile_apply_behavior.cpp` | Hardware profile application sequences |
+| `test_settings_model.cpp` | SettingsModel persistence and Q_PROPERTY surface |
+| `test_json_device.cpp` | JsonDevice::load parsing, schema conformance |
+| `test_device_fetcher.cpp` | Async device info fetching (name, serial, firmware) |
+| `test_dpi_cycle_ring.cpp` | DPI cycle ring rotation + boundary handling |
+| `test_autostart_desktop.cpp` | Autostart .desktop installation (PR #69) |
+| `test_distro_detector.cpp` | Distribution detection for packaging hints |
+
+### Crash dialog behavior
+
+Catchable crashes (SIGSEGV, SIGABRT, SIGFPE, SIGBUS, and uncaught C++
+exceptions) show the Crash Report dialog at the moment they happen,
+via `CrashHandler` installed during startup. The app does not show a
+recovery dialog on the next launch: uncatchable exits (SIGKILL, OOM,
+power loss, reboot) leave a lock file behind, but the user already
+knows those happened, so the lock is silently cleaned up.
+
+When testing crash paths, expect the dialog to appear in the same
+session; do not test for a recovery-on-startup dialog.

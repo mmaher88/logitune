@@ -259,3 +259,50 @@ TEST(ProfileEngine, DeltaNoDiff) {
     EXPECT_FALSE(delta.buttonsChanged);
     EXPECT_FALSE(delta.gesturesChanged);
 }
+
+// --- Per-device contexts ---
+
+TEST(ProfileEngine, MultipleDevicesKeepSeparateCaches) {
+    QTemporaryDir tmpA, tmpB;
+    ASSERT_TRUE(tmpA.isValid());
+    ASSERT_TRUE(tmpB.isValid());
+
+    logitune::ProfileEngine eng;
+    eng.registerDevice(QStringLiteral("A"), tmpA.path());
+    eng.registerDevice(QStringLiteral("B"), tmpB.path());
+
+    eng.cachedProfile(QStringLiteral("A"), QStringLiteral("default")).dpi = 1234;
+    eng.cachedProfile(QStringLiteral("B"), QStringLiteral("default")).dpi = 5678;
+
+    EXPECT_EQ(eng.cachedProfile(QStringLiteral("A"),
+                                QStringLiteral("default")).dpi, 1234);
+    EXPECT_EQ(eng.cachedProfile(QStringLiteral("B"),
+                                QStringLiteral("default")).dpi, 5678);
+}
+
+TEST(ProfileEngine, UnknownDeviceLazyRegisters) {
+    logitune::ProfileEngine eng;
+    EXPECT_FALSE(eng.hasDevice(QStringLiteral("ghost")));
+
+    auto &p = eng.cachedProfile(QStringLiteral("ghost"),
+                                QStringLiteral("default"));
+    EXPECT_EQ(p.dpi, 1000);
+    EXPECT_EQ(p.name, QStringLiteral("default"));
+    EXPECT_TRUE(eng.hasDevice(QStringLiteral("ghost")));
+}
+
+TEST(ProfileEngine, SetDisplayProfileScopedToDevice) {
+    QTemporaryDir tmpA, tmpB;
+    ASSERT_TRUE(tmpA.isValid());
+    ASSERT_TRUE(tmpB.isValid());
+
+    logitune::ProfileEngine eng;
+    eng.registerDevice(QStringLiteral("A"), tmpA.path());
+    eng.registerDevice(QStringLiteral("B"), tmpB.path());
+
+    eng.setDisplayProfile(QStringLiteral("A"), QStringLiteral("chrome"));
+
+    EXPECT_EQ(eng.displayProfile(QStringLiteral("A")),
+              QStringLiteral("chrome"));
+    EXPECT_EQ(eng.displayProfile(QStringLiteral("B")), QString());
+}

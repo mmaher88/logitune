@@ -21,10 +21,9 @@ test-tray: ## Run tray manager tests
 test-all: test test-tray test-qml ## Run all tests
 
 ifdef IS_CONTAINER
-setup-hooks: ## Install git hooks
-	@sudo cp scripts/pre-push .git/hooks/pre-push
-	@sudo chmod +x .git/hooks/pre-push
-	@echo "Git hooks installed"
+setup-hooks: ## (redundant) cmake configure now sets core.hooksPath=hooks automatically
+	@echo "setup-hooks: nothing to do — 'cmake -B build' already activates hooks/ via core.hooksPath."
+	@echo "See hooks/pre-push for the active pre-push script."
 else
 run: build ## Build and run the app (host only)
 	@./build/src/app/logitune --debug
@@ -60,10 +59,9 @@ package-arch: ## Build Arch/AUR PKGBUILD
 release: ## Release — version bump, tag, push (host only)
 	@./scripts/release.sh $(or $(BUMP),patch)
 
-setup-hooks: ## Install git hooks
-	@cp scripts/pre-push .git/hooks/pre-push
-	@chmod +x .git/hooks/pre-push
-	@echo "Git hooks installed"
+setup-hooks: ## (redundant) cmake configure now sets core.hooksPath=hooks automatically
+	@echo "setup-hooks: nothing to do — 'cmake -B build' already activates hooks/ via core.hooksPath."
+	@echo "See hooks/pre-push for the active pre-push script."
 endif
 
 clean: ## Remove build artifacts

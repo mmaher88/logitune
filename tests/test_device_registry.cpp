@@ -1,5 +1,10 @@
 #include <gtest/gtest.h>
 #include "DeviceRegistry.h"
+#include "devices/JsonDevice.h"
+#include <QTemporaryDir>
+#include <QFile>
+#include <QFileInfo>
+#include <algorithm>
 using namespace logitune;
 
 struct DeviceSpec {
@@ -49,6 +54,21 @@ static const DeviceSpec kDevices[] = {
         .gestureUpType = ButtonAction::Default,
     },
     {
+        .pid = 0xc52b,
+        .name = "MX Master 3",
+        .minDpi = 200, .maxDpi = 4000, .dpiStep = 50,
+        .buttonHotspots = 6, .scrollHotspots = 3,
+        .minControls = 7,
+        .control0Cid = 0x0050, .control5Cid = 0x00C3,
+        .control5ActionType = "gesture-trigger",
+        .control6ActionType = "smartshift-toggle",
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Keystroke,
+        .gestureDownPayload = "Super+D",
+        .gestureUpType = ButtonAction::Default,
+    },
+    {
         .pid = 0xb042,
         .name = "MX Master 4",
         .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
@@ -61,6 +81,81 @@ static const DeviceSpec kDevices[] = {
         .reprogControls = true, .gestureV2 = false,
         .gestureDownType = ButtonAction::Keystroke,
         .gestureDownPayload = "Super+D",
+        .gestureUpType = ButtonAction::Default,
+    },
+    {
+        .pid = 0xb037,
+        .name = "MX Anywhere 3S",
+        .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
+        .buttonHotspots = 4, .scrollHotspots = 2,
+        .minControls = 6,
+        .control0Cid = 0x0050, .control5Cid = 0x00C4,
+        .control5ActionType = "smartshift-toggle",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
+        .gestureUpType = ButtonAction::Default,
+    },
+    {
+        .pid = 0xb038,
+        .name = "MX Anywhere 3S for Business",
+        .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
+        .buttonHotspots = 4, .scrollHotspots = 2,
+        .minControls = 6,
+        .control0Cid = 0x0050, .control5Cid = 0x00C4,
+        .control5ActionType = "smartshift-toggle",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
+        .gestureUpType = ButtonAction::Default,
+    },
+    {
+        .pid = 0xb025,
+        .name = "MX Anywhere 3",
+        .minDpi = 200, .maxDpi = 4000, .dpiStep = 50,
+        .buttonHotspots = 4, .scrollHotspots = 2,
+        .minControls = 6,
+        .control0Cid = 0x0050, .control5Cid = 0x00C4,
+        .control5ActionType = "smartshift-toggle",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
+        .gestureUpType = ButtonAction::Default,
+    },
+    {
+        .pid = 0xb02d,
+        .name = "MX Anywhere 3 for Business",
+        .minDpi = 200, .maxDpi = 4000, .dpiStep = 50,
+        .buttonHotspots = 4, .scrollHotspots = 2,
+        .minControls = 6,
+        .control0Cid = 0x0050, .control5Cid = 0x00C4,
+        .control5ActionType = "smartshift-toggle",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
+        .gestureUpType = ButtonAction::Default,
+    },
+    {
+        .pid = 0xb020,
+        .name = "MX Vertical",
+        .minDpi = 400, .maxDpi = 4000, .dpiStep = 50,
+        .buttonHotspots = 4, .scrollHotspots = 2,
+        .minControls = 6,
+        .control0Cid = 0x0050, .control5Cid = 0x00C3,
+        .control5ActionType = "dpi-cycle",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = true, .smartShift = false,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
         .gestureUpType = ButtonAction::Default,
     },
 };
@@ -86,7 +181,9 @@ TEST_P(DeviceRegistryTest, ControlsHaveExpectedCids) {
     EXPECT_EQ(controls[0].controlId, s.control0Cid);
     EXPECT_EQ(controls[5].controlId, s.control5Cid);
     EXPECT_EQ(controls[5].defaultActionType, s.control5ActionType);
-    EXPECT_EQ(controls[6].defaultActionType, s.control6ActionType);
+    if (s.minControls >= 7 && s.control6ActionType) {
+        EXPECT_EQ(controls[6].defaultActionType, s.control6ActionType);
+    }
 }
 
 TEST_P(DeviceRegistryTest, DefaultGesturesPresent) {
@@ -94,10 +191,14 @@ TEST_P(DeviceRegistryTest, DefaultGesturesPresent) {
     ASSERT_NE(dev, nullptr);
     auto& s = GetParam();
     auto gestures = dev->defaultGestures();
-    EXPECT_TRUE(gestures.contains("down"));
-    EXPECT_EQ(gestures["down"].type, s.gestureDownType);
-    EXPECT_EQ(gestures["down"].payload, s.gestureDownPayload);
-    EXPECT_EQ(gestures["up"].type, s.gestureUpType);
+    if (s.gestureDownPayload) {
+        EXPECT_TRUE(gestures.contains("down"));
+        EXPECT_EQ(gestures["down"].type, s.gestureDownType);
+        EXPECT_EQ(gestures["down"].payload, s.gestureDownPayload);
+        EXPECT_EQ(gestures["up"].type, s.gestureUpType);
+    } else {
+        EXPECT_TRUE(gestures.isEmpty());
+    }
 }
 
 TEST_P(DeviceRegistryTest, FeatureSupport) {
@@ -145,4 +246,146 @@ TEST(DeviceRegistry, ReturnsNullForUnknownPid) {
     DeviceRegistry reg;
     EXPECT_EQ(reg.findByPid(0x0000), nullptr);
     EXPECT_EQ(reg.findByPid(0xFFFF), nullptr);
+}
+
+TEST(DeviceRegistry, ReloadByPathRefreshesSingleDevice) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    qputenv("XDG_DATA_HOME", tmp.path().toUtf8());
+    QDir().mkpath(tmp.path() + QStringLiteral("/logitune/devices/test"));
+    const QString descPath = tmp.path() + QStringLiteral("/logitune/devices/test/descriptor.json");
+
+    auto write = [&](const QString &name) {
+        QFile f(descPath);
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+            return false;
+        f.write(QStringLiteral(R"({"name":"%1","status":"beta","productIds":["0xffff"],"features":{},"controls":[],"hotspots":{"buttons":[],"scroll":[]},"images":{},"easySwitchSlots":[]})").arg(name).toUtf8());
+        f.close();
+        return true;
+    };
+    ASSERT_TRUE(write(QStringLiteral("Original")));
+
+    logitune::DeviceRegistry reg;
+    const auto *dev = reg.findByName(QStringLiteral("Original"));
+    ASSERT_NE(dev, nullptr);
+    const auto *jdev = dynamic_cast<const logitune::JsonDevice*>(dev);
+    ASSERT_NE(jdev, nullptr);
+    const QString srcPath = jdev->sourcePath();
+
+    ASSERT_TRUE(write(QStringLiteral("Mutated")));
+    ASSERT_TRUE(reg.reload(srcPath));
+
+    EXPECT_EQ(jdev->deviceName(), QStringLiteral("Mutated"));
+    EXPECT_EQ(reg.findBySourcePath(srcPath), dev);
+
+    qunsetenv("XDG_DATA_HOME");
+}
+
+TEST(DeviceRegistry, ReloadUnknownPathReturnsFalse) {
+    logitune::DeviceRegistry reg;
+    EXPECT_FALSE(reg.reload(QStringLiteral("/nonexistent/path/that/does/not/exist")));
+}
+
+TEST(DeviceRegistry, MxVerticalForBusinessRegistered) {
+    logitune::DeviceRegistry reg;
+    const auto *dev = reg.findByName(QStringLiteral("MX Vertical for Business"));
+    ASSERT_NE(dev, nullptr);
+    const auto ids = dev->productIds();
+    EXPECT_NE(std::find(ids.begin(), ids.end(), 0xb020), ids.end());
+    EXPECT_EQ(dev->maxDpi(), 4000);
+    EXPECT_EQ(dev->minDpi(), 400);
+    EXPECT_EQ(dev->controls().size(), 6);
+    EXPECT_EQ(dev->controls()[5].controlId, 0x00C3);
+    EXPECT_EQ(dev->controls()[5].defaultActionType, QStringLiteral("dpi-cycle"));
+    EXPECT_FALSE(dev->features().smartShift);
+    EXPECT_TRUE(dev->features().pointerSpeed);
+    const auto ring = dev->dpiCycleRing();
+    ASSERT_EQ(ring.size(), 4u);
+    EXPECT_EQ(ring[0], 400);
+    EXPECT_EQ(ring[1], 1000);
+    EXPECT_EQ(ring[2], 1750);
+    EXPECT_EQ(ring[3], 4000);
+}
+
+// MX Vertical's DPI button (CID 0x00C3) is firmware-locked — SetControlReporting
+// is accepted by the device but the firmware still fires the native DPI cycle
+// without emitting a divert event. Mark the descriptor entry as non-configurable
+// so the UI shows the button as informational rather than offering a remap that
+// silently fails. Loaded via JsonDevice::load against the source tree so the
+// assertion tracks the descriptor regardless of whatever is installed at the
+// system path.
+TEST(DeviceRegistry, MxVerticalDpiButtonIsNotConfigurable) {
+    for (const char *slug : {"mx-vertical", "mx-vertical-for-business"}) {
+        const QString dir = QStringLiteral(SOURCE_ROOT "/devices/") + slug;
+        auto dev = logitune::JsonDevice::load(dir);
+        ASSERT_NE(dev, nullptr) << slug;
+        ASSERT_EQ(dev->controls().size(), 6u) << slug;
+        EXPECT_EQ(dev->controls()[5].controlId, 0x00C3) << slug;
+        EXPECT_FALSE(dev->controls()[5].configurable) << slug;
+    }
+}
+
+TEST(DeviceRegistry, MxMaster3sHasNoDpiCycleRing) {
+    logitune::DeviceRegistry reg;
+    const auto *dev = reg.findByName(QStringLiteral("MX Master 3S"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_TRUE(dev->dpiCycleRing().empty());
+}
+
+// Every devices/*/descriptor.json must have a matching entry in kDevices[]
+// above so the parameterized suite actually validates the new descriptor.
+// Without this check, a new descriptor can be added (hardware PID, controls,
+// hotspots, gestures...) with zero test coverage — issues only surface at
+// runtime for an end user. Inverse check catches kDevices entries that no
+// longer correspond to a descriptor on disk (e.g. after a rename).
+TEST(DeviceRegistry, EveryDescriptorHasSpecCoverage) {
+    // Descriptors that share a PID with another entry can't be parameterized
+    // via kDevices because DeviceRegistry::findByPid returns the first-loaded
+    // match, so the FindsByPid assertion on the shared-PID variant would flap.
+    // They're covered by dedicated tests instead
+    // (MxVerticalDpiButtonIsNotConfigurable iterates both MX Vertical variants).
+    static const QSet<QString> kPidCollisionExemptions = {
+        QStringLiteral("MX Vertical for Business"),
+    };
+
+    QSet<QString> specNames;
+    for (const auto &s : kDevices) {
+        specNames.insert(QString::fromUtf8(s.name));
+    }
+    specNames.unite(kPidCollisionExemptions);
+
+    QSet<QString> descriptorNames;
+    const QDir devicesDir(QStringLiteral(SOURCE_ROOT "/devices"));
+    ASSERT_TRUE(devicesDir.exists()) << "devices/ dir not found at " << devicesDir.path().toStdString();
+    const auto slugs = devicesDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const QString &slug : slugs) {
+        const QString descPath = devicesDir.filePath(slug) + QStringLiteral("/descriptor.json");
+        if (!QFile::exists(descPath))
+            continue;
+        auto dev = logitune::JsonDevice::load(devicesDir.filePath(slug));
+        ASSERT_NE(dev, nullptr) << slug.toStdString();
+        descriptorNames.insert(dev->deviceName());
+    }
+
+    // Descriptors on disk with no DeviceSpec entry.
+    const QSet<QString> uncovered = descriptorNames - specNames;
+    if (!uncovered.isEmpty()) {
+        QStringList sorted = uncovered.values();
+        std::sort(sorted.begin(), sorted.end());
+        ADD_FAILURE() << "Descriptors missing a DeviceSpec entry in kDevices[]:\n"
+                      << "  " << sorted.join(QStringLiteral(", ")).toStdString() << "\n"
+                      << "  Add matching entries to tests/test_device_registry.cpp "
+                         "(kDevices[] near the top of the file).";
+    }
+
+    // DeviceSpec entries with no descriptor on disk (stale test data).
+    const QSet<QString> orphaned = specNames - descriptorNames;
+    if (!orphaned.isEmpty()) {
+        QStringList sorted = orphaned.values();
+        std::sort(sorted.begin(), sorted.end());
+        ADD_FAILURE() << "kDevices[] has entries with no descriptor on disk:\n"
+                      << "  " << sorted.join(QStringLiteral(", ")).toStdString() << "\n"
+                      << "  Remove them from tests/test_device_registry.cpp or "
+                         "restore the missing devices/<slug>/descriptor.json.";
+    }
 }

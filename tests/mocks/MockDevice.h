@@ -26,6 +26,7 @@ public:
     int m_minDpi       = 200;
     int m_maxDpi       = 8000;
     int m_dpiStep      = 200;
+    std::vector<int> m_dpiCycleRing;
     QList<EasySwitchSlotPosition> m_easySwitchSlotPositions;
 
     // --- IDevice implementation ---
@@ -48,6 +49,7 @@ public:
     int minDpi() const override { return m_minDpi; }
     int maxDpi() const override { return m_maxDpi; }
     int dpiStep() const override { return m_dpiStep; }
+    std::vector<int> dpiCycleRing() const override { return m_dpiCycleRing; }
     QList<EasySwitchSlotPosition> easySwitchSlotPositions() const override { return m_easySwitchSlotPositions; }
 
     // --- Test helpers ---

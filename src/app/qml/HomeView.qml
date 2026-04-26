@@ -8,7 +8,6 @@ Item {
     signal deviceClicked()
     signal settingsClicked()
 
-    // ── Top bar — 18.5vh max 144px ──────────────────────────────────────────
     RowLayout {
         id: topBar
         anchors {
@@ -19,7 +18,7 @@ Item {
         height: Math.min(root.height * 0.185, 144)
         spacing: 12
 
-        Item { width: 24 }  // left margin
+        Item { width: 24 }
 
         Text {
             id: greeting
@@ -29,7 +28,6 @@ Item {
                 if (hour >= 12 && hour < 17) return "Good Afternoon";
                 return "Good Evening";
             }
-            // Responsive: calc(1vw + 2.8vh) equivalent, clamped 24–36px
             font.pixelSize: Math.max(24, Math.min(36, root.width * 0.01 + root.height * 0.028))
             font.bold: true
             font.family: "Inter, sans-serif"
@@ -54,10 +52,9 @@ Item {
             }
         }
 
-        Item { width: 24 }  // right margin
+        Item { width: 24 }
     }
 
-    // ── Center content ────────────────────────────────────────────────────────
     Item {
         anchors {
             top: topBar.bottom
@@ -66,47 +63,111 @@ Item {
             right: parent.right
         }
 
-        // Device connected state
-        Column {
-            anchors.centerIn: parent
-            spacing: 16
-            visible: DeviceModel.deviceConnected
+        // Multi-device carousel
+        PathView {
+            id: carousel
+            anchors {
+                fill: parent
+                bottomMargin: 40
+            }
+            model: DeviceModel
+            currentIndex: DeviceModel.selectedIndex
+            onCurrentIndexChanged: DeviceModel.selectedIndex = currentIndex
+            visible: DeviceModel.count > 0
 
-            // Mouse device image
-            Image {
-                id: deviceCard
-                width: 200
-                height: 296
-                anchors.horizontalCenter: parent.horizontalCenter
-                source: DeviceModel.frontImage
-                fillMode: Image.PreserveAspectFit
-                smooth: true
-                mipmap: true
+            pathItemCount: Math.min(DeviceModel.count, 5)
+            preferredHighlightBegin: 0.5
+            preferredHighlightEnd: 0.5
+            highlightRangeMode: PathView.StrictlyEnforceRange
+            interactive: DeviceModel.count > 1
+            flickDeceleration: 800
+            maximumFlickVelocity: 4000
+            snapMode: PathView.SnapToItem
+            highlightMoveDuration: 300
 
-                HoverHandler { id: cardHover }
+            path: Path {
+                startX: 0; startY: carousel.height / 2
+                PathLine { x: carousel.width; y: carousel.height / 2 }
+            }
 
-                scale: cardHover.hovered ? 1.03 : 1.0
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+            delegate: DeviceCard {
+                scale: PathView.isCurrentItem ? 1.0 : 0.65
+                opacity: PathView.isCurrentItem ? 1.0 : 0.5
+                z: PathView.isCurrentItem ? 2 : 1
 
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.deviceClicked()
+                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                onClicked: {
+                    if (PathView.isCurrentItem)
+                        root.deviceClicked()
+                    else
+                        carousel.currentIndex = index
                 }
             }
 
-            // Device name label below the card
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: DeviceModel.deviceName || "MX Master 3S"
-                font.pixelSize: 15
-                font.bold: true
-                color: Theme.text
-            }
+            // Debounce wheel events: step once per event, ignore further
+            // events until the card-swap animation settles. Without this a
+            // fast spin dispatches many events in rapid succession and the
+            // carousel jitters or wraps through the list.
+            property double wheelLastTick: 0
 
-            BatteryChip {
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: DeviceModel.deviceConnected
+            WheelHandler {
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: function(event) {
+                    if (DeviceModel.count <= 1)
+                        return
+                    var now = Date.now()
+                    if (now - carousel.wheelLastTick < carousel.highlightMoveDuration)
+                        return
+                    var delta = event.angleDelta.y + event.angleDelta.x
+                    if (Math.abs(delta) < 20)
+                        return
+                    if (delta > 0)
+                        carousel.decrementCurrentIndex()
+                    else
+                        carousel.incrementCurrentIndex()
+                    carousel.wheelLastTick = now
+                }
+            }
+        }
+
+        // Counter text
+        Text {
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                bottom: scrollTrack.top
+                bottomMargin: 6
+            }
+            text: (DeviceModel.selectedIndex + 1) + " / " + DeviceModel.count
+            font.pixelSize: 11
+            color: Theme.textSecondary
+            visible: DeviceModel.count > 1
+        }
+
+        // Scroll indicator — thin track with highlighted segment
+        Rectangle {
+            id: scrollTrack
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                bottom: parent.bottom
+                bottomMargin: 12
+            }
+            width: Math.min(200, parent.width * 0.3)
+            height: 3
+            radius: 1.5
+            color: Theme.border
+            visible: DeviceModel.count > 1
+
+            Rectangle {
+                height: parent.height
+                radius: parent.radius
+                color: Theme.accent
+                width: Math.max(12, parent.width / Math.max(1, DeviceModel.count))
+                x: DeviceModel.count > 1
+                    ? (DeviceModel.selectedIndex / (DeviceModel.count - 1)) * (parent.width - width)
+                    : 0
+                Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
             }
         }
 
@@ -114,7 +175,7 @@ Item {
         Column {
             anchors.centerIn: parent
             spacing: 12
-            visible: !DeviceModel.deviceConnected
+            visible: DeviceModel.count === 0
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -136,16 +197,14 @@ Item {
         // GNOME AppIndicator notification banner
         Rectangle {
             id: trayBanner
+            readonly property string trayStatus: DeviceModel.gnomeTrayStatus()
             anchors { bottom: parent.bottom; left: parent.left; right: parent.right; margins: 16 }
             height: bannerCol.implicitHeight + 24
             radius: 8
             color: Theme.surface
             border.color: Theme.border
             border.width: 1
-            visible: {
-                var status = DeviceModel.gnomeTrayStatus()
-                return status === "not-installed" || status === "disabled"
-            }
+            visible: trayStatus === "not-installed" || trayStatus === "disabled"
 
             Column {
                 id: bannerCol
@@ -154,10 +213,9 @@ Item {
 
                 Text {
                     text: {
-                        var status = DeviceModel.gnomeTrayStatus()
-                        if (status === "not-installed")
+                        if (trayBanner.trayStatus === "not-installed")
                             return "Tray icon requires the AppIndicator GNOME extension"
-                        if (status === "disabled")
+                        if (trayBanner.trayStatus === "disabled")
                             return "AppIndicator extension is installed but not enabled"
                         return ""
                     }
@@ -170,10 +228,9 @@ Item {
 
                 Text {
                     text: {
-                        var status = DeviceModel.gnomeTrayStatus()
-                        if (status === "not-installed")
-                            return "Run: sudo pacman -S gnome-shell-extension-appindicator\nThen log out and back in."
-                        if (status === "disabled")
+                        if (trayBanner.trayStatus === "not-installed")
+                            return "Run: " + DeviceModel.appIndicatorInstallCommand() + "\nThen log out and back in."
+                        if (trayBanner.trayStatus === "disabled")
                             return "Run: gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com\nThen restart Logitune."
                         return ""
                     }
@@ -185,7 +242,6 @@ Item {
                 }
             }
 
-            // Dismiss button
             Text {
                 anchors { top: parent.top; right: parent.right; margins: 8 }
                 text: "\u2715"
@@ -199,5 +255,4 @@ Item {
             }
         }
     }
-
 }

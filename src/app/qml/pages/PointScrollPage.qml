@@ -43,7 +43,7 @@ Item {
         Item {
             id: renderGroup
             width: mouseRender.implicitWidth + 460  // match ButtonsPage: room for callouts
-            height: 414
+            height: Math.max(414, mouseRender.implicitHeight)
             anchors.verticalCenter: parent.verticalCenter
 
             // Scale down when available space is tight
@@ -65,37 +65,117 @@ Item {
             DeviceRender {
                 id: mouseRender
                 imageSource: DeviceModel.sideImage
-                showHotspots: false
-                implicitWidth: 280
-                implicitHeight: 414
+                targetHeight: 414
                 anchors.centerIn: parent
             }
 
             // ── Scroll hotspot data from device descriptor ───────────────────
             readonly property var scrollHotspotsData: DeviceModel.scrollHotspots
 
+            function hotspotByKind(kind, fallbackIdx) {
+                for (var i = 0; i < scrollHotspotsData.length; i++) {
+                    if (scrollHotspotsData[i].kind === kind)
+                        return scrollHotspotsData[i];
+                }
+                return scrollHotspotsData.length > fallbackIdx
+                    ? scrollHotspotsData[fallbackIdx]
+                    : null;
+            }
+
+            function hotspotIndexByKind(kind, fallbackIdx) {
+                for (var i = 0; i < scrollHotspotsData.length; i++) {
+                    if (scrollHotspotsData[i].kind === kind)
+                        return i;
+                }
+                return scrollHotspotsData.length > fallbackIdx ? fallbackIdx : -1;
+            }
+
             // ── Point & Scroll hotspot circles — driven by descriptor ────────
             Repeater {
-                model: renderGroup.scrollHotspotsData
-                Rectangle {
-                    x: mouseRender.x + mouseRender.paintedX + modelData.xPct * mouseRender.paintedW - 9
-                    y: mouseRender.y + mouseRender.paintedY + modelData.yPct * mouseRender.paintedH - 9
-                    width: 18; height: 18; radius: 9
-                    color: "transparent"
-                    border.color: Theme.accent
-                    border.width: 2
-                    opacity: 0.7
+                model: renderGroup.scrollHotspotsData.length
+                Item {
+                    id: scrollMarker
+                    required property int index
+
+                    // Read hotspot data from the live array by index — not stale modelData.
+                    readonly property var hsData: DeviceModel.scrollHotspots[scrollMarker.index]
+                    readonly property real targetX: mouseRender.x + mouseRender.paintedX + (hsData ? hsData.xPct : 0) * mouseRender.paintedW
+                    readonly property real targetY: mouseRender.y + mouseRender.paintedY + (hsData ? hsData.yPct : 0) * mouseRender.paintedH
+
+                    width: 24; height: 24
+                    x: targetX - width / 2
+                    y: targetY - height / 2
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 18; height: 18; radius: 9
+                        color: "transparent"
+                        border.color: Theme.accent
+                        border.width: 2
+                        opacity: 0.7
+                    }
+
+                    Connections {
+                        target: DeviceModel
+                        function onSelectedChanged() {
+                            if (!scrollMarkerDrag.active) {
+                                scrollMarker.x = scrollMarker.targetX - scrollMarker.width / 2
+                                scrollMarker.y = scrollMarker.targetY - scrollMarker.height / 2
+                            }
+                        }
+                    }
+
+                    DragHandler {
+                        id: scrollMarkerDrag
+                        enabled: typeof EditorModel !== 'undefined' && EditorModel.editing
+                        target: parent
+                        onActiveChanged: {
+                            if (!active) {
+                                var cx = scrollMarker.x + scrollMarker.width / 2
+                                var cy = scrollMarker.y + scrollMarker.height / 2
+                                var xPct = (cx - mouseRender.x - mouseRender.paintedX) / mouseRender.paintedW
+                                var yPct = (cy - mouseRender.y - mouseRender.paintedY) / mouseRender.paintedH
+                                xPct = Math.max(0, Math.min(1, xPct))
+                                yPct = Math.max(0, Math.min(1, yPct))
+                                EditorModel.updateScrollHotspot(scrollMarker.index,
+                                                                 xPct, yPct,
+                                                                 scrollMarker.hsData ? scrollMarker.hsData.side : "right",
+                                                                 scrollMarker.hsData ? scrollMarker.hsData.labelOffsetYPct : 0)
+                            }
+                        }
+                    }
                 }
             }
 
             // ── Scroll wheel callout — positioned from descriptor hotspot [0]
             InfoCallout {
                 id: scrollCallout
-                readonly property var hs: renderGroup.scrollHotspotsData.length > 0 ? renderGroup.scrollHotspotsData[0] : null
+                readonly property var hs: {
+                    var d = renderGroup.scrollHotspotsData
+                    if (!d) return null
+                    for (var i = 0; i < d.length; i++)
+                        if (d[i].kind === "scrollwheel") return d[i]
+                    return d.length > 0 ? d[0] : null
+                }
+                readonly property int hsIdx: {
+                    var d = renderGroup.scrollHotspotsData
+                    if (!d) return -1
+                    for (var i = 0; i < d.length; i++)
+                        if (d[i].kind === "scrollwheel") return i
+                    return d.length > 0 ? 0 : -1
+                }
                 readonly property real hsX: hs ? hs.xPct : 0.73
                 readonly property real hsY: hs ? hs.yPct : 0.16
-                x: mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * hsX + 16
-                y: mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * hsY - height / 2
+                readonly property real hsOffY: hs ? hs.labelOffsetYPct : 0
+                targetX: mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * scrollCallout.hsX + 16
+                targetY: mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * scrollCallout.hsY - scrollCallout.height / 2
+
+                hotspotIndex: hsIdx
+                hsXPct: hsX
+                hsYPct: hsY
+                hsLabelOffsetYPct: hsOffY
+                pageWidth: renderGroup.width
+                pageHeight: renderGroup.height
 
                 calloutType: "scrollwheel"
                 title: "Scroll wheel"
@@ -105,7 +185,8 @@ Item {
                     ];
                     if (DeviceModel.smoothScrollSupported)
                         s.push("Smooth scrolling: " + (DeviceModel.scrollHiRes ? "On" : "Off"));
-                    s.push("SmartShift: " + (DeviceModel.smartShiftEnabled ? "On" : "Off"));
+                    if (DeviceModel.smartShiftSupported)
+                        s.push("SmartShift: " + (DeviceModel.smartShiftEnabled ? "On" : "Off"));
                     return s;
                 }
 
@@ -117,11 +198,33 @@ Item {
             // ── Thumb wheel callout — positioned from descriptor hotspot [1]
             InfoCallout {
                 id: thumbCallout
-                readonly property var hs: renderGroup.scrollHotspotsData.length > 1 ? renderGroup.scrollHotspotsData[1] : null
+                visible: DeviceModel.thumbWheelSupported
+                readonly property var hs: {
+                    var d = renderGroup.scrollHotspotsData
+                    if (!d) return null
+                    for (var i = 0; i < d.length; i++)
+                        if (d[i].kind === "thumbwheel") return d[i]
+                    return d.length > 1 ? d[1] : null
+                }
+                readonly property int hsIdx: {
+                    var d = renderGroup.scrollHotspotsData
+                    if (!d) return -1
+                    for (var i = 0; i < d.length; i++)
+                        if (d[i].kind === "thumbwheel") return i
+                    return d.length > 1 ? 1 : -1
+                }
                 readonly property real hsX: hs ? hs.xPct : 0.55
                 readonly property real hsY: hs ? hs.yPct : 0.51
-                x: mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * hsX - width - 16
-                y: mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * hsY - height / 2
+                readonly property real hsOffY: hs ? hs.labelOffsetYPct : 0
+                targetX: mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * thumbCallout.hsX - thumbCallout.width - 16
+                targetY: mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * thumbCallout.hsY - thumbCallout.height / 2
+
+                hotspotIndex: hsIdx
+                hsXPct: hsX
+                hsYPct: hsY
+                hsLabelOffsetYPct: hsOffY
+                pageWidth: renderGroup.width
+                pageHeight: renderGroup.height
 
                 calloutType: "thumbwheel"
                 title: "Thumb wheel"
@@ -138,11 +241,32 @@ Item {
             // ── Pointer speed callout — positioned from descriptor hotspot [2]
             InfoCallout {
                 id: pointerCallout
-                readonly property var hs: renderGroup.scrollHotspotsData.length > 2 ? renderGroup.scrollHotspotsData[2] : null
+                readonly property var hs: {
+                    var d = renderGroup.scrollHotspotsData
+                    if (!d) return null
+                    for (var i = 0; i < d.length; i++)
+                        if (d[i].kind === "pointer") return d[i]
+                    return d.length > 2 ? d[2] : null
+                }
+                readonly property int hsIdx: {
+                    var d = renderGroup.scrollHotspotsData
+                    if (!d) return -1
+                    for (var i = 0; i < d.length; i++)
+                        if (d[i].kind === "pointer") return i
+                    return d.length > 2 ? 2 : -1
+                }
                 readonly property real hsX: hs ? hs.xPct : 0.83
                 readonly property real hsY: hs ? hs.yPct : 0.54
-                x: mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * hsX + 16
-                y: mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * hsY - height / 2
+                readonly property real hsOffY: hs ? hs.labelOffsetYPct : 0
+                targetX: mouseRender.x + mouseRender.paintedX + mouseRender.paintedW * pointerCallout.hsX + 16
+                targetY: mouseRender.y + mouseRender.paintedY + mouseRender.paintedH * pointerCallout.hsY - pointerCallout.height / 2
+
+                hotspotIndex: hsIdx
+                hsXPct: hsX
+                hsYPct: hsY
+                hsLabelOffsetYPct: hsOffY
+                pageWidth: renderGroup.width
+                pageHeight: renderGroup.height
 
                 calloutType: "pointerspeed"
                 title: "Pointer speed"

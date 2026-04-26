@@ -37,3 +37,8 @@ PKGBUILD
 
 # Reference material (not to ship)
 reference/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo

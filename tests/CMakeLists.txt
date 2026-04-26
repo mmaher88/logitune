@@ -13,7 +13,10 @@ add_executable(logitune-tests
     test_profile_engine.cpp
     test_device_discovery.cpp
     test_action_executor.cpp
+    test_action_filter_model.cpp
     test_device_registry.cpp
+    test_descriptor_writer.cpp
+    test_editor_model.cpp
     test_smoke_mocks.cpp
     mocks/MockDesktop.cpp
     mocks/MockInjector.cpp
@@ -25,20 +28,31 @@ add_executable(logitune-tests
     test_action_model.cpp
     test_device_model.cpp
     test_wmclass_resolution.cpp
-    test_app_controller.cpp
+    test_app_root.cpp
     test_profile_switching.cpp
     test_profile_persistence.cpp
     test_device_reconnect.cpp
     test_thumb_wheel_behavior.cpp
     test_profile_switch_behavior.cpp
     test_notification_filtering.cpp
+    test_device_session.cpp
+    test_physical_device.cpp
     test_settings_change_behavior.cpp
     test_desktop_factory.cpp
     test_profile_apply_behavior.cpp
     test_settings_model.cpp
     test_json_device.cpp
+    test_device_fetcher.cpp
+    test_dpi_cycle_ring.cpp
+    test_autostart_desktop.cpp
+    test_distro_detector.cpp
+    services/test_active_device_resolver.cpp
+    services/test_device_command_handler.cpp
+    services/test_button_action_dispatcher.cpp
+    services/test_profile_orchestrator.cpp
 )
 target_include_directories(logitune-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(logitune-tests PRIVATE SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
 target_link_libraries(logitune-tests PRIVATE logitune-core logitune-app-lib Qt6::Test Qt6::Widgets GTest::gtest)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/logitune)
 file(CREATE_LINK ${CMAKE_SOURCE_DIR}/devices ${CMAKE_BINARY_DIR}/logitune/devices SYMBOLIC)

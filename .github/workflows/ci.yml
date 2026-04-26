@@ -24,15 +24,23 @@ jobs:
         include:
           - distro: archlinux
             container: archlinux:latest
-            install: pacman -Syu --noconfirm cmake ninja gcc git pkgconf qt6-base qt6-declarative qt6-svg systemd-libs gtest
+            pkg_cache_path: /var/cache/pacman/pkg
+            install: pacman -Syu --noconfirm --needed cmake ninja gcc git pkgconf qt6-base qt6-declarative qt6-svg systemd-libs gtest
             run_tests: false
           - distro: fedora-42
             container: fedora:42
-            install: dnf install -y cmake ninja-build gcc-c++ git pkgconf-pkg-config qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtsvg-devel qt6-qtshadertools systemd-devel gtest-devel
+            pkg_cache_path: /var/cache/dnf
+            install: dnf install -y --setopt=keepcache=1 cmake ninja-build gcc-c++ git pkgconf-pkg-config qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtsvg-devel qt6-qtshadertools systemd-devel gtest-devel
             run_tests: false
           - distro: ubuntu-24.04
             container: ubuntu:24.04
+            pkg_cache_path: /var/cache/apt/archives
+            # ubuntu:24.04 ships /etc/apt/apt.conf.d/docker-clean with a
+            # DPkg::Post-Invoke hook that deletes .deb files after each
+            # install, which defeats the cache. Remove it before installing.
             install: >-
+              rm -f /etc/apt/apt.conf.d/docker-clean &&
+              echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/01keep-debs &&
               apt-get update -qq && apt-get install -y cmake ninja-build g++ git pkg-config
               qt6-base-dev qt6-declarative-dev qt6-svg-dev
               qt6-base-dev-tools qt6-declarative-dev-tools
@@ -43,18 +51,55 @@ jobs:
               qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev
               libxkbcommon-dev qml6-module-qttest
               libudev-dev libgtest-dev
-              && cd /usr/src/googletest && cmake -B build && cmake --build build && cmake --install build
             run_tests: true
 
     steps:
+      # Restore cached package downloads. Cache key is versioned: bump the
+      # v{N} suffix whenever the install lines above change to force a
+      # refresh. Cache misses fall back to a normal fresh install.
+      - name: Cache package downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.pkg_cache_path }}
+          key: ${{ matrix.distro }}-pkgs-v2
+
       - name: Install dependencies
         run: ${{ matrix.install }}
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Need full history + tags so CMakeLists.txt's git-describe path
+          # can resolve LOGITUNE_VERSION. Without this, configure fails.
+          fetch-depth: 0
+
+      # Ubuntu ships gtest as source-only (libgtest-dev); we compile and
+      # install it ourselves. Cache the installed artifacts so subsequent
+      # runs skip the cmake build entirely.
+      - name: Cache gtest install
+        if: matrix.run_tests
+        id: gtest-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/lib/libgtest*
+            /usr/local/lib/libgmock*
+            /usr/local/include/gtest
+            /usr/local/include/gmock
+            /usr/local/lib/cmake/GTest
+            /usr/local/lib/pkgconfig/gtest.pc
+            /usr/local/lib/pkgconfig/gmock.pc
+          key: gtest-${{ matrix.distro }}-v1
+
+      - name: Build gtest
+        if: matrix.run_tests && steps.gtest-cache.outputs.cache-hit != 'true'
+        run: cd /usr/src/googletest && cmake -B build && cmake --build build && cmake --install build
 
       - name: Configure
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=${{ matrix.run_tests && 'ON' || 'OFF' }} -Wno-dev
+        # CI builds aren't shipped; a static version string is fine. This
+        # also sidesteps git-describe inside container volumes where
+        # safe.directory can refuse to trust the mounted work tree.
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=${{ matrix.run_tests && 'ON' || 'OFF' }} -DLOGITUNE_VERSION=0.0.0+ci -Wno-dev
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
@@ -108,18 +153,45 @@ jobs:
           echo "All expected files present."
 
   # --------------------------------------------------------------------------
-  # Job 2: Debian package
+  # Job 2: README device table must match devices/*/descriptor.json.
+  # Ensures the published table never drifts from the descriptors; new
+  # devices land in the same PR as the README update.
+  # --------------------------------------------------------------------------
+  devices-table-check:
+    name: README devices table
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify README.md table matches descriptors
+        run: python3 scripts/generate-readme-devices.py --check
+
+  # --------------------------------------------------------------------------
+  # Job 3: Debian package
   # --------------------------------------------------------------------------
   deb-pkg:
     name: Debian Package
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Route apt's .deb cache into a user-owned directory so actions/cache
+      # can both read it on save and extract into it on restore. Caching
+      # /var/cache/apt/archives on a native runner fails on restore because
+      # the directory is root-owned and tar runs as the runner user.
+      - name: Cache apt archives
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/apt-archives
+          key: deb-pkg-apt-v2
 
       - name: Install dependencies
         run: |
+          mkdir -p ~/.cache/apt-archives/partial
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get -o Dir::Cache::archives="$HOME/.cache/apt-archives" install -y \
             build-essential cmake ninja-build pkg-config dpkg-dev \
             qt6-base-dev qt6-declarative-dev qt6-svg-dev \
             qt6-tools-dev qt6-tools-dev-tools \
@@ -129,6 +201,8 @@ jobs:
             qml6-module-qtquick-dialogs qml6-module-qt5compat-graphicaleffects \
             qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev \
             libxkbcommon-dev libudev-dev
+          # Ensure the cache dir is owned by the runner user before save.
+          sudo chown -R "$(id -u):$(id -g)" ~/.cache/apt-archives
 
       - name: Build .deb
         run: bash scripts/package-deb.sh

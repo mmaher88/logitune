@@ -12,6 +12,10 @@ static constexpr FeatureId kKnownFeatures[] = {
     FeatureId::BatteryStatus,
     FeatureId::BatteryUnified,
     FeatureId::ChangeHost,
+    FeatureId::ReprogControls,
+    FeatureId::ReprogControlsV2,
+    FeatureId::ReprogControlsV2_2,
+    FeatureId::ReprogControlsV3,
     FeatureId::ReprogControlsV4,
     FeatureId::SmartShift,
     FeatureId::SmartShiftEnhanced,
@@ -91,7 +95,11 @@ std::optional<Report> FeatureDispatcher::call(Transport *transport, uint8_t devi
     req.deviceIndex  = deviceIndex;
     req.featureIndex = *idx;
     req.functionId   = functionId;
-    req.softwareId   = 0x01;
+    // Rotating softwareId so each sync call has a unique tag. Without this,
+    // stale responses to prior sync calls (e.g. buffered during a
+    // disconnect/reconnect) can be mis-matched to new requests since the
+    // Transport matcher cannot otherwise distinguish them.
+    req.softwareId   = nextSoftwareId();
 
     int len = static_cast<int>(params.size());
     if (len > 16) len = 16;

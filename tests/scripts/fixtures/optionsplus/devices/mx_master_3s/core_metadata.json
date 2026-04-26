@@ -1,0 +1,335 @@
+{
+  "images": [
+    {
+      "key": "device_image",
+      "origin": {
+        "width": 636,
+        "height": 1024
+      }
+    },
+    {
+      "key": "device_gesture_buttons_image",
+      "origin": {
+        "width": 636,
+        "height": 1024
+      },
+      "assignments": [
+        {
+          "slotId": "mx-master-3s-2b034-left",
+          "slotName": "SLOT_NAME_GESTURE_LEFT_BUTTON",
+          "slotDir": "left",
+          "marker": {
+            "x": -40,
+            "y": 30
+          },
+          "label": {
+            "x": -1,
+            "y": 0
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034-right",
+          "slotName": "SLOT_NAME_GESTURE_RIGHT_BUTTON",
+          "slotDir": "right",
+          "marker": {
+            "x": 130,
+            "y": 30
+          },
+          "label": {
+            "x": 1,
+            "y": 0
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034-up",
+          "slotName": "SLOT_NAME_GESTURE_UP_BUTTON",
+          "slotDir": "up",
+          "marker": {
+            "x": 45,
+            "y": -14
+          },
+          "label": {
+            "x": 0,
+            "y": -1
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034-down",
+          "slotName": "SLOT_NAME_GESTURE_DOWN_BUTTON",
+          "slotDir": "down",
+          "marker": {
+            "x": 45,
+            "y": 72
+          },
+          "label": {
+            "x": 0,
+            "y": 1
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034-click",
+          "slotName": "SLOT_NAME_GESTURE_CLICK_BUTTON",
+          "slotDir": "click",
+          "marker": {
+            "x": 15,
+            "y": 40
+          },
+          "label": {
+            "x": 0,
+            "y": 1
+          }
+        }
+      ]
+    },
+    {
+      "key": "device_buttons_image",
+      "origin": {
+        "width": 636,
+        "height": 1024
+      },
+      "assignments": [
+        {
+          "slotId": "mx-master-3s-2b034_c82",
+          "slotName": "SLOT_NAME_MIDDLE_BUTTON",
+          "rootName": "WHEEL_BUTTON",
+          "marker": {
+            "x": 71,
+            "y": 15
+          },
+          "label": {
+            "x": 1,
+            "y": 0
+          },
+          "assignmentStyles": {
+            "gesture": {
+              "marker": {
+                "y": 4,
+                "x": 2
+              }
+            }
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034_c196",
+          "slotName": "SLOT_NAME_MODESHIFT_BUTTON",
+          "rootName": "TOP_BUTTON",
+          "marker": {
+            "x": 81,
+            "y": 34
+          },
+          "label": {
+            "x": 1,
+            "y": 0
+          },
+          "assignmentStyles": {
+            "gesture": {
+              "marker": {
+                "y": 12
+              }
+            }
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034_thumb_wheel_adapter",
+          "slotName": "SLOT_NAME_THUMBWHEEL",
+          "rootName": "THUMB_WHEEL",
+          "marker": {
+            "x": 55,
+            "y": 51.5
+          },
+          "label": {
+            "x": 1,
+            "y": 0
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034_c86",
+          "slotName": "SLOT_NAME_FORWARD_BUTTON",
+          "rootName": "FORWARD_BUTTON",
+          "marker": {
+            "x": 35,
+            "y": 43
+          },
+          "label": {
+            "x": -1,
+            "y": 0
+          },
+          "assignmentStyles": {
+            "gesture": {
+              "marker": {
+                "y": 17
+              }
+            }
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034_c83",
+          "slotName": "SLOT_NAME_BACK_BUTTON",
+          "rootName": "BACK_BUTTON",
+          "marker": {
+            "x": 45,
+            "y": 60
+          },
+          "label": {
+            "x": 0,
+            "y": 1
+          },
+          "assignmentStyles": {
+            "gesture": {
+              "marker": {
+                "x": 2,
+                "y": 26
+              }
+            }
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034_c195",
+          "slotName": "SLOT_NAME_GESTURE_BUTTON",
+          "rootName": "THUMB_BUTTON",
+          "marker": {
+            "x": 8,
+            "y": 58
+          },
+          "label": {
+            "x": -1,
+            "y": 0
+          },
+          "assignmentStyles": {
+            "gesture": {
+              "marker": {
+                "x": -10
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "key": "device_point_scroll_image",
+      "origin": {
+        "width": 636,
+        "height": 1024
+      },
+      "assignments": [
+        {
+          "slotId": "mx-master-3s-2b034_mouse_settings",
+          "slotName": "SLOT_NAME_POINTER_SETTINGS",
+          "marker": {
+            "x": 83,
+            "y": 54
+          },
+          "label": {
+            "x": 1,
+            "y": 0
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034_mouse_scroll_wheel_settings",
+          "slotName": "SLOT_NAME_SCROLL_WHEEL_SETTINGS",
+          "marker": {
+            "x": 73,
+            "y": 16
+          },
+          "label": {
+            "x": 1,
+            "y": 0
+          }
+        },
+        {
+          "slotId": "mx-master-3s-2b034_mouse_thumb_wheel_settings",
+          "slotName": "SLOT_NAME_THUMBWHEEL_SETTINGS",
+          "marker": {
+            "x": 55,
+            "y": 51
+          },
+          "label": {
+            "x": -1,
+            "y": 0
+          }
+        }
+      ]
+    },
+    {
+      "key": "device_easyswitch_image",
+      "origin": {
+        "width": 1872,
+        "height": 728
+      },
+      "layoutPosition": {
+        "easySwitch": {
+          "top": 2,
+          "left": 35
+        },
+        "hotSpot": {
+          "width": 30,
+          "height": 30,
+          "borderRadius": 4
+        },
+        "layoutHotspot": {
+          "width": 11,
+          "height": 13,
+          "hotspotRadius": 84
+        }
+      },
+      "assignments": [
+        {
+          "slotId": "mx-master-3s-2b034_easy_switch_1",
+          "slotName": "SLOT_NAME_EASYSWITCH_1",
+          "marker": {
+            "x": 21.5,
+            "y": 65.5
+          },
+          "label": {
+            "x": -1,
+            "y": -1
+          },
+          "card": {},
+          "position": 0
+        },
+        {
+          "slotId": "mx-master-3s-2b034_easy_switch_2",
+          "slotName": "SLOT_NAME_EASYSWITCH_2",
+          "marker": {
+            "x": 25.5,
+            "y": 63.7
+          },
+          "label": {
+            "x": -1,
+            "y": -1
+          },
+          "card": {},
+          "position": 1
+        },
+        {
+          "slotId": "mx-master-3s-2b034_easy_switch_3",
+          "slotName": "SLOT_NAME_EASYSWITCH_3",
+          "marker": {
+            "x": 29.5,
+            "y": 65.4
+          },
+          "label": {
+            "x": -1,
+            "y": -1
+          },
+          "card": {},
+          "position": 2
+        },
+        {
+          "slotId": "mx-master-3s-2b034_host_change",
+          "slotName": "SLOT_NAME_EASYSWITCH_HOST_CHANGE_BUTTON",
+          "marker": {
+            "x": 24.5,
+            "y": 69.4
+          },
+          "label": {
+            "x": -1,
+            "y": -1
+          },
+          "card": {},
+          "position": 3
+        }
+      ]
+    }
+  ]
+}

@@ -41,6 +41,24 @@ make build
 make install
 ```
 
+## Device support status
+
+Every device descriptor carries a `status` field with one of two values:
+
+- **`verified`** (green check badge): the maintainer or a trusted
+  contributor owns the device and has confirmed it works end-to-end
+  on real hardware. All ship-bundled descriptors currently ship as
+  verified.
+- **`beta`** (amber badge): community-submitted or shipped without
+  hardware verification. Core HID++ functionality almost always
+  works, but hotspot positions, slot-circle positions, and device
+  images may need polish. Report issues or open a PR via the
+  [editor mode](Editor-Mode) workflow.
+
+When you contribute a new descriptor, set `"status": "beta"` in
+`descriptor.json` unless you have hardware-verified it and a
+maintainer agrees to promote it to `verified`.
+
 ## First Run
 
 ### udev Rules
@@ -48,7 +66,13 @@ make install
 Logitune needs read/write access to hidraw devices and uinput for keystroke injection. The udev rules file (`data/71-logitune.rules`) contains:
 
 ```
+# USB-connected Logitech devices (MX mice, keyboards, Bolt/Unifying receivers)
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", TAG+="uaccess"
+
+# Direct Bluetooth-connected Logitech HID devices
+SUBSYSTEM=="hidraw", KERNELS=="0005:046D:*", TAG+="uaccess"
+
+# Grant logged-in user access to uinput for keystroke injection
 KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess"
 ```
 
@@ -72,13 +96,18 @@ If Logitune starts but shows "No device connected":
 
 1. **Check hidraw access**: `ls -la /dev/hidraw*` — your user should have `rw` access to Logitech devices
 2. **Check uinput access**: `ls -la /dev/uinput` — needed for keystroke injection
-3. **Check the device is detected**: Run with `--debug` flag to see device scanning logs
+3. **Check the device is detected**: logging is on by default. Launch the app and scan the log for enumeration lines:
 
 ```bash
-logitune --debug
+logitune
 # or, if running from the build directory:
-./build/src/app/logitune --debug
+./build/src/app/logitune
+
+# in another terminal:
+tail -f ~/.local/share/Logitune/Logitune/logs/logitune-$(date +%Y-%m-%d).log
 ```
+
+(You can also toggle **Debug logging** in Settings to turn logging off if you don't want a log file.)
 
 ### Single-Instance Guard
 
@@ -141,7 +170,10 @@ The application sets `quitOnLastWindowClosed(false)` so the tray icon keeps the 
 
 | Flag | Description |
 |------|-------------|
-| `--debug` | Enable debug logging to file and console at startup |
+| `--simulate-all` | Populate the carousel with one fake card per descriptor in DeviceRegistry instead of scanning real hardware. Useful for eyeballing community descriptors without the physical device. |
+| `--edit` | Launch the in-app descriptor editor mode. Drag hotspots, slot circles, and swap images; saves back to the source `descriptor.json`. See [Editor Mode](Editor-Mode). |
+| `--minimized` | Start hidden to the system tray. Intended for autostart — the `logitune.desktop` autostart entry uses this. |
+| `--help` / `--version` | Standard Qt help / version output. |
 
 Debug logging can also be toggled at runtime from the Settings page.
 
@@ -150,9 +182,9 @@ Debug logging can also be toggled at runtime from the Settings page.
 1. **Single-instance check** — attempts to acquire `logitune.lock`
 2. **Log manager init** — sets up Qt logging categories, optional file output
 3. **Crash recovery** — checks for previous unclean shutdown, offers to file a bug report
-4. **AppController init** — creates DeviceManager, ProfileEngine, models, wires signals
+4. **AppRoot init** — creates DeviceManager, ProfileEngine, models, wires signals
 5. **QML engine load** — registers model singletons, loads `Main.qml`
 6. **Start monitoring** — DeviceManager begins udev scanning and KDE desktop starts focus tracking
-7. **Device connect** — on first hidraw match, enumerates HID++ features, reads state, creates command queue
+7. **Device connect** — on first hidraw match, enumerates HID++ features, reads state, creates command processor
 8. **Profile load** — loads or seeds the default profile, applies settings to hardware
 9. **Tray icon** — system tray icon appears with battery info

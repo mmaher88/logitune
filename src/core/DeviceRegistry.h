@@ -14,6 +14,9 @@ public:
     const IDevice* findByName(const QString &name) const;
     void registerDevice(std::unique_ptr<IDevice> device);
     const std::vector<std::unique_ptr<IDevice>>& devices() const;
+    void reloadAll();
+    const IDevice* findBySourcePath(const QString &dirPath) const;
+    bool reload(const QString &dirPath);
 
     static QString systemDevicesDir();
     static QString cacheDevicesDir();

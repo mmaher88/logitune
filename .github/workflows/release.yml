@@ -3,6 +3,29 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Manual trigger lets us dry-run the packaging jobs without publishing.
+  # The `release` job is skipped unless a tag was pushed, so nothing is
+  # uploaded; artifacts are still attached to the run for inspection.
+  #
+  # When dry_run_aur=true and a tag is provided, the push-aur job also
+  # runs end-to-end (clone AUR, regen PKGBUILD + .SRCINFO,
+  # makepkg --printsrcinfo) but stops before the final `git push` so we
+  # can inspect the intended diff. Useful when iterating on the ssh /
+  # host-key plumbing without cutting a real release.
+  workflow_dispatch:
+    inputs:
+      dry_run_aur:
+        description: "Dry-run the push-aur job (no git push to AUR). Requires 'tag'."
+        type: boolean
+        default: false
+      tag:
+        description: "Tag to simulate for dry_run_aur (e.g. v0.3.3). Ignored otherwise."
+        type: string
+        default: ''
+      trigger_obs:
+        description: "Fire the OBS source-service trigger end-to-end (same call as the real tag path — re-runs the OBS service)."
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -15,9 +38,19 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache apt archives
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: release-deb-apt-v1
 
       - name: Install dependencies
         run: |
+          echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' | \
+            sudo tee /etc/apt/apt.conf.d/01keep-debs >/dev/null
           sudo apt-get update
           sudo apt-get install -y \
             build-essential cmake ninja-build pkg-config dpkg-dev \
@@ -29,6 +62,7 @@ jobs:
             qml6-module-qtquick-dialogs qml6-module-qt5compat-graphicaleffects \
             qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev \
             libxkbcommon-dev libudev-dev
+          sudo chmod -R a+rX /var/cache/apt/archives
 
       - name: Build .deb
         run: bash scripts/package-deb.sh
@@ -40,11 +74,96 @@ jobs:
           path: logitune-*.deb
 
   # --------------------------------------------------------------------------
+  # Fedora / RHEL package (.rpm)
+  # --------------------------------------------------------------------------
+  package-rpm:
+    runs-on: ubuntu-24.04
+    container:
+      image: fedora:41
+    steps:
+      # actions/checkout falls back to a REST API tarball download when git
+      # is missing, which skips .git entirely. That breaks the git-describe
+      # version lookup in CMakeLists.txt and the binary ends up reporting
+      # the hardcoded 0.2.3 fallback. Install git first so checkout does a
+      # real clone.
+      - name: Install git (required by actions/checkout for .git history)
+        run: dnf install -y git
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          dnf install -y \
+            gcc gcc-c++ cmake ninja-build pkgconf-pkg-config rpm-build \
+            qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtsvg-devel \
+            qt6-qttools-devel qt6-qt5compat-devel \
+            libxkbcommon-devel systemd-devel grep
+
+      - name: Build .rpm
+        run: bash scripts/package-rpm.sh
+
+      - name: Collect .rpm
+        run: cp "$HOME"/rpmbuild/RPMS/x86_64/logitune-*.rpm .
+
+      - name: Upload .rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: logitune-*.rpm
+
+  # --------------------------------------------------------------------------
+  # Arch Linux package (.pkg.tar.zst)
+  # --------------------------------------------------------------------------
+  package-arch:
+    runs-on: ubuntu-24.04
+    container:
+      image: archlinux:latest
+      options: --user root
+    steps:
+      # Same reason as package-rpm: without git, actions/checkout uses the
+      # REST API tarball path and there is no .git, so CMake's
+      # git describe lookup falls back to the hardcoded version.
+      - name: Install git (required by actions/checkout for .git history)
+        run: pacman -Sy --noconfirm --needed git
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed \
+            base-devel cmake ninja \
+            qt6-base qt6-declarative qt6-svg qt6-tools qt6-5compat \
+            libxkbcommon systemd-libs sudo
+
+      - name: Create unprivileged build user (makepkg refuses root)
+        run: |
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Build pacman package
+        run: sudo -E -u builder bash scripts/package-arch.sh
+
+      - name: Upload pacman artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacman-package
+          path: logitune-*.pkg.tar.zst
+
+  # --------------------------------------------------------------------------
   # Create GitHub Release with all packages
   # --------------------------------------------------------------------------
   release:
-    needs: [package-deb]
+    needs: [package-deb, package-rpm, package-arch]
     runs-on: ubuntu-latest
+    # Only publish when triggered by a tag push. workflow_dispatch runs are
+    # for dry-running the package jobs and stop before the release step.
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -56,4 +175,292 @@ jobs:
         with:
           files: |
             logitune-*.deb
+            logitune-*.rpm
+            logitune-*.pkg.tar.zst
           generate_release_notes: true
+          # Tags with a pre-release identifier (e.g. v0.2.0-beta.1, v0.2.0-rc.1)
+          # are published as GitHub pre-releases so they do not appear as the
+          # latest stable download.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+  # --------------------------------------------------------------------------
+  # Sync pkg/obs/* into the OBS package's own VCS. OBS stores the spec,
+  # _service, and debian packaging files in its own checkout separate from
+  # git; tar_scm only pulls source code, not these. Without this sync,
+  # changes to pkg/obs/ in git never reach the builds.
+  #
+  # Runs before trigger-obs so the rebuild that follows picks up any new
+  # spec/packaging changes. If pkg/obs/ is unchanged, osc commit is a no-op.
+  # --------------------------------------------------------------------------
+  sync-obs-spec:
+    needs: [release]
+    runs-on: ubuntu-latest
+    if: |
+      always() && (
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+        || (github.event_name == 'workflow_dispatch' && inputs.trigger_obs)
+      )
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install osc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y osc
+
+      - name: Configure osc credentials
+        env:
+          OSC_USERNAME: ${{ secrets.OSC_USERNAME }}
+          OSC_PASSWORD: ${{ secrets.OSC_PASSWORD }}
+        run: |
+          mkdir -p ~/.config/osc
+          umask 077
+          cat > ~/.config/osc/oscrc <<EOF
+          [general]
+          apiurl = https://api.opensuse.org
+
+          [https://api.opensuse.org]
+          user = ${OSC_USERNAME}
+          pass = ${OSC_PASSWORD}
+          EOF
+
+      - name: Checkout OBS package
+        # osc checkout always nests <project>/<package>/ under PWD,
+        # regardless of any trailing positional arg. Work inside a known
+        # parent dir and reference the nested path explicitly.
+        run: |
+          mkdir -p /tmp/obs-workdir
+          cd /tmp/obs-workdir
+          osc checkout home:mmaher88:logitune logitune
+          test -d "/tmp/obs-workdir/home:mmaher88:logitune/logitune/.osc" \
+            || { echo "::error::osc checkout produced no working copy"; exit 1; }
+
+      - name: Sync pkg/obs/ into OBS checkout
+        run: |
+          # Mirror pkg/obs/ into the OBS checkout, keeping osc's .osc/
+          # metadata. --delete removes files deleted from git. osc addremove
+          # then stages additions + deletions for commit.
+          rsync -av --delete --exclude '.osc' \
+            pkg/obs/ "/tmp/obs-workdir/home:mmaher88:logitune/logitune/"
+
+      - name: Commit to OBS (triggers service + rebuild if files changed)
+        run: |
+          cd "/tmp/obs-workdir/home:mmaher88:logitune/logitune"
+          osc addremove
+          echo "--- osc status ---"
+          osc status || true
+          echo "--- osc diff ---"
+          osc diff || true
+          if [ -n "$(osc status)" ]; then
+            osc commit -m "sync packaging from git ${GITHUB_SHA}"
+          else
+            echo "OBS package already in sync with git; nothing to commit."
+          fi
+
+  # --------------------------------------------------------------------------
+  # Trigger the OBS source service to pull the new tarball and rebuild
+  # all repo targets (Fedora, openSUSE Ubuntu, etc.). The token is a
+  # "Run source services" token scoped to home:mmaher88:logitune/logitune,
+  # created at https://build.opensuse.org/my/tokens.
+  #
+  # Runs after sync-obs-spec so any spec changes committed by that job
+  # are already live before this rebuild fires.
+  # --------------------------------------------------------------------------
+  trigger-obs:
+    needs: [release, sync-obs-spec]
+    runs-on: ubuntu-latest
+    if: |
+      always() && (
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+        || (github.event_name == 'workflow_dispatch' && inputs.trigger_obs)
+      )
+    # Poll OBS for up to 30 minutes before giving up. Typical stable-tag
+    # rebuild across Fedora + xUbuntu settles in 5-15 min.
+    timeout-minutes: 40
+    steps:
+      - name: Trigger OBS source service
+        run: |
+          curl -fsSL -X POST \
+            -H "Authorization: Token ${{ secrets.OBS_TRIGGER_TOKEN }}" \
+            "https://build.opensuse.org/trigger/runservice?project=home:mmaher88:logitune&package=logitune"
+
+      - name: Wait for OBS builds to settle
+        run: |
+          set -u
+          MAX_WAIT=1800   # 30 min
+          SLEEP=30
+          elapsed=0
+          last_codes=""
+          # Public endpoint — no auth required for build results on public
+          # projects. The plain /build/.../_result path returns 401 anonymously.
+          result_url="https://api.opensuse.org/public/build/home:mmaher88:logitune/_result?package=logitune"
+
+          # Non-terminal state codes per OBS: wait until none of these
+          # appear in the result set.
+          is_busy() {
+            echo "$1" | grep -qE '<status[^>]+code="(building|blocked|scheduled|dispatching|finished|unknown|signing)"'
+          }
+
+          while [ "$elapsed" -lt "$MAX_WAIT" ]; do
+            # Tolerate a flaky OBS API: one timeout should not fail the whole wait.
+            xml=$(curl -sSf --retry 3 --retry-delay 5 "$result_url" || true)
+            if [ -z "$xml" ]; then
+              echo "[${elapsed}s] OBS result query failed; retrying"
+              sleep "$SLEEP"; elapsed=$((elapsed + SLEEP)); continue
+            fi
+            codes=$(echo "$xml" \
+              | grep -oE '<status[^>]+package="logitune"[^>]*code="[^"]+"' \
+              | grep -oE 'code="[^"]+"' | sort -u | tr '\n' ' ')
+            if [ "$codes" != "$last_codes" ]; then
+              echo "[${elapsed}s] package codes: $codes"
+              last_codes="$codes"
+            fi
+            if ! is_busy "$xml"; then
+              echo "All OBS builds settled."
+              break
+            fi
+            sleep "$SLEEP"
+            elapsed=$((elapsed + SLEEP))
+          done
+
+          echo "--- final per-target results ---"
+          echo "$xml" | grep -E '<result [^>]+>' \
+            | sed -E 's/.*repository="([^"]+)".*arch="([^"]+)".*/\1 \2/' \
+            | while read repo arch; do
+                code=$(echo "$xml" \
+                  | awk -v r="$repo" -v a="$arch" \
+                    '/<result / { match_block = ($0 ~ "repository=\""r"\"" && $0 ~ "arch=\""a"\""); }
+                     match_block && /<status[^>]+package="logitune"/ {
+                       if (match($0, /code="[^"]+"/)) {
+                         print substr($0, RSTART+6, RLENGTH-7)
+                       }
+                       match_block=0
+                     }')
+                printf '  %-24s %-12s %s\n' "$repo" "$arch" "$code"
+              done
+
+          if echo "$xml" | grep -qE '<status[^>]+package="logitune"[^>]*code="(failed|unresolvable|broken)"'; then
+            echo "::error::One or more OBS builds failed."
+            exit 1
+          fi
+          if [ "$elapsed" -ge "$MAX_WAIT" ]; then
+            echo "::error::Timed out waiting for OBS builds to settle after ${MAX_WAIT}s."
+            exit 1
+          fi
+          echo "All OBS builds succeeded."
+
+  # --------------------------------------------------------------------------
+  # Publish the updated PKGBUILD to the AUR. Runs only for stable tags
+  # (no '-' in the ref name); pre-release channels stay off the AUR.
+  # --------------------------------------------------------------------------
+  push-aur:
+    needs: [release]
+    runs-on: ubuntu-24.04
+    # Runs on stable tag pushes after release succeeds, OR as a dry-run via
+    # workflow_dispatch. always() bypasses the default skip-when-needs-
+    # skipped behaviour so dry-run dispatches (where `release` is skipped)
+    # still reach this job.
+    if: |
+      always() && (
+        (github.event_name == 'push'
+         && startsWith(github.ref, 'refs/tags/v')
+         && !contains(github.ref_name, '-')
+         && needs.release.result == 'success')
+        || (github.event_name == 'workflow_dispatch'
+            && inputs.dry_run_aur
+            && inputs.tag != '')
+      )
+    container:
+      image: archlinux:latest
+      options: --user root
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git openssh sudo
+
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          echo "Resolved tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Write AUR SSH key
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        run: |
+          mkdir -p /root/.ssh
+          printf '%s\n' "$AUR_SSH_KEY" > /root/.ssh/aur
+          chmod 600 /root/.ssh/aur
+          touch /root/.ssh/known_hosts
+          chmod 600 /root/.ssh/known_hosts
+
+      # Absolute paths in GIT_SSH_COMMAND dodge $HOME/~ resolution
+      # mismatches between step shells and the ssh subprocess.
+      # accept-new trusts the AUR host key on first connect, persists it
+      # to known_hosts, and still fails on later mismatches.
+      - name: Clone AUR repo
+        env:
+          GIT_SSH_COMMAND: "ssh -i /root/.ssh/aur -o UserKnownHostsFile=/root/.ssh/known_hosts -o StrictHostKeyChecking=accept-new"
+        run: git clone ssh://aur@aur.archlinux.org/logitune.git aur
+
+      - name: Stage updated PKGBUILD + install hook
+        env:
+          TAG_NAME: ${{ steps.tag.outputs.tag }}
+        run: |
+          VERSION="${TAG_NAME#v}"
+          TARBALL_URL="https://github.com/mmaher88/logitune/archive/v${VERSION}.tar.gz"
+          SHA=$(curl -fsSL --retry 3 "$TARBALL_URL" | sha256sum | awk '{print $1}')
+          cp packaging/PKGBUILD aur/PKGBUILD
+          cp packaging/logitune.install aur/logitune.install
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" aur/PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" aur/PKGBUILD
+          sed -i "s/^sha256sums=.*/sha256sums=('${SHA}')/" aur/PKGBUILD
+
+      - name: Regenerate .SRCINFO (makepkg refuses root)
+        run: |
+          useradd -m builder
+          chown -R builder aur
+          sudo -u builder bash -c 'cd aur && makepkg --printsrcinfo > .SRCINFO'
+          # Restore root ownership so subsequent git operations don't trip
+          # git's safe.directory check (dubious-ownership refusal).
+          chown -R root:root aur
+
+      - name: Commit
+        env:
+          TAG_NAME: ${{ steps.tag.outputs.tag }}
+        run: |
+          cd aur
+          git config user.email "mina.maher88@hotmail.com"
+          git config user.name "mmaher88"
+          git add PKGBUILD .SRCINFO logitune.install
+          if git diff --cached --quiet; then
+            echo "No AUR changes to commit."
+          else
+            git commit -m "Update to ${TAG_NAME#v}"
+          fi
+
+      - name: Push to AUR
+        if: github.event_name == 'push'
+        env:
+          GIT_SSH_COMMAND: "ssh -i /root/.ssh/aur -o UserKnownHostsFile=/root/.ssh/known_hosts -o StrictHostKeyChecking=accept-new"
+        run: |
+          cd aur
+          git push
+
+      - name: Dry-run summary (no push)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cd aur
+          echo "::group::Dry-run: what would be pushed to AUR"
+          git log -1 --stat || true
+          echo "--- PKGBUILD ---"; cat PKGBUILD
+          echo "--- .SRCINFO ---"; cat .SRCINFO
+          echo "::endgroup::"
+          echo "Dry-run complete — no git push performed."

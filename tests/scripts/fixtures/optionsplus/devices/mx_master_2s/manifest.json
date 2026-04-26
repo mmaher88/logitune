@@ -1,0 +1,122 @@
+{
+  "devices": [
+    {
+      "modelId": "6b019",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_core.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_core.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_core.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        }
+      ]
+    },
+    {
+      "modelId": "6b019_ext1",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_1.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_1.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_1.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        }
+      ]
+    },
+    {
+      "modelId": "6b019_ext2",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_2.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_2.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_2.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        }
+      ]
+    },
+    {
+      "modelId": "6b019_ext3",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_3.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_3.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_3.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "key": "manifest",
+      "src": "manifest.json"
+    },
+    {
+      "key": "database_defaults_slots",
+      "src": "defaults_slot.json"
+    },
+    {
+      "key": "database_availability_slots",
+      "src": "availability_slots.json"
+    },
+    {
+      "key": "database_recommendation_slots",
+      "src": "recommendation_slots.json"
+    }
+  ]
+}

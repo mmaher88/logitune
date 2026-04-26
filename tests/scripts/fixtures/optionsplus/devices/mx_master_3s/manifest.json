@@ -1,0 +1,391 @@
+{
+  "devices": [
+    {
+      "modelId": "2b034",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_core.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_core.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_core.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_core.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b034_ext1",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_1.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_1.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_1.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_1.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b034_ext2",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_2.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_2.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_2.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_2.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b034_ext3",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_1.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_1.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_1.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_3.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b034_ext4",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_4.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_4.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_4.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_4.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b034_ext10",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_10.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_10.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_10.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_10.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b034_ext11",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_12.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_12.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_12.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_11.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b034_ext12",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_12.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_12.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_12.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_12.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b034_ext13",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_10.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_10.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_10.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "core_metadata.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_10.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b043_ext10",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_10.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_10.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_10.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "metadata_b043.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData_b043.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_10.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b043_ext11",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_12.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_12.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_12.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "metadata_b043.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData_b043.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_11.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b043_ext12",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_12.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_12.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_12.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "metadata_b043.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData_b043.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_12.png"
+        }
+      ]
+    },
+    {
+      "modelId": "2b043_ext13",
+      "resources": [
+        {
+          "key": "device_image",
+          "src": "front_ext_10.png"
+        },
+        {
+          "key": "device_buttons_image",
+          "src": "side_ext_10.png"
+        },
+        {
+          "key": "device_point_scroll_image",
+          "src": "side_ext_10.png"
+        },
+        {
+          "key": "image_metadata",
+          "src": "metadata_b043.json"
+        },
+        {
+          "key": "onboarding_data",
+          "src": "OnboardData_b043.json"
+        },
+        {
+          "key": "device_easyswitch_image",
+          "src": "back_ext_10.png"
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "key": "manifest",
+      "src": "manifest.json"
+    },
+    {
+      "key": "default_configurations",
+      "src": "default_configurations.json"
+    }
+  ]
+}
