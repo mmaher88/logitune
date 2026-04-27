@@ -7,6 +7,7 @@
 #include "hidpp/capabilities/BatteryCapability.h"
 #include "hidpp/capabilities/SmartShiftCapability.h"
 #include "hidpp/capabilities/ReprogControlsCapability.h"
+#include "hidpp/capabilities/GestureV2Capability.h"
 #include <QObject>
 #include <QSocketNotifier>
 #include <QTimer>
@@ -140,6 +141,7 @@ private:
     std::optional<hidpp::capabilities::BatteryVariant>         m_batteryDispatch;
     std::optional<hidpp::capabilities::SmartShiftVariant>      m_smartShiftDispatch;
     std::optional<hidpp::capabilities::ReprogControlsVariant>  m_reprogControlsDispatch;
+    std::optional<hidpp::capabilities::GestureV2Variant>       m_gestureV2Dispatch;
 
     QTimer *m_reconnectTimer = nullptr;
     QTimer *m_batteryPollTimer = nullptr;

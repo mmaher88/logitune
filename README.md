@@ -112,7 +112,6 @@ logitune
 <!-- BEGIN DEVICES TABLE -->
 | Device | Status | Battery | DPI | SmartShift | Thumb wheel | Button remap | Gestures | Smooth scroll | Easy-Switch |
 |--------|:------:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| MX Master | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ |
 | MX Master 2S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | MX Master 3 | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | MX Master 3S | ✅ Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -121,6 +120,7 @@ logitune
 | MX Anywhere 3 for Business | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
 | MX Anywhere 3S | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
 | MX Anywhere 3S for Business | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
+| MX Master | 🧪 Beta | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | MX Vertical | 🧪 Beta | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ |
 | MX Vertical for Business | 🧪 Beta | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ |
 <!-- END DEVICES TABLE -->

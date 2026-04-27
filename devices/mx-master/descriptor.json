@@ -13,6 +13,7 @@
     "lowResWheel": false,
     "smoothScroll": true,
     "thumbWheel": false,
+    "thumbWheelGestureV2": true,
     "reprogControls": true,
     "gestureV2": false,
     "mouseGesture": false,

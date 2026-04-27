@@ -278,6 +278,8 @@ void DeviceSession::enumerateAndSetup()
                           << (m_reprogControlsDispatch->supportsDiversion
                                 ? "(diversion supported)" : "(enumeration only)");
     }
+    m_gestureV2Dispatch      = hidpp::capabilities::resolveCapability(
+                                   m_features.get(), hidpp::capabilities::kGestureV2Variants);
 
     // Read battery
     int battLevel = 0;
@@ -407,6 +409,43 @@ void DeviceSession::enumerateAndSetup()
             qCDebug(lcDevice) << "thumb wheel defaultDirection:" << m_thumbWheelDefaultDirection;
         }
         qCDebug(lcDevice) << "thumb wheel set to native scroll";
+    }
+
+    // Devices that route the thumb wheel through Gesture 2 (e.g. 1st-gen MX
+    // Master, which lacks 0x2150) need an explicit setDiverted call so the
+    // wheel sends HID++ notifications instead of standard HID horizontal
+    // scroll. The diversion index is fixed per device generation; for the
+    // MX Master family it is 3, matching the byte 2 value we observe in
+    // the resulting events.
+    if (m_activeDevice && m_activeDevice->features().thumbWheelGestureV2 && m_gestureV2Dispatch) {
+        // On the original MX Master the 0x6501 gesture table holds two
+        // gestures: NATURAL_SCROLLING (id 45) at gesture index 0, then
+        // THUMBWHEEL (id 46) at gesture index 1. Only THUMBWHEEL supports
+        // diversion, so its diversion index is 0 (the only divertible
+        // gesture). Both the enable bit and the divert bit must be set for
+        // the device to emit HID++ events.
+        //
+        // Per Solaar's spec: function 0x02 = setEnabled (gesture index),
+        // function 0x04 = setDiverted (diversion index). Both share the
+        // {offset, count, mask, value} payload layout.
+        constexpr uint8_t kGestureIndex   = 1;  // THUMBWHEEL position in table
+        constexpr uint8_t kDiversionIndex = 0;  // THUMBWHEEL position in divert table
+
+        auto enableParams = m_gestureV2Dispatch->buildOffsetMaskRequest(kGestureIndex, true);
+        auto enableResp = m_features->call(m_transport.get(), m_deviceIndex,
+                                           m_gestureV2Dispatch->feature,
+                                           m_gestureV2Dispatch->setEnabledFn,
+                                           std::span<const uint8_t>(enableParams));
+        qCDebug(lcDevice) << "Gesture 2 setEnabled: gestureIdx=" << kGestureIndex
+                          << "ok=" << enableResp.has_value();
+
+        auto divertParams = m_gestureV2Dispatch->buildOffsetMaskRequest(kDiversionIndex, true);
+        auto divertResp = m_features->call(m_transport.get(), m_deviceIndex,
+                                           m_gestureV2Dispatch->feature,
+                                           m_gestureV2Dispatch->setDivertedFn,
+                                           std::span<const uint8_t>(divertParams));
+        qCDebug(lcDevice) << "Gesture 2 setDiverted: diversionIdx=" << kDiversionIndex
+                          << "ok=" << divertResp.has_value();
     }
 
     // Update state and emit signals
@@ -676,6 +715,24 @@ void DeviceSession::handleNotification(const hidpp::Report &report)
             return;
         }
     }
+
+    // Gesture 2 diverted thumb-wheel events (e.g. 1st-gen MX Master).
+    // Status byte 0x23 carries the movement payload; 0x11 / 0x31 are
+    // touch-start / touch-end markers we ignore. Byte 2 (gestureMarker) is
+    // a constant 0x03 for thumb-wheel events on every MX Master generation.
+    if (m_features && m_gestureV2Dispatch
+        && m_activeDevice && m_activeDevice->features().thumbWheelGestureV2) {
+        auto idx = m_features->featureIndex(m_gestureV2Dispatch->feature);
+        if (idx.has_value() && report.featureIndex == *idx && report.functionId == 0) {
+            auto evt = m_gestureV2Dispatch->parseDivertedEvent(report);
+            if (evt.status == 0x23
+                && evt.gestureMarker == hidpp::features::GestureV2::kThumbWheelEventMarker
+                && evt.delta != 0) {
+                emit thumbWheelRotation(static_cast<int>(evt.delta));
+            }
+            return;
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -857,21 +914,40 @@ void DeviceSession::setThumbWheelMode(const QString &mode, bool invert)
 
     if (!m_connected || !m_features || !m_commandProcessor)
         return;
-    if (!m_features->hasFeature(hidpp::FeatureId::ThumbWheel))
+
+    const bool divert = (mode != "scroll");
+
+    // 0x2150 path (MX Master 2S/3S/4 etc.): writes a single setReporting
+    // request that toggles divert + invert in one go.
+    if (m_features->hasFeature(hidpp::FeatureId::ThumbWheel)) {
+        std::array<uint8_t, 2> twParams = {
+            static_cast<uint8_t>(divert ? 0x01 : 0x00),
+            static_cast<uint8_t>(invert ? 0x01 : 0x00)
+        };
+        m_commandProcessor->enqueue(hidpp::FeatureId::ThumbWheel, 0x02,
+                                std::span<const uint8_t>(twParams),
+                                [divert, invert](const hidpp::Report &) {
+                                    qCDebug(lcDevice) << "thumb wheel setReporting confirmed:"
+                                                       << "divert=" << divert << "invert=" << invert;
+                                });
         return;
+    }
 
-    bool divert = (mode != "scroll");
-
-    std::array<uint8_t, 2> twParams = {
-        static_cast<uint8_t>(divert ? 0x01 : 0x00),
-        static_cast<uint8_t>(invert ? 0x01 : 0x00)
-    };
-    m_commandProcessor->enqueue(hidpp::FeatureId::ThumbWheel, 0x02,
-                            std::span<const uint8_t>(twParams),
-                            [divert, invert](const hidpp::Report &) {
-                                qCDebug(lcDevice) << "thumb wheel setReporting confirmed:"
-                                                   << "divert=" << divert << "invert=" << invert;
-                            });
+    // 0x6501 path (1st-gen MX Master): toggle the gesture's divert bit so
+    // that "scroll" mode releases the wheel back to native HID horizontal
+    // scroll, while volume/zoom/etc keep events flowing as HID++ for software
+    // remapping. The gesture stays enabled across modes.
+    if (m_activeDevice && m_activeDevice->features().thumbWheelGestureV2 && m_gestureV2Dispatch) {
+        constexpr uint8_t kDiversionIndex = 0;
+        auto params = m_gestureV2Dispatch->buildOffsetMaskRequest(kDiversionIndex, divert);
+        m_commandProcessor->enqueue(m_gestureV2Dispatch->feature,
+                                m_gestureV2Dispatch->setDivertedFn,
+                                std::span<const uint8_t>(params),
+                                [divert](const hidpp::Report &) {
+                                    qCDebug(lcDevice) << "Gesture 2 setDiverted on mode change confirmed:"
+                                                       << "divert=" << divert;
+                                });
+    }
 }
 
 bool DeviceSession::isDirectDevice(uint16_t pid) const
