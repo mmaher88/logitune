@@ -15,6 +15,7 @@ class ActionExecutor;
 class ActiveDeviceResolver;
 class ProfileEngine;
 class IDevice;
+class IDesktopIntegration;
 
 /// Turns raw HID++ input events (gestureRawXY, divertedButtonPressed,
 /// thumbWheelRotation) into high-level actions (SmartShift toggle, DPI
@@ -27,6 +28,7 @@ public:
     ButtonActionDispatcher(ProfileEngine *profileEngine,
                            ActionExecutor *actionExecutor,
                            ActiveDeviceResolver *selection,
+                           IDesktopIntegration *desktop = nullptr,
                            QObject *parent = nullptr);
 
     void onDeviceRemoved(const QString &serial);
@@ -55,6 +57,7 @@ private:
     ProfileEngine   *m_profileEngine;
     ActionExecutor  *m_actionExecutor;
     ActiveDeviceResolver *m_selection;
+    IDesktopIntegration *m_desktop = nullptr;
     const IDevice   *m_currentDevice = nullptr;
     QMap<QString, PerDeviceState> m_state;
 };

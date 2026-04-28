@@ -1,4 +1,5 @@
 #include "desktop/GenericDesktop.h"
+#include <optional>
 
 namespace logitune {
 
@@ -30,6 +31,17 @@ QStringList GenericDesktop::detectedCompositors() const
 void GenericDesktop::blockGlobalShortcuts(bool)
 {
     // No-op: generic fallback cannot block global shortcuts
+}
+
+QString GenericDesktop::variantKey() const
+{
+    return QStringLiteral("generic");
+}
+
+std::optional<ButtonAction> GenericDesktop::resolveNamedAction(const QString &id) const
+{
+    Q_UNUSED(id);
+    return std::nullopt;
 }
 
 } // namespace logitune

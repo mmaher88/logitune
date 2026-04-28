@@ -303,3 +303,117 @@ TEST_F(ButtonActionDispatcherFixture, OnCurrentDeviceChangedUpdatesPointer) {
     m_dispatcher->onDivertedButtonPressed(kBackCid, true);
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
+
+// ---------------------------------------------------------------------------
+// PresetRef resolution via IDesktopIntegration
+// ---------------------------------------------------------------------------
+
+TEST_F(ButtonActionDispatcherFixture, PresetRefResolvesViaDesktopAndFiresKeystroke) {
+    attachMockSession();
+    m_desktop->scriptResolve("show-desktop",
+                             ButtonAction{ButtonAction::Keystroke, "Super+D"});
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Super+D"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, PresetRefResolvedToDBusFiresDBus) {
+    attachMockSession();
+    m_desktop->scriptResolve("show-desktop",
+                             ButtonAction{ButtonAction::DBus,
+                                          "org.x,/path,org.x.Iface,method"});
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_EQ(m_injector->lastArg("sendDBusCall"),
+              QStringLiteral("org.x,/path,org.x.Iface,method"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, PresetRefResolvedToAppLaunchFiresLaunch) {
+    attachMockSession();
+    m_desktop->scriptResolve("calculator",
+                             ButtonAction{ButtonAction::AppLaunch, "gnome-calculator"});
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("calculator")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_EQ(m_injector->lastArg("launchApp"), QStringLiteral("gnome-calculator"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, PresetRefUnresolvedLogsAndFiresNothing) {
+    attachMockSession();
+    // No scriptResolve -> resolveNamedAction returns nullopt
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
+    EXPECT_FALSE(m_injector->hasCalled("sendDBusCall"));
+    EXPECT_FALSE(m_injector->hasCalled("launchApp"));
+}
+
+// ---------------------------------------------------------------------------
+// Gesture-direction PresetRef resolution. Mirrors the press-path PresetRef
+// tests above but exercises the gesture-release branch in the dispatcher.
+// ---------------------------------------------------------------------------
+
+TEST_F(ButtonActionDispatcherFixture, GesturePresetResolvesViaDesktopAndFiresKeystroke) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    m_desktop->scriptResolve("show-desktop",
+                             ButtonAction{ButtonAction::Keystroke, "Super+D"});
+    hwProfile().gestures["down"] =
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")};
+
+    // Trigger a gesture-down release: press the gesture button, accumulate
+    // dy past kGestureThreshold, release. Direction should resolve to "down"
+    // and the preset should be resolved via the desktop integration before
+    // firing.
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    for (int i = 0; i < 10; ++i)
+        m_dispatcher->onGestureRaw(0, 20);
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+
+    EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Super+D"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, GesturePresetResolvedToDBusFiresDBus) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    m_desktop->scriptResolve("show-desktop",
+                             ButtonAction{ButtonAction::DBus,
+                                          "org.x,/path,org.x.Iface,method"});
+    hwProfile().gestures["down"] =
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")};
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    for (int i = 0; i < 10; ++i)
+        m_dispatcher->onGestureRaw(0, 20);
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+
+    EXPECT_EQ(m_injector->lastArg("sendDBusCall"),
+              QStringLiteral("org.x,/path,org.x.Iface,method"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, GesturePresetUnresolvedFiresNothing) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    // No scriptResolve -> nullopt
+    hwProfile().gestures["down"] =
+        ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")};
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    for (int i = 0; i < 10; ++i)
+        m_dispatcher->onGestureRaw(0, 20);
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+
+    EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
+    EXPECT_FALSE(m_injector->hasCalled("sendDBusCall"));
+    EXPECT_FALSE(m_injector->hasCalled("launchApp"));
+}

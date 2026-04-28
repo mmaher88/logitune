@@ -26,6 +26,7 @@ struct DBusCall {
     QString path;
     QString interface;
     QString method;
+    QString arg;      // optional; empty means "call with no args"
 };
 
 class ActionExecutor : public QObject {

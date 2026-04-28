@@ -1,10 +1,13 @@
 #include "desktop/KDeDesktop.h"
 #include "logging/LogManager.h"
+#include "actions/ActionPresetRegistry.h"
+#include <optional>
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusReply>
 #include <QDir>
 #include <QFile>
+#include <QJsonObject>
 #include <QProcessEnvironment>
 
 namespace logitune {
@@ -197,6 +200,50 @@ void KDeDesktop::blockGlobalShortcuts(bool block)
         QStringLiteral("blockGlobalShortcuts"));
     msg << block;
     QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
+}
+
+QString KDeDesktop::variantKey() const
+{
+    return QStringLiteral("kde");
+}
+
+std::optional<ButtonAction> KDeDesktop::resolveNamedAction(const QString &id) const
+{
+    if (!m_registry)
+        return std::nullopt;
+
+    const QJsonObject variant = m_registry->variantData(id, QStringLiteral("kde"));
+    if (variant.isEmpty())
+        return std::nullopt;
+
+    // kglobalaccel: invoke a named action by DBus. Encoded as a five-field
+    // comma-separated payload: service,path,interface,method,arg
+    // The DBus fields cannot contain commas by construction; the action name
+    // (arg) must not contain commas either (no escape is supported). Every
+    // kglobalaccel action we ship is comma-free.
+    if (variant.contains(QStringLiteral("kglobalaccel"))) {
+        const QJsonObject spec = variant.value(QStringLiteral("kglobalaccel")).toObject();
+        const QString component = spec.value(QStringLiteral("component")).toString();
+        const QString name = spec.value(QStringLiteral("name")).toString();
+        if (component.isEmpty() || name.isEmpty())
+            return std::nullopt;
+
+        const QString payload =
+            QStringLiteral("org.kde.kglobalaccel,/component/") + component +
+            QStringLiteral(",org.kde.kglobalaccel.Component,invokeShortcut,") + name;
+        return ButtonAction{ButtonAction::DBus, payload};
+    }
+
+    // app-launch: simpler, same transport as the existing AppLaunch type.
+    if (variant.contains(QStringLiteral("app-launch"))) {
+        const QJsonObject spec = variant.value(QStringLiteral("app-launch")).toObject();
+        const QString binary = spec.value(QStringLiteral("binary")).toString();
+        if (binary.isEmpty())
+            return std::nullopt;
+        return ButtonAction{ButtonAction::AppLaunch, binary};
+    }
+
+    return std::nullopt;
 }
 
 } // namespace logitune

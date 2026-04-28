@@ -11,6 +11,7 @@ struct ActionEntry {
     QString description;
     QString actionType;
     QString payload;  // e.g. "Ctrl+C" for keystroke, "" for default
+    QString category;
 };
 
 class ActionModel : public QAbstractListModel {
@@ -24,6 +25,7 @@ public:
         DescriptionRole,
         ActionTypeRole,
         PayloadRole,
+        CategoryRole,
     };
 
     explicit ActionModel(QObject *parent = nullptr);

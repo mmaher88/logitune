@@ -205,3 +205,36 @@ TEST_F(ProfileOrchestratorFixture, ApplyDisplayedChangeOnlyForwardsToHardwareWhe
     EXPECT_EQ(cached(QStringLiteral("other")).dpi, 3200);
     EXPECT_FALSE(forwarded);
 }
+
+// --- PresetRef round-trip --------------------------------------------------
+
+TEST_F(ProfileOrchestratorFixture, PresetRefRoundTripRestoresTypeAndName) {
+    attachMockSession();
+
+    // Assign a PresetRef action to button 3 (Back Button) via ButtonModel,
+    // then save. The orchestrator's saveCurrentProfile reads actionType/Name
+    // from ButtonModel and converts via buttonEntryToAction.
+    QList<ButtonAssignment> assignments;
+    for (const auto &ctrl : m_device.m_controls) {
+        assignments.append({ctrl.defaultName, QStringLiteral("default"),
+                            ctrl.controlId});
+    }
+    m_buttonModel->loadFromProfile(assignments);
+    m_buttonModel->setAction(3, QStringLiteral("Show desktop"),
+                              QStringLiteral("preset"));
+
+    m_orchestrator->saveCurrentProfile();
+
+    // Verify the profile on disk has the correct ButtonAction.
+    const QString path = m_profilesDir + QStringLiteral("/default.conf");
+    Profile reloaded = ProfileEngine::loadProfile(path);
+    ASSERT_EQ(reloaded.buttons[3].type, ButtonAction::PresetRef);
+    EXPECT_EQ(reloaded.buttons[3].payload, QStringLiteral("show-desktop"));
+
+    // Now simulate a display-profile change (the restore path). Before the
+    // fix this fell through to the default branch and reported "Back Button".
+    m_orchestrator->onDisplayProfileChanged(QStringLiteral("mock-serial"), reloaded);
+
+    EXPECT_EQ(m_buttonModel->actionTypeForButton(3), QStringLiteral("preset"));
+    EXPECT_EQ(m_buttonModel->actionNameForButton(3),  QStringLiteral("Show desktop"));
+}

@@ -6,7 +6,7 @@ Logitune is a Qt 6 / QML application that communicates with Logitech HID++ 2.0 d
 
 At a glance, one button press on the mouse turns into one row update in the QML UI. Each layer has one job, and `AppRoot` is a thin composition root that wires them together (not a place where behavior lives):
 
-<img src="diagrams/system-overview.png" alt="Logitune system overview: QML UI on top, then the app library band showing AppRoot, the four services (ActiveDeviceResolver, DeviceCommandHandler, ButtonActionDispatcher, ProfileOrchestrator), and Models + TrayManager; below that the core library with three sub-bands (integration, aggregation, protocol), then Linux kernel and hardware at the bottom" width="800"/>
+<img src="diagrams/system-overview.png" alt="Logitune system overview: QML UI on top, then the app library band showing AppRoot, the four services (ActiveDeviceResolver, DeviceCommandHandler, ButtonActionDispatcher, ProfileOrchestrator), and Models + TrayManager; below that the core library with four sub-bands (integration, domain with ProfileEngine/DeviceRegistry/ActionPresetRegistry, aggregation, protocol), then Linux kernel and hardware at the bottom" width="800"/>
 
 > Source: `docs/wiki/diagrams/system-overview.svg`. Re-render with `rsvg-convert -w 1600 -h 1240 docs/wiki/diagrams/system-overview.svg -o docs/wiki/diagrams/system-overview.png` after edits.
 
@@ -548,8 +548,9 @@ graph LR
 |------|------|-------------|
 | `NameRole` | QString | Display name (e.g., "Copy") |
 | `DescriptionRole` | QString | Help text |
-| `ActionTypeRole` | QString | "default", "keystroke", "app-launch", etc. |
-| `PayloadRole` | QString | Keystroke combo or app command |
+| `ActionTypeRole` | QString | "default", "keystroke", "app-launch", "preset", etc. |
+| `PayloadRole` | QString | Keystroke combo, app command, or preset id (when type is "preset") |
+| `CategoryRole` | QString | Group label ("Workspace", "Window", "Media", "System", "Edit", "Navigation", "Device", "Other"). The picker uses `ListView.section.property` to render section headers between groups. Rows are stored ordered by category, then alphabetically. |
 
 **ProfileModel** — `QAbstractListModel` for the profile tab bar:
 
@@ -657,6 +658,8 @@ classDiagram
         +available() bool
         +desktopName() QString
         +detectedCompositors() QStringList
+        +variantKey() QString
+        +resolveNamedAction(id) optional~ButtonAction~
         +blockGlobalShortcuts(bool block)
         +runningApplications() QVariantList
         +activeWindowChanged(wmClass, title) signal
@@ -1165,8 +1168,8 @@ stateDiagram-v2
     ResolveGesture --> ExecuteAction : |dx| or |dy| > 50
     ResolveGesture --> ExecuteClick : |dx| and |dy| <= 50
 
-    ExecuteAction --> Idle : Inject keystroke<br/>(Up/Down/Left/Right)
-    ExecuteClick --> Idle : Inject keystroke<br/>(Click gesture)
+    ExecuteAction --> Idle : Fire ButtonAction<br/>(Up/Down/Left/Right)
+    ExecuteClick --> Idle : Fire ButtonAction<br/>(Click)
 ```
 
 Direction resolution:
@@ -1174,6 +1177,8 @@ Direction resolution:
 - If `|dx| > |dy|`: Left (dx < 0) or Right (dx > 0)
 - If `|dy| > |dx|`: Up (dy < 0) or Down (dy > 0)
 - If neither exceeds threshold (50 units): Click
+
+Per-direction `ButtonAction` is stored in `Profile::gestures` (a `std::map<QString, ButtonAction>` keyed by direction name). The fire path supports the same action types as button presses: keystroke, media, app-launch, DBus, and `PresetRef` (resolved via `IDesktopIntegration::resolveNamedAction` exactly like the button-press path - see [PresetRef resolution](#presetref-resolution)).
 
 The gesture button (CID `0x00C3` on MX Master 3S) is diverted with `rawXY=true`, which causes the device to send `DivertedRawXYEvent` notifications instead of normal mouse movement.
 
@@ -1208,7 +1213,7 @@ The MX Master 3S reports `defaultDirection = 0` (positive when left/back), so `t
 
 **Responsibilities:**
 
-- **Action dispatch.** `executeAction(const ButtonAction&)` switches on `action.type`: `Keystroke` and `Media` both forward to `injectKeystroke(payload)`; `DBus` to `executeDBusCall(payload)`; `AppLaunch` to `launchApp(payload)`. `Default`, `GestureTrigger`, and `SmartShiftToggle` are handled upstream in `ButtonActionDispatcher` and fall through to a no-op here.
+- **Action dispatch.** `executeAction(const ButtonAction&)` switches on `action.type`: `Keystroke` and `Media` both forward to `injectKeystroke(payload)`; `DBus` to `executeDBusCall(payload)`; `AppLaunch` to `launchApp(payload)`. `Default`, `GestureTrigger`, and `SmartShiftToggle` are handled upstream in `ButtonActionDispatcher` and fall through to a no-op here. `PresetRef` is also resolved one layer up in `ButtonActionDispatcher` before reaching this executor and is never seen here.
 - **Injector routing.** `injectKeystroke(combo)`, `injectCtrlScroll(direction)`, `injectHorizontalScroll(direction)`, `executeDBusCall(spec)`, `launchApp(command)` are one-line passthroughs to the injector.
 - **Gesture detection.** Owns a `GestureDetector` instance accessible via `gestureDetector()`. `GestureDetector::addDelta(dx, dy)` accumulates the raw XY deltas emitted during a held gesture button; `resolve()` returns the dominant-axis `GestureDirection` (`Up`, `Down`, `Left`, `Right`, or `Click` when neither axis exceeds `kThreshold = 50`). `reset()` is called between gestures.
 
@@ -1225,10 +1230,80 @@ The MX Master 3S reports `defaultDirection = 0` (positive when left/back), so `t
 | `launchApp(const QString &command)` | Passthrough to `IInputInjector::launchApp`. |
 | `gestureDetector()` | Returns the owned `GestureDetector &` that accumulates raw XY deltas for gesture resolution. |
 | `parseKeystroke(const QString &combo)` | Static: forwards to `UinputInjector::parseKeystroke` so tests can exercise the parser without opening `/dev/uinput`. |
-| `parseDBusAction(const QString &spec)` | Static: splits a `service,path,interface,method` string into a `DBusCall` struct (empty on malformed input). |
+| `parseDBusAction(const QString &spec)` | Static: splits a 4- or 5-field comma-separated spec (`service,path,interface,method[,arg]`) into a `DBusCall` struct (empty on malformed input). The optional 5th field is the method argument, used by kglobalaccel's `invokeShortcut` to pass the action name. |
 | `gestureDirectionName(GestureDirection dir)` | Static: maps the enum to its display string. |
 
 `ActionExecutor` stores no state of its own other than the gesture accumulator and the injector pointer.
+
+## Action Presets
+
+Semantic action presets let the action catalog contain DE-independent entries like `show-desktop` or `task-switcher`. Profiles store the preset id; the active `IDesktopIntegration` resolves it to a concrete `ButtonAction` at fire time, so the action fires correctly regardless of the user's shortcut rebinds and profiles stay portable across desktop environments.
+
+### ActionPreset
+
+`ActionPreset` (`src/core/actions/ActionPreset.{h,cpp}`) is a POD: `id`, `label`, `icon`, `category`, and a map `variantKey -> QJsonObject` of DE-native hints. The hint shape is not interpreted here; each DE impl owns the parse logic for its own variant kind (`kglobalaccel`, `gsettings`, `app-launch`, etc). `fromJson(QJsonObject)` returns an invalid preset (empty id) on malformed input.
+
+### ActionPresetRegistry
+
+`ActionPresetRegistry` (`src/core/actions/ActionPresetRegistry.{h,cpp}`) owns the catalog. It loads the bundled Qt resource at `:/logitune/actions.json` via `loadFromResource()` and indexes by id.
+
+**Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `loadFromJson(const QByteArray &json)` | Parse JSON (expected array of presets), replace contents. Returns count of successfully-loaded presets. Malformed entries are skipped. |
+| `loadFromResource()` | Read `:/logitune/actions.json` and call `loadFromJson`. Logs on missing resource and on parse failure. |
+| `preset(const QString &id)` | Lookup by id. Returns `nullptr` for unknown ids. Pointer is valid until the next load call. |
+| `supportedBy(const QString &id, const QString &variantKey)` | True if the preset exists AND has a variant for that key. Used by `ActionFilterModel` to filter the picker. |
+| `variantData(const QString &id, const QString &variantKey)` | Returns the hint object for that id/variant pair, or empty object if either is absent. Used by DE impls. |
+| `all()` | Const reference to the insertion-ordered vector. Used by UI listings. |
+
+### Per-DE resolution
+
+Each `IDesktopIntegration` impl overrides two virtuals:
+
+- `variantKey()` returns the short string key used in `actions.json` (`"kde"`, `"gnome"`, `"generic"`).
+- `resolveNamedAction(id)` returns `std::optional<ButtonAction>` - the concrete action the executor can fire, or nullopt if this DE cannot resolve the preset.
+
+**KDE** (`KDeDesktop::resolveNamedAction`) reads the `kde` variant from the registry. For a `kglobalaccel` hint (`{"component": "...", "name": "..."}`), it emits a DBus `ButtonAction` with a 5-field payload: `org.kde.kglobalaccel,/component/<component>,org.kde.kglobalaccel.Component,invokeShortcut,<name>`. kglobalaccel then invokes the action by name, independent of what keystroke the user has bound to it. For `app-launch` hints, it returns an `AppLaunch` ButtonAction directly.
+
+**GNOME** (`GnomeDesktop::resolveNamedAction`) reads the `gnome` variant. For a `gsettings` hint (`{"schema": "...", "key": "..."}`), it shells out to `gsettings get <schema> <key>` via QProcess, parses the GLib variant output (e.g. `['<Super>d']`), and rewrites the modifier tokens into Logitune keystroke format (`<Primary>` -> `Ctrl`, `<Super>`/`<Meta>`/`<Hyper>` -> `Super`, `<AltGr>`/`<ISO_Level3_Shift>` dropped). Returns a `Keystroke` ButtonAction with the resolved combo. Empty binding (user cleared the shortcut) returns nullopt so the picker can grey out the preset. For `app-launch` hints, direct passthrough.
+
+**Generic** returns nullopt for every id. No preset has a `"generic"` variant in the shipped catalog.
+
+### Filter-model integration
+
+`ActionFilterModel` applies two gates to rows with `actionType == "preset"`:
+
+1. `registry->supportedBy(id, desktop->variantKey())` - hides presets with no variant for the active DE.
+2. `desktop->resolveNamedAction(id).has_value()` - hides presets whose live binding is empty or otherwise unresolvable at filter time (primarily a GNOME case).
+
+Capability-based filtering (dpi-cycle, smartshift-toggle, gesture-trigger, wheel-mode) is unchanged.
+
+`AppRoot` registers two `ActionFilterModel` instances as QML singletons: `ActionModel` for the regular per-button picker, and `GestureActionModel` (constructed with `setGestureMode(true)`) for the gesture sub-direction picker. The gesture-mode filter additionally hides actions whose runtime path the gesture-release dispatcher can't sensibly fire as a sub-direction (`gesture-trigger` is recursive; `none` is already covered by the picker's "None" sentinel). Other types pass through.
+
+### Composition
+
+`AppRoot` owns an `ActionPresetRegistry` member, calls `loadFromResource()` at construction, and injects it into the concrete DE impls via `dynamic_cast`. The registry is also passed to both `ActionFilterModel` instances. New DE impls that want to resolve presets override `variantKey()` + `resolveNamedAction()` and accept the registry via `setPresetRegistry()`.
+
+### Data: actions.json
+
+The catalog lives at `src/core/actions/actions.json` and is bundled as a Qt resource (`qt_add_resources` in `src/core/CMakeLists.txt`). Each entry:
+
+```json
+{
+  "id": "show-desktop",
+  "label": "Show desktop",
+  "icon": "desktop",
+  "category": "workspace",
+  "variants": {
+    "kde":   { "kglobalaccel": { "component": "kwin", "name": "Show Desktop" } },
+    "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "show-desktop" } }
+  }
+}
+```
+
+Adding a new preset is a catalog edit plus (if needed) a new variant kind handled in the DE impls.
 
 ## Services
 
@@ -1292,7 +1367,7 @@ Constructor dependencies: `ActiveDeviceResolver*`. State: none.
 
 Interprets raw HID++ input events (`gestureRawXY`, `divertedButtonPressed`, `thumbWheelRotation`) and dispatches high-level actions: keystroke injection, app launch, DPI cycle, SmartShift toggle, gesture direction resolution, and thumb-wheel-mode actions. Owns the per-device gesture + thumb-wheel accumulator state.
 
-Constructor dependencies: `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceResolver*`. State: `QMap<QString, PerDeviceState>` keyed by serial. Each entry holds `gestureAccumX/Y`, `thumbAccum`, `gestureActive`, `gestureControlId`. Gesture threshold is 50, thumb threshold is 15.
+Constructor dependencies: `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceResolver*`, `IDesktopIntegration*`. State: `QMap<QString, PerDeviceState>` keyed by serial. Each entry holds `gestureAccumX/Y`, `thumbAccum`, `gestureActive`, `gestureControlId`. Gesture threshold is 50, thumb threshold is 15. The desktop pointer is used to resolve `PresetRef` actions at fire time on both the button-press and gesture-release paths.
 
 **Methods:**
 
@@ -1309,6 +1384,12 @@ Constructor dependencies: `ProfileEngine*`, `ActionExecutor*`, `ActiveDeviceReso
 | `onThumbWheelRotation(int delta)` | `PhysicalDevice::thumbWheelRotation`, wired per-device in `AppRoot::onPhysicalDeviceAdded`. |
 | `onProfileApplied(const QString &serial)` | `ProfileOrchestrator::profileApplied`, used to reset `thumbAccum` for the given serial. |
 | `onCurrentDeviceChanged(const IDevice *device)` | `ProfileOrchestrator::currentDeviceChanged`, keeps the local `IDevice*` pointer in sync. |
+
+#### PresetRef resolution
+
+When a button's action is a `ButtonAction::PresetRef`, the dispatcher looks up the preset id on the active `IDesktopIntegration`. `desktop->resolveNamedAction(id)` returns an `std::optional<ButtonAction>` that resolves the semantic id (e.g. `show-desktop`) to a concrete Keystroke / DBus / AppLaunch payload using the per-DE strategy (KDE: `kglobalaccel` DBus by name; GNOME: `gsettings` lookup plus keystroke inject; Generic: nullopt). The resolved action is then handed to `ActionExecutor::executeAction`, so the executor never sees a `PresetRef` directly. If the desktop is null or resolution returns nullopt (user cleared the GNOME binding, or the DE lacks a variant for this preset), the dispatcher logs a warning and fires nothing.
+
+The same resolution path runs for gestures: when a gesture-release fires, the `Profile::gestures` map yields a full `ButtonAction` (gestures store the same enum the button-press path uses, not just keystroke strings). If the action is a `PresetRef`, it goes through `desktop->resolveNamedAction(id)` exactly like a button press, then the resolved action is handed to `ActionExecutor::executeAction`. This is why the dispatcher takes the `IDesktopIntegration*` in its constructor.
 
 ### ProfileOrchestrator
 

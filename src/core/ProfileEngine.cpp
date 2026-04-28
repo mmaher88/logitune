@@ -41,6 +41,7 @@ ButtonAction ButtonAction::parse(const QString &str)
     if (prefix == "media")      return {Media,       payload};
     if (prefix == "dbus")       return {DBus,        payload};
     if (prefix == "app-launch") return {AppLaunch,   payload};
+    if (prefix == "preset")     return {PresetRef,   payload};
 
     // Unknown prefix — treat as default
     return {Default, {}};
@@ -57,6 +58,7 @@ QString ButtonAction::serialize() const
     case Media:         return "media:" + payload;
     case DBus:          return "dbus:" + payload;
     case AppLaunch:     return "app-launch:" + payload;
+    case PresetRef:     return "preset:" + payload;
     }
     return "default";
 }

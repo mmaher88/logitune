@@ -14,6 +14,8 @@ public:
     virtual bool available() const = 0;
     virtual QString desktopName() const = 0;
     virtual QStringList detectedCompositors() const = 0;
+    virtual QString variantKey() const = 0;
+    virtual std::optional<ButtonAction> resolveNamedAction(const QString &id) const = 0;
     virtual void blockGlobalShortcuts(bool block) = 0;
     virtual QVariantList runningApplications() const = 0;
 
@@ -30,6 +32,8 @@ signals:
 | `available()` | Return true if this DE is detected and usable | Checked before relying on DE features |
 | `desktopName()` | Human-readable name (e.g., "KDE", "GNOME") | Logging and UI |
 | `detectedCompositors()` | List of detected compositor names | Diagnostics |
+| `variantKey()` | Short string key matching a top-level key under `variants` in `actions.json` (e.g. `"kde"`, `"gnome"`, `"generic"`). | Read by `ActionFilterModel` per row, by `ActionPresetRegistry::supportedBy` queries. |
+| `resolveNamedAction(id)` | Turn a semantic preset id into a concrete `ButtonAction`, or `nullopt` if this DE cannot resolve it. | Called by `ButtonActionDispatcher` on every button press with a `PresetRef` action, and by `ActionFilterModel` at filter time to grey out presets whose live binding is empty. |
 | `blockGlobalShortcuts(bool)` | Temporarily disable global shortcuts during keystroke capture | During KeystrokeCapture QML component |
 | `runningApplications()` | Return list of installed GUI applications | App profile picker dialog |
 
@@ -290,6 +294,67 @@ TEST(DesktopDetectionTest, GnomeDetected) {
     // (This may require environment variable manipulation)
 }
 ```
+
+## Preset Resolution
+
+Logitune's action picker includes DE-specific semantic presets (Show desktop, Task switcher, Switch desktop left/right, Screenshot, Close window, Calculator). Each preset is resolved to a concrete keystroke, DBus call, or app launch by the active `IDesktopIntegration` impl.
+
+A new DE impl needs to implement two virtuals:
+
+### variantKey()
+
+Return a short, lowercase string that matches a top-level key in `src/core/actions/actions.json`'s `variants` map. Existing keys: `"kde"`, `"gnome"`, `"generic"`. For a new DE, pick a distinctive key and add matching entries to each preset's `variants` object in `actions.json`. The key does not need to match `desktopName()`.
+
+### resolveNamedAction(id)
+
+Return `std::optional<ButtonAction>`:
+- `std::nullopt` - "this DE cannot resolve this preset right now". The action picker hides the row; at fire time the dispatcher logs and does nothing.
+- A populated `ButtonAction` - a concrete `Keystroke`, `DBus`, `AppLaunch`, or `Media` action the executor can fire.
+
+The DE impl gets a non-owning pointer to `ActionPresetRegistry` via `setPresetRegistry()` (called once by `AppRoot` at composition time). At resolve time, read `m_registry->variantData(id, variantKey())` to get the hint JSON, branch on the hint kind, and build the concrete `ButtonAction`.
+
+### Example: KDE
+
+KDE's `kglobalaccel` lets callers invoke actions by name over DBus regardless of what keystroke the user has bound. So the KDE impl packs the component + action name into a 5-field DBus payload and returns a `ButtonAction{DBus, ...}`:
+
+```cpp
+std::optional<ButtonAction> KDeDesktop::resolveNamedAction(const QString &id) const
+{
+    if (!m_registry) return std::nullopt;
+    const QJsonObject variant = m_registry->variantData(id, QStringLiteral("kde"));
+    if (variant.isEmpty()) return std::nullopt;
+
+    if (variant.contains(QStringLiteral("kglobalaccel"))) {
+        const QJsonObject spec = variant.value(QStringLiteral("kglobalaccel")).toObject();
+        const QString component = spec.value(QStringLiteral("component")).toString();
+        const QString name = spec.value(QStringLiteral("name")).toString();
+        if (component.isEmpty() || name.isEmpty()) return std::nullopt;
+
+        const QString payload =
+            QStringLiteral("org.kde.kglobalaccel,/component/") + component +
+            QStringLiteral(",org.kde.kglobalaccel.Component,invokeShortcut,") + name;
+        return ButtonAction{ButtonAction::DBus, payload};
+    }
+    // ... app-launch branch
+    return std::nullopt;
+}
+```
+
+### Example: GNOME
+
+GNOME has no binding-independent invoker for most actions, so the GNOME impl reads the user's current binding from `gsettings`, translates the GLib variant output (`['<Super>d']`) into Logitune keystroke format (`Super+d`), and returns `ButtonAction{Keystroke, ...}`. Empty binding returns `nullopt`. Uses an injectable `std::function` reader for tests so unit tests do not fork QProcess.
+
+### Example: Hyprland / Sway / i3
+
+The tiling WMs have IPC-dispatchable actions by name. A `hyprctl` / `swaymsg` / `i3-msg` hint kind could produce `ButtonAction{AppLaunch, "hyprctl dispatch exec ..."}` or similar. Binding-independent like KDE.
+
+### If your DE does not support some presets
+
+Leave its variant out of those entries in `actions.json`. `ActionPresetRegistry::supportedBy(id, variantKey)` then returns false and the action picker hides the row on your DE. Users on your DE simply do not see presets that cannot work there.
+
+### Generic fallback
+
+`GenericDesktop::resolveNamedAction` returns `std::nullopt` for every id. No preset has a `"generic"` variant today, because every semantic action in scope needs a DE-native invoker to be reliable. Media keys / alt+tab / XF86 keysyms are handled as raw `Keystroke` actions in the existing catalog, not as presets.
 
 ### Extracting Shared Utilities
 

@@ -157,3 +157,24 @@ TEST(ButtonAction, SerializeMediaVolumeUp) {
     ButtonAction a{ButtonAction::Media, "VolumeUp"};
     EXPECT_EQ(a.serialize(), "media:VolumeUp");
 }
+
+// ---------------------------------------------------------------------------
+// PresetRef tests
+// ---------------------------------------------------------------------------
+
+TEST(ButtonAction, ParsePresetRefShowDesktop) {
+    auto a = ButtonAction::parse("preset:show-desktop");
+    EXPECT_EQ(a.type, ButtonAction::PresetRef);
+    EXPECT_EQ(a.payload, "show-desktop");
+}
+
+TEST(ButtonAction, SerializePresetRefTaskSwitcher) {
+    ButtonAction a{ButtonAction::PresetRef, "task-switcher"};
+    EXPECT_EQ(a.serialize(), "preset:task-switcher");
+}
+
+TEST(ButtonAction, RoundTripPresetRefSwitchDesktopLeft) {
+    ButtonAction orig{ButtonAction::PresetRef, "switch-desktop-left"};
+    ButtonAction result = ButtonAction::parse(orig.serialize());
+    EXPECT_EQ(result, orig);
+}

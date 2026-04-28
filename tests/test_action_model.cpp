@@ -77,12 +77,12 @@ TEST_F(ActionModelTest, KeyboardShortcutHasEmptyPayload) {
 // actionType checks
 // ---------------------------------------------------------------------------
 
-TEST_F(ActionModelTest, CalculatorIsAppLaunch) {
+TEST_F(ActionModelTest, CalculatorIsPreset) {
     int idx = model.indexForName(QStringLiteral("Calculator"));
     ASSERT_GE(idx, 0);
     QModelIndex midx = model.index(idx);
     EXPECT_EQ(model.data(midx, ActionModel::ActionTypeRole).toString(),
-              QStringLiteral("app-launch"));
+              QStringLiteral("preset"));
 }
 
 TEST_F(ActionModelTest, DoNothingIsNoneType) {
@@ -161,9 +161,12 @@ TEST_F(ActionModelTest, ButtonEntryToActionDpiCycle) {
     EXPECT_EQ(ba.type, ButtonAction::DpiCycle);
 }
 
-TEST_F(ActionModelTest, ButtonEntryToActionMediaControlsMapsDisplayNameToKey) {
-    auto ba = model.buttonEntryToAction(QStringLiteral("media-controls"), QStringLiteral("Next track"));
-    EXPECT_EQ(ba.type, ButtonAction::Media);
+TEST_F(ActionModelTest, ButtonEntryToActionNextTrackResolvesAsKeystroke) {
+    // "Next track" was promoted from a sub-only media combo entry to a
+    // direct keystroke entry; the translator should now return a
+    // Keystroke action with the corresponding payload.
+    auto ba = model.buttonEntryToAction(QStringLiteral("keystroke"), QStringLiteral("Next track"));
+    EXPECT_EQ(ba.type, ButtonAction::Keystroke);
     EXPECT_EQ(ba.payload, QStringLiteral("Next"));
 }
 
@@ -188,10 +191,12 @@ TEST_F(ActionModelTest, ButtonEntryToActionKeyboardShortcutHasEmptyPayload) {
     EXPECT_TRUE(ba.payload.isEmpty());
 }
 
-TEST_F(ActionModelTest, ButtonEntryToActionAppLaunchResolvesPayload) {
+TEST_F(ActionModelTest, ButtonEntryToActionAppLaunchFallsBackToName) {
+    // "app-launch" branch: payloadForName returns whatever the model stores.
+    // Calculator is now a preset entry so payloadForName returns "calculator".
     auto ba = model.buttonEntryToAction(QStringLiteral("app-launch"), QStringLiteral("Calculator"));
     EXPECT_EQ(ba.type, ButtonAction::AppLaunch);
-    EXPECT_EQ(ba.payload, QStringLiteral("kcalc"));
+    EXPECT_EQ(ba.payload, QStringLiteral("calculator"));
 }
 
 TEST_F(ActionModelTest, ButtonEntryToActionUnknownTypeReturnsDefault) {
@@ -211,12 +216,65 @@ TEST_F(ActionModelTest, RoundTripKeystrokeCopy) {
     EXPECT_EQ(recovered, original);
 }
 
-TEST_F(ActionModelTest, RoundTripMediaNextTrack) {
-    // Media is serialized with display names ("Next track") in the UI, so we
-    // can't round-trip by starting from ButtonActionToName (it just returns the
-    // payload). Instead, round-trip the UI -> domain -> UI direction matters
-    // less here; ensure the domain side parses correctly for the known key.
-    auto ba = model.buttonEntryToAction(QStringLiteral("media-controls"), QStringLiteral("Play/Pause"));
-    EXPECT_EQ(ba.type, ButtonAction::Media);
-    EXPECT_EQ(ba.payload, QStringLiteral("Play"));
+TEST_F(ActionModelTest, RoundTripKeystrokePlayPause) {
+    // Play/Pause is a direct keystroke entry; UI -> domain -> UI should
+    // round-trip cleanly through the keystroke branch.
+    ButtonAction original{ButtonAction::Keystroke, QStringLiteral("Play")};
+    QString name = model.buttonActionToName(original);
+    EXPECT_EQ(name, QStringLiteral("Play/Pause"));
+    auto recovered = model.buttonEntryToAction(QStringLiteral("keystroke"), name);
+    EXPECT_EQ(recovered, original);
+}
+
+// ---------------------------------------------------------------------------
+// PresetRef entries (Task 9)
+// ---------------------------------------------------------------------------
+
+TEST(ActionModel, ShowDesktopEntryIsPresetRef) {
+    ActionModel m;
+    int idx = m.indexForName("Show desktop");
+    ASSERT_GE(idx, 0);
+    auto i = m.index(idx, 0);
+    EXPECT_EQ(m.data(i, ActionModel::ActionTypeRole).toString(), "preset");
+    EXPECT_EQ(m.data(i, ActionModel::PayloadRole).toString(), "show-desktop");
+}
+
+TEST(ActionModel, TaskSwitcherEntryIsPresetRef) {
+    ActionModel m;
+    int idx = m.indexForName("Task switcher");
+    ASSERT_GE(idx, 0);
+    auto i = m.index(idx, 0);
+    EXPECT_EQ(m.data(i, ActionModel::ActionTypeRole).toString(), "preset");
+    EXPECT_EQ(m.data(i, ActionModel::PayloadRole).toString(), "task-switcher");
+}
+
+TEST(ActionModel, CalculatorEntryIsPresetRef) {
+    ActionModel m;
+    int idx = m.indexForName("Calculator");
+    ASSERT_GE(idx, 0);
+    auto i = m.index(idx, 0);
+    EXPECT_EQ(m.data(i, ActionModel::ActionTypeRole).toString(), "preset");
+    EXPECT_EQ(m.data(i, ActionModel::PayloadRole).toString(), "calculator");
+}
+
+TEST(ActionModel, BackEntryStaysRawKeystroke) {
+    ActionModel m;
+    int idx = m.indexForName("Back");
+    ASSERT_GE(idx, 0);
+    auto i = m.index(idx, 0);
+    EXPECT_EQ(m.data(i, ActionModel::ActionTypeRole).toString(), "keystroke");
+    EXPECT_EQ(m.data(i, ActionModel::PayloadRole).toString(), "Alt+Left");
+}
+
+TEST(ActionModel, buttonEntryToActionPresetReturnsPresetRef) {
+    ActionModel m;
+    ButtonAction ba = m.buttonEntryToAction("preset", "Show desktop");
+    EXPECT_EQ(ba.type, ButtonAction::PresetRef);
+    EXPECT_EQ(ba.payload, "show-desktop");
+}
+
+TEST(ActionModel, buttonActionToNamePresetLooksUpLabel) {
+    ActionModel m;
+    EXPECT_EQ(m.buttonActionToName(ButtonAction{ButtonAction::PresetRef, "show-desktop"}),
+              "Show desktop");
 }

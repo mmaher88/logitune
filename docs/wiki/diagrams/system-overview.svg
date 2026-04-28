@@ -96,6 +96,7 @@
     <!-- Core / Domain -->
     <rect x="140" y="510" width="220" height="40" stroke="#10b981" rx="4"/>
     <rect x="375" y="510" width="220" height="40" stroke="#10b981" rx="4"/>
+    <rect x="610" y="510" width="220" height="40" stroke="#10b981" rx="4"/>
 
     <!-- Core / Aggregation -->
     <rect x="140" y="610" width="260" height="40" stroke="#10b981" rx="4"/>
@@ -166,6 +167,7 @@
     <!-- Core / Domain -->
     <text x="250" y="535">ProfileEngine</text>
     <text x="485" y="535">DeviceRegistry</text>
+    <text x="720" y="535">ActionPresetRegistry</text>
 
     <!-- Core / Aggregation -->
     <text x="270" y="635">PhysicalDevice</text>
