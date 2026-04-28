@@ -77,6 +77,14 @@ private:
     void wireSignals();
     void onSelectionChanged();
 
+    // Tracks the last active device handed to onSelectionChanged so the
+    // slot stays idempotent. DeviceModel::selectedChanged also fires from
+    // refreshRow on every per-property hardware tick, so without this
+    // guard a SmartShift / DPI / scroll change would immediately re-prime
+    // the displayed-values cache from the stored profile and overwrite the
+    // live hardware value the QML bindings should reflect.
+    PhysicalDevice *m_lastSelectionTarget = nullptr;
+
     static std::unique_ptr<IDesktopIntegration> makeOwnedDesktop(IDesktopIntegration *provided);
     static std::unique_ptr<IInputInjector>      makeOwnedInjector(IInputInjector *provided);
 
