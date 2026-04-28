@@ -28,7 +28,7 @@ The project is split into two static libraries:
 
 | Library | Contents | Dependencies |
 |---------|----------|-------------|
-| `logitune-core` | DeviceManager, `PhysicalDevice`, `DeviceSession`, HID++ protocol + capability dispatch, ProfileEngine, ActionExecutor, `DeviceRegistry`, `JsonDevice`, `DescriptorWriter`, `LinuxDesktopBase` + KDE/GNOME/Generic implementations, input injection, logging | Qt6::Core, Qt6::DBus, libudev |
+| `logitune-core` | DeviceManager, `PhysicalDevice`, `DeviceSession`, HID++ protocol + capability dispatch, ProfileEngine, ActionExecutor, `ActionPresetRegistry`, `DeviceRegistry`, `JsonDevice`, `DescriptorWriter`, `LinuxDesktopBase` + KDE/GNOME/Generic implementations (each with `variantKey` + `resolveNamedAction`), input injection, logging | Qt6::Core, Qt6::DBus, libudev |
 | `logitune-app-lib` | AppRoot, `EditorModel`, models (DeviceModel, ButtonModel, ActionModel, `ActionFilterModel`, ProfileModel, `SettingsModel`), TrayManager, QML module, dialogs | logitune-core, Qt6::Quick, Qt6::Widgets |
 
 This split allows tests to link against `logitune-core` and `logitune-app-lib` without pulling in the executable's `main()`.
@@ -467,6 +467,7 @@ graph LR
         DM[DeviceModel]
         BM[ButtonModel]
         AM[ActionModel]
+        GAM[GestureActionModel]
         PM[ProfileModel]
     end
 
@@ -482,11 +483,14 @@ graph LR
         DMgr[DeviceManager]
         PE[ProfileEngine]
         AE[ActionExecutor]
+        APR[ActionPresetRegistry]
+        IDI[IDesktopIntegration]
     end
 
     PointScroll --> DM
     Buttons --> BM
     Buttons --> AM
+    Buttons --> GAM
     Buttons --> DM
     EasySwitch --> DM
     Settings --> DM
@@ -496,19 +500,28 @@ graph LR
     BM -->|userActionChanged| PO
     PM -->|profileSwitched| PO
 
+    AM -->|preset variant gate| APR
+    AM -->|live-binding gate| IDI
+    GAM -->|gestureMode filter| APR
+    GAM -->|gestureMode filter| IDI
+
     DSel --> DM
     DCmd --> DSel
     DCmd --> DMgr
     BAD --> DSel
     BAD --> PE
     BAD --> AE
+    BAD -->|resolve PresetRef| IDI
 
     PO --> DSel
     PO --> PE
     PO --> AE
+    PO --> IDI
     PO -->|pushDisplayValues| DM
     PO -->|restoreButtons| BM
     PO -->|setHwActive| PM
+
+    IDI -->|variantData| APR
 
     classDef view fill:#831843,stroke:#f472b6,color:#fce7f3
     classDef vm fill:#1e3a8a,stroke:#60a5fa,color:#dbeafe
@@ -517,10 +530,10 @@ graph LR
     classDef core fill:#78350f,stroke:#fbbf24,color:#fef3c7
 
     class PointScroll,Buttons,EasySwitch,Settings,ProfileBar view
-    class DM,BM,AM,PM vm
+    class DM,BM,AM,GAM,PM vm
     class DSel,DCmd,BAD service
     class PO coord
-    class DMgr,PE,AE core
+    class DMgr,PE,AE,APR,IDI core
 ```
 
 ### Model Roles
@@ -569,12 +582,13 @@ Models are registered as QML singletons in `main.cpp`:
 ```cpp
 qmlRegisterSingletonInstance("Logitune", 1, 0, "DeviceModel",        controller.deviceModel());
 qmlRegisterSingletonInstance("Logitune", 1, 0, "ButtonModel",        controller.buttonModel());
-qmlRegisterSingletonInstance("Logitune", 1, 0, "ActionFilterModel",  controller.actionFilterModel());
+qmlRegisterSingletonInstance("Logitune", 1, 0, "ActionModel",        controller.actionFilterModel());
+qmlRegisterSingletonInstance("Logitune", 1, 0, "GestureActionModel", controller.gestureActionFilterModel());
 qmlRegisterSingletonInstance("Logitune", 1, 0, "ProfileModel",       controller.profileModel());
 qmlRegisterSingletonInstance("Logitune", 1, 0, "SettingsModel",      controller.settingsModel());
 ```
 
-`ActionFilterModel` wraps the raw `ActionModel` catalog and hides entries the selected device can't execute (PR #82). QML code always binds to the filter model, never to the raw catalog. `SettingsModel` exposes the persisted user prefs (dark mode, logging, autostart, minimized, bug reports) as a single Q_PROPERTY surface.
+`ActionModel` (the QML name) is bound to a filtering proxy — `ActionFilterModel` wraps the raw `ActionModel` catalog and hides entries the selected device can't execute (PR #82) plus preset rows whose DE doesn't support them. QML always binds through the filter, never the raw catalog. `GestureActionModel` is a second `ActionFilterModel` instance with `gestureMode=true` so the gesture sub-direction picker only sees actions the gesture-release dispatcher can fire (excludes `gesture-trigger` recursion and `none`). `SettingsModel` exposes the persisted user prefs (dark mode, logging, autostart, minimized, bug reports) as a single Q_PROPERTY surface.
 
 ```mermaid
 flowchart LR
@@ -582,18 +596,20 @@ flowchart LR
 
     DM["DeviceModel<br/><i>rows: PhysicalDevice *</i>"]
     BM["ButtonModel<br/><i>rows: visible buttons of<br/>selected device profile</i>"]
-    AFM["ActionFilterModel<br/><i>catalog minus actions the<br/>selected device can't run</i>"]
+    AFM["ActionModel<br/><i>filtered catalog minus<br/>device-incompatible rows</i>"]
+    GAM["GestureActionModel<br/><i>same catalog, gestureMode<br/>filter (no gesture-trigger)</i>"]
     PM["ProfileModel<br/><i>rows: user's profiles</i>"]
     SM["SettingsModel<br/><i>dark mode, logging,<br/>autostart, …</i>"]
 
     QML -->|singleton| DM
     QML -->|singleton| BM
     QML -->|singleton| AFM
+    QML -->|singleton| GAM
     QML -->|singleton| PM
     QML -->|singleton| SM
 ```
 
-All five are registered in `src/app/main.cpp` against `controller.xxxModel()` accessors — AppRoot owns them, QML borrows them. No other QML-visible C++ classes.
+All six are registered in `src/app/main.cpp` against `controller.xxxModel()` accessors — AppRoot owns them, QML borrows them. No other QML-visible C++ classes.
 
 ### EditorModel
 
