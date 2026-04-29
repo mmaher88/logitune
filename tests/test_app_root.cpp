@@ -438,9 +438,16 @@ TEST_F(AppRootFixture, MediaActionPerProfileSwitching) {
 
 TEST_F(AppRootFixture, CarouselSwitchSwapsButtonModel) {
     // Fixture's primary device "mock-serial" is selected (index 0). Set
-    // its button 3 to a distinctive action.
+    // its button 3 to a distinctive action and bounce the display profile
+    // so ButtonModel re-loads from the mutated cache. (Mutating the cache
+    // alone doesn't refresh the ButtonModel; that requires going through
+    // onDisplayProfileChanged.)
     setProfileButton("default", 3,
                      {ButtonAction::Keystroke, QStringLiteral("Alt+Left")});
+    profileEngine().setDisplayProfile(
+        QStringLiteral("mock-serial"), QString());
+    profileEngine().setDisplayProfile(
+        QStringLiteral("mock-serial"), QStringLiteral("default"));
     deviceModel().setSelectedIndex(0);
 
     auto *secondary = addMockDevice(QStringLiteral("B"));
@@ -453,8 +460,7 @@ TEST_F(AppRootFixture, CarouselSwitchSwapsButtonModel) {
             serialB, QStringLiteral("default"));
     }
 
-    // Select device A explicitly and confirm ButtonModel reflects A.
-    deviceModel().setSelectedIndex(0);
+    // ButtonModel reflects A's profile.
     EXPECT_EQ(buttonModel().actionTypeForButton(3),
               QStringLiteral("keystroke"));
 
@@ -489,17 +495,25 @@ TEST_F(AppRootFixture, DisplayProfileChangedIgnoredForNonSelectedDevice) {
     deviceModel().setSelectedIndex(0);
     EXPECT_EQ(deviceModel().currentDPI(), 1000);
 
-    // Add a second device without switching to it. Primary stays selected.
-    addMockDevice(QStringLiteral("B"), /*seedDpi=*/2500);
-    EXPECT_EQ(deviceModel().selectedIndex(), 0);
-
-    // Modify device B's cached profile and fire its displayProfile signal.
-    // setDisplayProfile short-circuits on unchanged name, so bounce through
-    // an intermediate value to force emission.
+    // Register a second device's profile dir with the engine WITHOUT
+    // adding it to the carousel. addMockDevice would also drive
+    // setupProfileForDevice + applyProfileToHardware, which routes
+    // through the active session (i.e. A's) and clobbers A's hardware
+    // values. We're testing the engine-level filter here, not transport
+    // routing, so we sidestep that path.
     const QString serialB = QStringLiteral("mock-serial-B");
-    Profile &pB = profileEngine().cachedProfile(
+    const QString dirB = m_tmpDir.path() + "/" + serialB + "/profiles";
+    QDir().mkpath(dirB);
+    Profile pB;
+    pB.name = QStringLiteral("Default");
+    pB.dpi  = 9999;
+    ProfileEngine::saveProfile(dirB + "/default.conf", pB);
+    profileEngine().registerDevice(serialB, dirB);
+
+    // Bounce setDisplayProfile to force deviceDisplayProfileChanged emission
+    // (setDisplayProfile short-circuits on unchanged name).
+    profileEngine().setDisplayProfile(
         serialB, QStringLiteral("default"));
-    pB.dpi = 9999;
     profileEngine().setDisplayProfile(
         serialB, QStringLiteral("other"));
     profileEngine().setDisplayProfile(
@@ -508,4 +522,28 @@ TEST_F(AppRootFixture, DisplayProfileChangedIgnoredForNonSelectedDevice) {
     // DeviceModel should still reflect device A's 1000 DPI — the
     // onDisplayProfileChanged filter rejected device B's signal.
     EXPECT_EQ(deviceModel().currentDPI(), 1000);
+}
+
+// Regression test for the stale-cache-on-state-tick bug. The per-property
+// NOTIFY chain (DeviceSession -> PhysicalDevice -> DeviceModel) clears
+// m_hasDisplayValues so QML re-reads the live session value. A separate
+// path also fires DeviceModel::selectedChanged from refreshRow on the
+// same state tick; AppRoot::onSelectionChanged must not treat that as a
+// real selection change and replay onDisplayProfileChanged, which would
+// re-prime the cache from the stored profile and clobber the live value.
+TEST_F(AppRootFixture, HardwareDpiTickDoesNotRepriDisplayCache) {
+    deviceModel().setSelectedIndex(0);
+    EXPECT_EQ(deviceModel().currentDPI(), 1000);  // primed from profile
+
+    // Simulate a hardware-side DPI change on the selected device (e.g. the
+    // user pressed the DPI cycle button on the mouse). Going through
+    // DeviceSession::setDPI exercises the same per-property emit + stateChanged
+    // co-fire that the live HID++ path produces.
+    m_session->setDPI(2400);
+
+    // Without the fix: AppRoot::onSelectionChanged is re-driven by
+    // refreshRow's selectedChanged emit, replays onDisplayProfileChanged,
+    // and setDisplayValues re-arms m_displayDpi back to the profile's 1000.
+    // With the fix: same active device, so onSelectionChanged bails.
+    EXPECT_EQ(deviceModel().currentDPI(), 2400);
 }

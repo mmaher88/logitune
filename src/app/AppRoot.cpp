@@ -297,6 +297,17 @@ void AppRoot::onSelectionChanged()
     auto *device = m_deviceResolver.activeDevice();
     if (!device) return;
 
+    // DeviceModel::selectedChanged also fires from refreshRow whenever any
+    // observable property of the selected device ticks (battery, SmartShift,
+    // DPI, etc.). For those, the active device pointer hasn't actually
+    // moved, so the orchestrator-replay below would re-prime the displayed-
+    // values cache from the profile and clobber the live hardware value the
+    // per-property NOTIFY chain just published. Bail out unless the active
+    // device actually changed.
+    if (device == m_lastSelectionTarget)
+        return;
+    m_lastSelectionTarget = device;
+
     // Tell the orchestrator about the new IDevice; it in turn emits
     // currentDeviceChanged which is wired to the dispatcher in wireSignals().
     m_profileOrchestrator.onCurrentDeviceChanged(device->descriptor());
