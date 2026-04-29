@@ -779,14 +779,24 @@ void DeviceModel::setThumbWheelInvert(bool invert)
     emit thumbWheelInvertChangeRequested(invert);
 }
 
-void DeviceModel::setGestureAction(const QString &direction, const QString &actionName, const QString &keystroke)
+void DeviceModel::setGestureAction(const QString &direction,
+                                   const QString &actionName,
+                                   const QString &actionType,
+                                   const QString &payload)
 {
-    m_gestures[direction] = qMakePair(actionName, keystroke);
+    ButtonAction ba;
+    if (actionType == QLatin1String("preset"))
+        ba = {ButtonAction::PresetRef, payload};
+    else if (actionType == QLatin1String("keystroke") && !payload.isEmpty())
+        ba = {ButtonAction::Keystroke, payload};
+    else
+        ba = {ButtonAction::Default, {}};
+    m_gestures[direction] = GestureEntry{actionName, ba};
     emit gestureChanged();
-    emit userGestureChanged(direction, actionName, keystroke);
+    emit userGestureChanged(direction, actionName, actionType, payload);
 }
 
-void DeviceModel::loadGesturesFromProfile(const QMap<QString, QPair<QString, QString>> &gestures)
+void DeviceModel::loadGesturesFromProfile(const QMap<QString, GestureEntry> &gestures)
 {
     m_gestures = gestures;
     emit gestureChanged();
@@ -795,13 +805,32 @@ void DeviceModel::loadGesturesFromProfile(const QMap<QString, QPair<QString, QSt
 QString DeviceModel::gestureActionName(const QString &direction) const
 {
     auto it = m_gestures.find(direction);
-    return it != m_gestures.end() ? it.value().first : QString();
+    return it != m_gestures.end() ? it.value().name : QString();
 }
 
-QString DeviceModel::gestureKeystroke(const QString &direction) const
+QString DeviceModel::gestureActionType(const QString &direction) const
 {
     auto it = m_gestures.find(direction);
-    return it != m_gestures.end() ? it.value().second : QString();
+    if (it == m_gestures.end())
+        return QString();
+    switch (it.value().action.type) {
+    case ButtonAction::PresetRef: return QStringLiteral("preset");
+    case ButtonAction::Keystroke: return QStringLiteral("keystroke");
+    default:                      return QString();
+    }
+}
+
+QString DeviceModel::gestureActionPayload(const QString &direction) const
+{
+    auto it = m_gestures.find(direction);
+    return it != m_gestures.end() ? it.value().action.payload : QString();
+}
+
+ButtonAction DeviceModel::gestureAction(const QString &direction) const
+{
+    auto it = m_gestures.find(direction);
+    return it != m_gestures.end() ? it.value().action
+                                  : ButtonAction{ButtonAction::Default, {}};
 }
 
 void DeviceModel::resetAllProfiles()

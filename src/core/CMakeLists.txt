@@ -25,6 +25,8 @@ target_sources(logitune-core PRIVATE
     DeviceRegistry.cpp
     devices/DescriptorWriter.cpp
     devices/JsonDevice.cpp
+    actions/ActionPreset.cpp
+    actions/ActionPresetRegistry.cpp
     interfaces/IDesktopIntegration.cpp
     interfaces/IInputInjector.cpp
     interfaces/ITransport.cpp
@@ -37,6 +39,12 @@ target_sources(logitune-core PRIVATE
     logging/CrashHandler.cpp
     DeviceFetcher.cpp
     DistroDetector.cpp
+)
+
+qt_add_resources(logitune-core "action-presets"
+    PREFIX "/logitune"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/actions"
+    FILES actions/actions.json
 )
 
 target_include_directories(logitune-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

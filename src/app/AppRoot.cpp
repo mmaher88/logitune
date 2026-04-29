@@ -45,15 +45,28 @@ AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject
     , m_deviceResolver(&m_deviceModel, this)
     , m_deviceCommandHandler(&m_deviceResolver, this)
     , m_actionExecutor(nullptr)
-    , m_buttonDispatcher(&m_profileEngine, &m_actionExecutor, &m_deviceResolver, this)
+    , m_buttonDispatcher(&m_profileEngine, &m_actionExecutor, &m_deviceResolver,
+                         m_desktop, this)
     , m_profileOrchestrator(&m_profileEngine, &m_actionExecutor, &m_deviceResolver,
                             &m_deviceModel, &m_buttonModel, &m_actionModel,
                             &m_profileModel, m_desktop, this)
 {
     m_actionExecutor.setInjector(m_injector);
 
-    m_actionFilterModel = std::make_unique<ActionFilterModel>(&m_deviceModel, this);
+    m_presetRegistry.loadFromResource();
+    m_actionFilterModel = std::make_unique<ActionFilterModel>(
+        &m_deviceModel, m_desktop, &m_presetRegistry, this);
     m_actionFilterModel->setSourceModel(&m_actionModel);
+
+    m_gestureActionFilterModel = std::make_unique<ActionFilterModel>(
+        &m_deviceModel, m_desktop, &m_presetRegistry, this);
+    m_gestureActionFilterModel->setSourceModel(&m_actionModel);
+    m_gestureActionFilterModel->setGestureMode(true);
+
+    if (auto *kde = dynamic_cast<KDeDesktop *>(m_desktop))
+        kde->setPresetRegistry(&m_presetRegistry);
+    if (auto *gnome = dynamic_cast<GnomeDesktop *>(m_desktop))
+        gnome->setPresetRegistry(&m_presetRegistry);
 }
 
 AppRoot::~AppRoot() = default;
@@ -67,11 +80,15 @@ void AppRoot::init()
         qCWarning(lcApp) << "UinputInjector: uinput init failed (no /dev/uinput access?). Keystrokes will not be injected.";
     }
 
-    QMap<QString, QPair<QString, QString>> defaultGestures;
-    defaultGestures["down"]  = qMakePair(QStringLiteral("Show desktop"),          QStringLiteral("Super+D"));
-    defaultGestures["left"]  = qMakePair(QStringLiteral("Switch desktop left"),   QStringLiteral("Ctrl+Super+Left"));
-    defaultGestures["right"] = qMakePair(QStringLiteral("Switch desktop right"),  QStringLiteral("Ctrl+Super+Right"));
-    defaultGestures["click"] = qMakePair(QStringLiteral("Task switcher"),         QStringLiteral("Super+W"));
+    QMap<QString, GestureEntry> defaultGestures;
+    defaultGestures["down"]  = {QStringLiteral("Show desktop"),
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Super+D")}};
+    defaultGestures["left"]  = {QStringLiteral("Switch desktop left"),
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+Super+Left")}};
+    defaultGestures["right"] = {QStringLiteral("Switch desktop right"),
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+Super+Right")}};
+    defaultGestures["click"] = {QStringLiteral("Task switcher"),
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Super+W")}};
     m_deviceModel.loadGesturesFromProfile(defaultGestures);
 
     wireSignals();
@@ -147,7 +164,7 @@ void AppRoot::wireSignals()
     // subscription covers point/scroll tweaks from DeviceCommandHandler.
     connect(&m_deviceModel, &DeviceModel::userGestureChanged,
             &m_profileOrchestrator,
-            [this](const QString &, const QString &, const QString &) {
+            [this](const QString &, const QString &, const QString &, const QString &) {
                 m_profileOrchestrator.saveCurrentProfile();
             });
 

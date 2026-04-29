@@ -3,6 +3,7 @@
 #include "ActiveDeviceResolver.h"
 #include "DeviceSession.h"
 #include "ProfileEngine.h"
+#include "interfaces/IDesktopIntegration.h"
 #include "interfaces/IDevice.h"
 #include "logging/LogManager.h"
 #include <cstdlib>
@@ -12,11 +13,13 @@ namespace logitune {
 ButtonActionDispatcher::ButtonActionDispatcher(ProfileEngine *profileEngine,
                                                ActionExecutor *actionExecutor,
                                                ActiveDeviceResolver *selection,
+                                               IDesktopIntegration *desktop,
                                                QObject *parent)
     : QObject(parent)
     , m_profileEngine(profileEngine)
     , m_actionExecutor(actionExecutor)
     , m_selection(selection)
+    , m_desktop(desktop)
 {}
 
 void ButtonActionDispatcher::onDeviceRemoved(const QString &serial)
@@ -74,10 +77,29 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
         }
 
         auto it = hwProfile.gestures.find(dir);
-        if (it != hwProfile.gestures.end() && it->second.type == ButtonAction::Keystroke
-            && !it->second.payload.isEmpty()) {
-            m_actionExecutor->injectKeystroke(it->second.payload);
+        if (it == hwProfile.gestures.end() || it->second.type == ButtonAction::Default)
+            return;
+
+        // Mirrors the PresetRef branch in the press path below: if the action
+        // is a PresetRef, resolve via the desktop integration to a concrete
+        // ButtonAction, then fire it via the executor. Otherwise fire the
+        // stored action directly.
+        ButtonAction toFire = it->second;
+        if (toFire.type == ButtonAction::PresetRef) {
+            if (!m_desktop) {
+                qCWarning(lcApp) << "gesture preset" << toFire.payload
+                                 << "requested but desktop integration is null";
+                return;
+            }
+            auto resolved = m_desktop->resolveNamedAction(toFire.payload);
+            if (!resolved.has_value()) {
+                qCWarning(lcApp) << "gesture preset" << toFire.payload
+                                 << "not resolvable on" << m_desktop->variantKey();
+                return;
+            }
+            toFire = *resolved;
         }
+        m_actionExecutor->executeAction(toFire);
         return;
     }
 
@@ -116,6 +138,19 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
         state.gestureControlId = controlId;
     } else if (ba.type == ButtonAction::AppLaunch && !ba.payload.isEmpty()) {
         m_actionExecutor->launchApp(ba.payload);
+    } else if (ba.type == ButtonAction::PresetRef && !ba.payload.isEmpty()) {
+        if (!m_desktop) {
+            qCWarning(lcApp) << "preset action requested but desktop integration is null"
+                             << ba.payload;
+            return;
+        }
+        auto resolved = m_desktop->resolveNamedAction(ba.payload);
+        if (!resolved.has_value()) {
+            qCWarning(lcApp) << "preset" << ba.payload
+                             << "not resolvable on" << m_desktop->variantKey();
+            return;
+        }
+        m_actionExecutor->executeAction(*resolved);
     }
 }
 

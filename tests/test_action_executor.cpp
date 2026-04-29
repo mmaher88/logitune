@@ -135,14 +135,37 @@ TEST(ActionExecutor, ParseDBusActionInvalid) {
     EXPECT_TRUE(call.method.isEmpty());  // invalid — needs 4 parts
 }
 
-TEST(ActionExecutor, ParseDBusActionTooMany) {
-    auto call = ActionExecutor::parseDBusAction("a,b,c,d,e");
-    EXPECT_TRUE(call.method.isEmpty());
-}
-
 TEST(ActionExecutor, ParseDBusActionEmpty) {
     auto call = ActionExecutor::parseDBusAction("");
     EXPECT_TRUE(call.method.isEmpty());
+}
+
+TEST(ActionExecutor, ParseDBus4FieldAcceptedWithEmptyArg) {
+    auto c = ActionExecutor::parseDBusAction("a,b,c,d");
+    EXPECT_EQ(c.service, "a");
+    EXPECT_EQ(c.method, "d");
+    EXPECT_TRUE(c.arg.isEmpty());
+}
+
+TEST(ActionExecutor, ParseDBus5FieldPopulatesArg) {
+    auto c = ActionExecutor::parseDBusAction(
+        "org.kde.kglobalaccel,/component/kwin,"
+        "org.kde.kglobalaccel.Component,invokeShortcut,Show Desktop");
+    EXPECT_EQ(c.service, "org.kde.kglobalaccel");
+    EXPECT_EQ(c.path, "/component/kwin");
+    EXPECT_EQ(c.interface, "org.kde.kglobalaccel.Component");
+    EXPECT_EQ(c.method, "invokeShortcut");
+    EXPECT_EQ(c.arg, "Show Desktop");
+}
+
+TEST(ActionExecutor, ParseDBus6FieldRejected) {
+    auto c = ActionExecutor::parseDBusAction("a,b,c,d,e,f");
+    EXPECT_TRUE(c.method.isEmpty());
+}
+
+TEST(ActionExecutor, ParseDBus3FieldRejected) {
+    auto c = ActionExecutor::parseDBusAction("a,b,c");
+    EXPECT_TRUE(c.method.isEmpty());
 }
 
 // ---------------------------------------------------------------------------

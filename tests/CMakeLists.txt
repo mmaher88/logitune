@@ -46,6 +46,11 @@ add_executable(logitune-tests
     test_dpi_cycle_ring.cpp
     test_autostart_desktop.cpp
     test_distro_detector.cpp
+    core/actions/test_action_preset.cpp
+    core/actions/test_action_preset_registry.cpp
+    core/desktop/test_generic_desktop_resolve.cpp
+    core/desktop/test_kde_desktop_resolve.cpp
+    core/desktop/test_gnome_desktop_resolve.cpp
     services/test_active_device_resolver.cpp
     services/test_device_command_handler.cpp
     services/test_button_action_dispatcher.cpp

@@ -3,6 +3,7 @@
 #include "DeviceManager.h"
 #include "PhysicalDevice.h"
 #include "DeviceRegistry.h"
+#include "actions/ActionPresetRegistry.h"
 #include "interfaces/IDesktopIntegration.h"
 #include "interfaces/IInputInjector.h"
 #include "ProfileEngine.h"
@@ -63,6 +64,7 @@ public:
     ButtonModel    *buttonModel()    { return &m_buttonModel; }
     ActionModel    *actionModel()    { return &m_actionModel; }
     ActionFilterModel *actionFilterModel() { return m_actionFilterModel.get(); }
+    ActionFilterModel *gestureActionFilterModel() { return m_gestureActionFilterModel.get(); }
     ProfileModel   *profileModel()   { return &m_profileModel; }
     SettingsModel  *settingsModel()  { return &m_settingsModel; }
     EditorModel    *editorModel() const { return m_editorModel.get(); }
@@ -89,6 +91,7 @@ private:
     IInputInjector      *m_injector = nullptr;
 
     DeviceRegistry m_registry;
+    ActionPresetRegistry m_presetRegistry;
     DeviceManager  m_deviceManager;
     DeviceFetcher  m_deviceFetcher;
     DeviceModel    m_deviceModel;
@@ -96,6 +99,7 @@ private:
     ButtonModel    m_buttonModel;
     ActionModel    m_actionModel;
     std::unique_ptr<ActionFilterModel> m_actionFilterModel;
+    std::unique_ptr<ActionFilterModel> m_gestureActionFilterModel;
     ProfileModel   m_profileModel;
     ActiveDeviceResolver m_deviceResolver;
     DeviceCommandHandler  m_deviceCommandHandler;

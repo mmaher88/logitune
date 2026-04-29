@@ -1,14 +1,77 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 import Logitune
 
 ApplicationWindow {
     id: root
-    width: 960; height: 640
+
+    // ── Window geometry ─────────────────────────────────────────────────
+    // Design minimum keeps the Buttons page sane: the right action
+    // panel needs ~360px wide plus the main area needs ~560px for the
+    // mouse image and callouts. Vertically we need title bar + tabs +
+    // app bar + (action picker 240 + gesture sub-form 200 minimum) so
+    // ~640px is the floor below which the gesture config starts
+    // clipping its scroll area.
+    //
+    // We clamp the minimum to the current screen so the window can
+    // never be forced larger than the available desktop area (small
+    // laptops, scaled-down virtual screens). Initial size is ~70% of
+    // the available area, bounded by the design minimum and a
+    // comfortable cap so we don't spawn huge on 4K.
+    // Comfortable starting target (capped so we don't spawn huge on
+    // 4K displays). Scaled to ~70% of the available desktop with the
+    // cap as the upper bound and a sane initial floor.
+    readonly property int _startCapWidth:    1280
+    readonly property int _startCapHeight:   900
+    readonly property int _startFloorWidth:  1080
+    readonly property int _startFloorHeight: 720
+
+    // Hard minimum the user can shrink to. Kept small so snap-tiling
+    // (snap-to-half / snap-to-quarter / window-tile-extension) works
+    // — most compositors place tiles around 640x480 minimum. The
+    // panel's Flickables handle small heights by scrolling, so the
+    // app stays usable down to this floor.
+    readonly property int _hardMinWidth:  640
+    readonly property int _hardMinHeight: 480
+
+    // Available screen size (excludes taskbar / top panel). Falls
+    // back to the cap when the attached Screen isn't ready.
+    readonly property int _availW: Screen.desktopAvailableWidth  > 0
+                                       ? Screen.desktopAvailableWidth
+                                       : _startCapWidth
+    readonly property int _availH: Screen.desktopAvailableHeight > 0
+                                       ? Screen.desktopAvailableHeight
+                                       : _startCapHeight
+
+    // Starting size: 70% of available, bounded by floor + cap, then
+    // clamped to fit the screen on small displays.
+    readonly property int _startWidth:
+        Math.min(_availW,
+                 Math.max(Math.min(_startFloorWidth, _availW),
+                          Math.min(_startCapWidth, Math.round(_availW * 0.7))))
+    readonly property int _startHeight:
+        Math.min(_availH,
+                 Math.max(Math.min(_startFloorHeight, _availH),
+                          Math.min(_startCapHeight, Math.round(_availH * 0.7))))
+
+    // Hard min also clamped to fit small screens, so we never refuse
+    // to shrink to whatever the desktop area allows.
+    minimumWidth:  Math.min(_hardMinWidth,  _availW)
+    minimumHeight: Math.min(_hardMinHeight, _availH)
+    width:         _startWidth
+    height:        _startHeight
+
+    // Belt and suspenders: some compositors don't honor min-size
+    // hints for frameless windows during interactive resize. The
+    // hard minimum here is small enough that snap-tiling (half /
+    // quarter / etc.) works without the clamp fighting the WM.
+    onWidthChanged:  if (width  < minimumWidth)  width  = minimumWidth
+    onHeightChanged: if (height < minimumHeight) height = minimumHeight
+
     visible: true
     title: "Logitune"
     color: Theme.background
-    minimumWidth: 960; minimumHeight: 680
     flags: Qt.FramelessWindowHint | Qt.Window
 
     onClosing: function(close) {

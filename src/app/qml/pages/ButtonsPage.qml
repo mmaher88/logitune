@@ -187,7 +187,7 @@ Item {
         }
     }
 
-    // ── Actions Panel ────────────────────────────────────────────────────────
+    // ── Actions Panel (per-button picker + thumb-wheel modes) ────────────────
     ActionsPanel {
         id: actionsPanel
 
@@ -196,7 +196,10 @@ Item {
             bottom: parent.bottom
         }
 
-        // Slide in/out from right
+        // Slide in when any button is selected. The gesture-trigger
+        // sub-form is rendered inside ActionsPanel as a contextual
+        // sub-section, the same way Keyboard shortcut binds the
+        // KeystrokeCapture sub-form.
         x: root.selectedButton >= 0
            ? parent.width - width
            : parent.width

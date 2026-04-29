@@ -463,9 +463,10 @@ TEST_F(AppRootFixture, CarouselSwitchSwapsButtonModel) {
     ASSERT_GE(idxB, 0);
     deviceModel().setSelectedIndex(idxB);
 
-    // ButtonModel now reflects device B.
+    // ButtonModel now reflects device B. Legacy ButtonAction::Media now
+    // surfaces in the UI as a regular keystroke entry.
     EXPECT_EQ(buttonModel().actionTypeForButton(3),
-              QStringLiteral("media-controls"));
+              QStringLiteral("keystroke"));
 }
 
 TEST_F(AppRootFixture, CarouselSwitchSwapsDisplayValues) {

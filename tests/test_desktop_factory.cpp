@@ -35,3 +35,18 @@ TEST(DesktopFactory, RunningApplicationsReturnsSortedList) {
         EXPECT_LE(prev, curr);
     }
 }
+
+TEST(DesktopFactory, KDeVariantKeyIsKde) {
+    KDeDesktop d;
+    EXPECT_EQ(d.variantKey(), "kde");
+}
+
+TEST(DesktopFactory, GnomeVariantKeyIsGnome) {
+    GnomeDesktop d;
+    EXPECT_EQ(d.variantKey(), "gnome");
+}
+
+TEST(DesktopFactory, GenericVariantKeyIsGeneric) {
+    GenericDesktop d;
+    EXPECT_EQ(d.variantKey(), "generic");
+}

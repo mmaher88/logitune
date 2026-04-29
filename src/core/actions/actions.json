@@ -1,0 +1,72 @@
+[
+  {
+    "id": "show-desktop",
+    "label": "Show desktop",
+    "icon": "desktop",
+    "category": "workspace",
+    "variants": {
+      "kde":   { "kglobalaccel": { "component": "kwin", "name": "Show Desktop" } },
+      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "show-desktop" } }
+    }
+  },
+  {
+    "id": "task-switcher",
+    "label": "Task switcher",
+    "icon": "windows",
+    "category": "workspace",
+    "variants": {
+      "kde":   { "kglobalaccel": { "component": "kwin", "name": "ExposeAll" } },
+      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "switch-applications" } }
+    }
+  },
+  {
+    "id": "switch-desktop-left",
+    "label": "Switch desktop left",
+    "icon": "arrow-left",
+    "category": "workspace",
+    "variants": {
+      "kde":   { "kglobalaccel": { "component": "kwin", "name": "Switch to Previous Desktop" } },
+      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "switch-to-workspace-left" } }
+    }
+  },
+  {
+    "id": "switch-desktop-right",
+    "label": "Switch desktop right",
+    "icon": "arrow-right",
+    "category": "workspace",
+    "variants": {
+      "kde":   { "kglobalaccel": { "component": "kwin", "name": "Switch to Next Desktop" } },
+      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "switch-to-workspace-right" } }
+    }
+  },
+  {
+    "id": "screenshot",
+    "label": "Screenshot",
+    "icon": "camera",
+    "category": "system",
+    "variants": {
+      "kde":   { "kglobalaccel": { "component": "org_kde_spectacle_desktop", "name": "RectangularRegionScreenShot" } },
+      "gnome": { "gsettings":    { "schema": "org.gnome.shell.keybindings", "key": "show-screenshot-ui" } }
+    }
+  },
+  {
+    "id": "close-window",
+    "label": "Close window",
+    "icon": "close",
+    "category": "window",
+    "variants": {
+      "kde":   { "kglobalaccel": { "component": "kwin", "name": "Window Close" } },
+      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "close" } }
+    }
+  },
+  {
+    "id": "calculator",
+    "label": "Calculator",
+    "icon": "calculator",
+    "category": "app",
+    "variants": {
+      "kde":   { "app-launch": { "binary": "kcalc" } },
+      "gnome": { "app-launch": { "binary": "gnome-calculator" } }
+    }
+  }
+]

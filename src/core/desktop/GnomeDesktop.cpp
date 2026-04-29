@@ -1,5 +1,7 @@
 #include "desktop/GnomeDesktop.h"
+#include "actions/ActionPresetRegistry.h"
 #include "logging/LogManager.h"
+#include <optional>
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
@@ -7,8 +9,10 @@
 #include <QDBusVariant>
 #include <QDir>
 #include <QFile>
+#include <QJsonObject>
 #include <QProcessEnvironment>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QStandardPaths>
 
 namespace logitune {
@@ -257,6 +261,138 @@ void GnomeDesktop::blockGlobalShortcuts(bool block)
         QStringLiteral("Eval"));
     msg << js;
     QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
+}
+
+QString GnomeDesktop::variantKey() const
+{
+    return QStringLiteral("gnome");
+}
+
+// ---------------------------------------------------------------------------
+// gsettings output to keystroke transform
+// ---------------------------------------------------------------------------
+
+QString GnomeDesktop::gsettingsToKeystroke(const QString &gsettingsOutput)
+{
+    // gsettings returns GLib variant strings like "['<Super>d']" or
+    // "['<Primary><Alt>Left', '<Super>D']". Find the first non-empty
+    // single-quoted binding.
+    // Note: this regex does not handle GVariant's \' escape. Real gsettings
+    // keybinding values are alphanumeric or named keysyms (Print, F1, Left,
+    // etc.), so apostrophes never appear inside a binding string.
+    static const QRegularExpression kBindingRe(QStringLiteral("'([^']*)'"));
+    QRegularExpressionMatchIterator it = kBindingRe.globalMatch(gsettingsOutput);
+
+    QString binding;
+    while (it.hasNext()) {
+        const QString candidate = it.next().captured(1);
+        if (!candidate.isEmpty()) {
+            binding = candidate;
+            break;
+        }
+    }
+    if (binding.isEmpty())
+        return {};
+
+    // Rewrite <Super>, <Primary>, <Control>, <Ctrl>, <Alt>, <Shift>, <Meta>
+    // into the Logitune format: Super+, Ctrl+, Alt+, Shift+, Meta+.
+    static const QRegularExpression kModifierRe(QStringLiteral("<([^>]+)>"));
+    QString out;
+    int pos = 0;  // End of last matched modifier; remaining suffix is the keysym.
+    auto mit = kModifierRe.globalMatch(binding);
+    while (mit.hasNext()) {
+        auto m = mit.next();
+        const QString mod = m.captured(1);
+        QString norm;
+        if (mod.compare(QStringLiteral("Primary"), Qt::CaseInsensitive) == 0 ||
+            mod.compare(QStringLiteral("Control"), Qt::CaseInsensitive) == 0 ||
+            mod.compare(QStringLiteral("Ctrl"), Qt::CaseInsensitive) == 0) {
+            norm = QStringLiteral("Ctrl");
+        } else if (mod.compare(QStringLiteral("Alt"), Qt::CaseInsensitive) == 0) {
+            norm = QStringLiteral("Alt");
+        } else if (mod.compare(QStringLiteral("Shift"), Qt::CaseInsensitive) == 0) {
+            norm = QStringLiteral("Shift");
+        } else if (mod.compare(QStringLiteral("Super"), Qt::CaseInsensitive) == 0 ||
+                   mod.compare(QStringLiteral("Meta"),  Qt::CaseInsensitive) == 0 ||
+                   mod.compare(QStringLiteral("Hyper"), Qt::CaseInsensitive) == 0) {
+            norm = QStringLiteral("Super");
+        } else if (mod.compare(QStringLiteral("AltGr"), Qt::CaseInsensitive) == 0 ||
+                   mod.compare(QStringLiteral("ISO_Level3_Shift"), Qt::CaseInsensitive) == 0) {
+            pos = m.capturedEnd();
+            continue;   // Skip; not representable in Logitune keystroke format
+        } else {
+            norm = mod;
+        }
+        if (!out.isEmpty()) out += QLatin1Char('+');
+        out += norm;
+        pos = m.capturedEnd();
+    }
+
+    const QString tail = binding.mid(pos).trimmed();
+    if (!tail.isEmpty()) {
+        if (!out.isEmpty()) out += QLatin1Char('+');
+        out += tail;
+    }
+    return out;
+}
+
+// ---------------------------------------------------------------------------
+// resolveNamedAction
+// ---------------------------------------------------------------------------
+
+std::optional<ButtonAction> GnomeDesktop::resolveNamedAction(const QString &id) const
+{
+    if (!m_registry)
+        return std::nullopt;
+
+    const QJsonObject variant = m_registry->variantData(id, QStringLiteral("gnome"));
+    if (variant.isEmpty())
+        return std::nullopt;
+
+    // gsettings: look up the live binding and translate.
+    if (variant.contains(QStringLiteral("gsettings"))) {
+        const QJsonObject spec = variant.value(QStringLiteral("gsettings")).toObject();
+        const QString schema = spec.value(QStringLiteral("schema")).toString();
+        const QString key = spec.value(QStringLiteral("key")).toString();
+        if (schema.isEmpty() || key.isEmpty())
+            return std::nullopt;
+
+        QString raw;
+        if (m_reader) {
+            raw = m_reader(schema, key);
+        } else {
+            QProcess p;
+            p.start(QStringLiteral("gsettings"),
+                    {QStringLiteral("get"), schema, key});
+            if (!p.waitForFinished(3000)) {
+                qCWarning(lcFocus) << "gsettings get" << schema << key
+                                   << "did not finish; state:" << p.state();
+                return std::nullopt;
+            }
+            if (p.exitCode() != 0) {
+                qCWarning(lcFocus) << "gsettings failed for" << schema << key
+                                   << ":" << p.readAllStandardError().trimmed();
+                return std::nullopt;
+            }
+            raw = QString::fromUtf8(p.readAllStandardOutput()).trimmed();
+        }
+
+        const QString combo = gsettingsToKeystroke(raw);
+        if (combo.isEmpty())
+            return std::nullopt;
+        return ButtonAction{ButtonAction::Keystroke, combo};
+    }
+
+    // app-launch: direct passthrough.
+    if (variant.contains(QStringLiteral("app-launch"))) {
+        const QJsonObject spec = variant.value(QStringLiteral("app-launch")).toObject();
+        const QString binary = spec.value(QStringLiteral("binary")).toString();
+        if (binary.isEmpty())
+            return std::nullopt;
+        return ButtonAction{ButtonAction::AppLaunch, binary};
+    }
+
+    return std::nullopt;
 }
 
 } // namespace logitune

@@ -1,8 +1,10 @@
 #pragma once
+#include "ButtonAction.h"
 #include <QObject>
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
+#include <optional>
 
 namespace logitune {
 
@@ -16,6 +18,17 @@ public:
     virtual bool available() const = 0;
     virtual QString desktopName() const = 0;
     virtual QStringList detectedCompositors() const = 0;
+
+    /// Short key identifying this DE in the action preset variants map
+    /// (e.g. "kde", "gnome", "generic"). Matches a top-level key under
+    /// "variants" in actions.json.
+    virtual QString variantKey() const = 0;
+
+    /// Resolve a semantic preset id (e.g. "show-desktop") to a concrete
+    /// ButtonAction the ActionExecutor can fire. Returns nullopt when
+    /// the preset is not supported on this DE or the user's live binding
+    /// is empty/unreachable.
+    virtual std::optional<ButtonAction> resolveNamedAction(const QString &id) const = 0;
 
     /// Block/unblock global shortcuts during keystroke capture.
     virtual void blockGlobalShortcuts(bool block) = 0;

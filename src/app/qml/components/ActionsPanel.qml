@@ -25,6 +25,14 @@ Rectangle {
         && !_predefinedNames.has(currentAction)
     property var _predefinedNames: new Set()
 
+    // True when the contextual sub-form below the action list is non-empty
+    // (gesture direction config, keystroke capture, or custom keystroke
+    // re-bind). Drives the Loader's fillHeight and the action list's height
+    // cap so the sub-form has room without the picker pushing it offscreen.
+    readonly property bool _hasContextual: currentActionType === "gesture-trigger"
+        || currentAction === "Keyboard shortcut"
+        || isCustomKeystroke
+
     Component.onCompleted: {
         var s = new Set()
         for (var i = 0; i < ActionModel.rowCount(); i++) {
@@ -32,13 +40,6 @@ Rectangle {
             s.add(ActionModel.data(idx, 0x101)) // NameRole = Qt::UserRole+1 = 257
         }
         _predefinedNames = s
-    }
-
-    // Counter to force gesture action name re-evaluation
-    property int _gestureRefresh: 0
-    Connections {
-        target: DeviceModel
-        function onGestureChanged() { root._gestureRefresh++ }
     }
 
     // Wheel mode options
@@ -327,41 +328,52 @@ Rectangle {
             visible: !root.isWheel
         }
 
-        // ── OTHER ACTIONS section header (hidden for wheel) ──────────────
-        Item {
-            visible: !root.isWheel
-            Layout.fillWidth: true
-            Layout.leftMargin:  33
-            Layout.rightMargin: 16
-            Layout.topMargin:   10
-            implicitHeight: 50
-
-            RowLayout {
-                width: parent.width
-                height: 50
-
-                Text {
-                    text: "OTHER ACTIONS"
-                    font.pixelSize: 14
-                    font.letterSpacing: 0.8
-                    font.bold: true
-                    font.capitalization: Font.AllUppercase
-                    color: "#888888"
-                    Layout.fillWidth: true
-                }
-            }
-        }
-
         // ── Action list (hidden for wheel) ────────────────────────────────
+        // When a contextual sub-form is present, the picker prefers ~240px
+        // (scrollable internally) and shrinks below that on short windows
+        // so the sub-form keeps a minimum visible footprint. Otherwise the
+        // picker fills the whole panel.
         ListView {
             visible: !root.isWheel
             id: actionList
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.topMargin: 4
+            Layout.preferredHeight: root._hasContextual ? 240 : -1
+            Layout.maximumHeight: root._hasContextual ? 240 : Number.POSITIVE_INFINITY
+            Layout.topMargin: 10
             clip: true
             model: ActionModel
             spacing: 5
+
+            section.property: "category"
+            section.criteria: ViewSection.FullString
+            section.delegate: Rectangle {
+                width: actionList.width
+                height: 24
+                color: "transparent"
+                Text {
+                    anchors {
+                        left: parent.left; leftMargin: 33
+                        verticalCenter: parent.verticalCenter
+                    }
+                    text: section.toUpperCase()
+                    font.pixelSize: 11
+                    font.letterSpacing: 0.8
+                    font.bold: true
+                    font.capitalization: Font.AllUppercase
+                    color: "#888888"
+                }
+                Rectangle {
+                    anchors {
+                        left: parent.left; leftMargin: 33
+                        right: parent.right; rightMargin: 16
+                        bottom: parent.bottom
+                    }
+                    height: 1
+                    color: Theme.border
+                    opacity: 0.5
+                }
+            }
 
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
@@ -372,11 +384,15 @@ Rectangle {
                 required property string name
                 required property string description
                 required property string actionType
+                required property string category
                 required property int    index
 
-                readonly property bool matchesSearch:
-                    searchInput.text.length === 0 ||
-                    name.toLowerCase().indexOf(searchInput.text.toLowerCase()) !== -1
+                readonly property bool matchesSearch: {
+                    if (searchInput.text.length === 0) return true
+                    var q = searchInput.text.toLowerCase()
+                    return name.toLowerCase().indexOf(q) !== -1
+                        || category.toLowerCase().indexOf(q) !== -1
+                }
 
                 visible: matchesSearch
                 height: matchesSearch ? rowRect.height : 0
@@ -384,7 +400,6 @@ Rectangle {
                 // Select matching action, or highlight "Keyboard shortcut" for custom keystrokes
                 readonly property bool isSelected: name === root.currentAction
                     || (name === "Keyboard shortcut" && root.isCustomKeystroke)
-                    || (name === "Media controls" && root.currentActionType === "media-controls")
 
                 Rectangle {
                     id: rowRect
@@ -482,6 +497,8 @@ Rectangle {
         Loader {
             id: contextLoader
             Layout.fillWidth: true
+            Layout.fillHeight: root._hasContextual
+            Layout.minimumHeight: root._hasContextual ? 200 : 0
             Layout.topMargin: 0
             Layout.bottomMargin: 4
             visible: item !== null
@@ -489,8 +506,6 @@ Rectangle {
             sourceComponent: {
                 if (root.currentActionType === "gesture-trigger")
                     return gestureComponent
-                if (root.currentActionType === "media-controls")
-                    return mediaComponent
                 if (root.currentAction === "Keyboard shortcut" || root.isCustomKeystroke)
                     return keystrokeComponent
                 return descriptionComponent
@@ -538,314 +553,6 @@ Rectangle {
     }
 
     Component {
-        id: gestureComponent
-
-        Item {
-            implicitHeight: gestureCol.implicitHeight + 24
-            width: parent ? parent.width : 340
-
-            Column {
-                id: gestureCol
-                anchors {
-                    left: parent.left; right: parent.right; top: parent.top
-                    leftMargin: 20; rightMargin: 20; topMargin: 12
-                }
-                spacing: 4
-
-                Text {
-                    text: "Presets"
-                    font.pixelSize: 12
-                    font.bold: true
-                    color: "#444444"
-                    bottomPadding: 4
-                }
-
-                Row {
-                    width: parent.width
-                    spacing: 6
-
-                    Repeater {
-                        model: [
-                            {
-                                label: "Navigation",
-                                up: { name: "", keystroke: "" },
-                                down: { name: "Show desktop", keystroke: "Super+D" },
-                                left: { name: "Switch desktop left", keystroke: "Ctrl+Super+Left" },
-                                right: { name: "Switch desktop right", keystroke: "Ctrl+Super+Right" },
-                                click: { name: "Task switcher", keystroke: "Super+W" }
-                            },
-                            {
-                                label: "Media",
-                                up: { name: "", keystroke: "" },
-                                down: { name: "Mute", keystroke: "Mute" },
-                                left: { name: "Play/Pause", keystroke: "Play" },
-                                right: { name: "Play/Pause", keystroke: "Play" },
-                                click: { name: "", keystroke: "" }
-                            },
-                            {
-                                label: "Window",
-                                up: { name: "", keystroke: "" },
-                                down: { name: "Show desktop", keystroke: "Super+D" },
-                                left: { name: "", keystroke: "" },
-                                right: { name: "", keystroke: "" },
-                                click: { name: "Close window", keystroke: "Alt+F4" }
-                            }
-                        ]
-
-                        Rectangle {
-                            width: (parent.width - 12) / 3
-                            height: 30
-                            radius: 4
-                            color: presetHover.hovered ? Theme.hoverBg : Theme.cardBg
-                            border.color: presetHover.hovered ? Theme.accentHover : Theme.border
-                            border.width: 1
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: modelData.label
-                                font.pixelSize: 11
-                                font.bold: true
-                                color: presetHover.hovered ? Theme.accent : Theme.text
-                            }
-
-                            HoverHandler { id: presetHover }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    var dirs = ["up", "down", "left", "right", "click"]
-                                    for (var i = 0; i < dirs.length; i++) {
-                                        var d = dirs[i]
-                                        var preset = modelData[d]
-                                        DeviceModel.setGestureAction(d, preset.name, preset.keystroke)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Spacer between presets and directions
-                Item { width: 1; height: 8 }
-
-                Text {
-                    text: "Gesture directions"
-                    font.pixelSize: 12
-                    font.bold: true
-                    color: "#444444"
-                    bottomPadding: 4
-                }
-
-                Repeater {
-                    model: [
-                        { dir: "\u2191", label: "Up",    key: "up" },
-                        { dir: "\u2193", label: "Down",  key: "down" },
-                        { dir: "\u2190", label: "Left",  key: "left" },
-                        { dir: "\u2192", label: "Right", key: "right" },
-                        { dir: "\u25C9", label: "Click", key: "click" },
-                    ]
-
-                    delegate: Rectangle {
-                        width: parent.width
-                        height: 36
-                        radius: 4
-                        color: gestureRowHover.hovered ? Theme.hoverBg : Theme.cardBg
-                        border.color: gestureRowHover.hovered ? Theme.accentHover : Theme.border
-                        border.width: 1
-
-                        readonly property string actionName: root._gestureRefresh >= 0 ? DeviceModel.gestureActionName(modelData.key) : ""
-
-                        RowLayout {
-                            anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
-                            spacing: 8
-
-                            Text {
-                                text: modelData.dir
-                                font.pixelSize: 14
-                                color: Theme.accent
-                            }
-                            Text {
-                                text: modelData.label
-                                font.pixelSize: 12
-                                color: Theme.text
-                                Layout.fillWidth: true
-                            }
-                            Text {
-                                text: actionName || "None"
-                                font.pixelSize: 11
-                                color: actionName ? Theme.accent : "#AAAAAA"
-                            }
-                        }
-
-                        HoverHandler { id: gestureRowHover }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                gestureDirectionPicker.direction = modelData.key
-                                gestureDirectionPicker.dirLabel = modelData.label
-                                gestureDirectionPicker.visible = true
-                            }
-                        }
-                    }
-                }
-
-                // ── Gesture direction action picker (inline) ─────────
-                Column {
-                    id: gestureDirectionPicker
-                    visible: false
-                    width: parent.width
-                    spacing: 2
-                    topPadding: 8
-
-                    property string direction: ""
-                    property string dirLabel: ""
-
-                    Text {
-                        text: "Assign action to " + gestureDirectionPicker.dirLabel + ":"
-                        font.pixelSize: 11
-                        font.bold: true
-                        color: "#444444"
-                        bottomPadding: 4
-                    }
-
-                    Repeater {
-                        model: [
-                            { name: "None",                 keystroke: "" },
-                            { name: "Show desktop",         keystroke: "Super+D" },
-                            { name: "Task switcher",        keystroke: "Super+W" },
-                            { name: "Switch desktop left",  keystroke: "Ctrl+Super+Left" },
-                            { name: "Switch desktop right", keystroke: "Ctrl+Super+Right" },
-                            { name: "Copy",                 keystroke: "Ctrl+C" },
-                            { name: "Paste",                keystroke: "Ctrl+V" },
-                            { name: "Undo",                 keystroke: "Ctrl+Z" },
-                            { name: "Redo",                 keystroke: "Ctrl+Shift+Z" },
-                            { name: "Close window",         keystroke: "Alt+F4" },
-                            { name: "Mute",                 keystroke: "Mute" },
-                            { name: "Play/Pause",           keystroke: "Play" },
-                        ]
-
-                        Rectangle {
-                            width: parent.width
-                            height: 28
-                            radius: 4
-                            color: gpHover.hovered ? Theme.hoverBg : "transparent"
-
-                            Text {
-                                anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
-                                text: modelData.name
-                                font.pixelSize: 11
-                                color: gpHover.hovered ? Theme.accent : Theme.text
-                            }
-
-                            HoverHandler { id: gpHover }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    DeviceModel.setGestureAction(
-                                        gestureDirectionPicker.direction,
-                                        modelData.name === "None" ? "" : modelData.name,
-                                        modelData.keystroke)
-                                    gestureDirectionPicker.visible = false
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Component {
-        id: mediaComponent
-
-        Item {
-            implicitHeight: mediaCol.implicitHeight + 24
-            width: parent ? parent.width : 340
-
-            readonly property var mediaActions: [
-                { name: "Play/Pause",     keystroke: "Play" },
-                { name: "Next track",     keystroke: "Next" },
-                { name: "Previous track", keystroke: "Previous" },
-                { name: "Stop",           keystroke: "Stop" },
-                { name: "Mute",           keystroke: "Mute" },
-                { name: "Volume up",      keystroke: "VolumeUp" },
-                { name: "Volume down",    keystroke: "VolumeDown" },
-            ]
-
-            Column {
-                id: mediaCol
-                anchors {
-                    left: parent.left; right: parent.right; top: parent.top
-                    leftMargin: 20; rightMargin: 20; topMargin: 12
-                }
-                spacing: 4
-
-                Text {
-                    text: "Media action"
-                    font.pixelSize: 12
-                    font.bold: true
-                    color: "#444444"
-                    bottomPadding: 4
-                }
-
-                Repeater {
-                    model: parent.parent.mediaActions
-
-                    Rectangle {
-                        width: mediaCol.width
-                        height: 32
-                        radius: 4
-
-                        readonly property bool isCurrent: root.currentActionType === "media-controls"
-                            && root.currentAction === modelData.name
-
-                        color: isCurrent ? Theme.accent
-                             : (mediaHover.hovered ? Theme.hoverBg : "transparent")
-
-                        Rectangle {
-                            anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
-                            width: 16; height: 16; radius: 8
-                            color: parent.isCurrent ? Theme.activeTabText
-                                 : (mediaHover.hovered ? "#EAE6F5" : Theme.inputBg)
-                            border.color: parent.isCurrent ? Theme.accent : "transparent"
-                            border.width: parent.isCurrent ? 5 : 0
-                        }
-
-                        Text {
-                            anchors {
-                                left: parent.left; leftMargin: 36
-                                verticalCenter: parent.verticalCenter
-                            }
-                            text: modelData.name
-                            font.pixelSize: 13
-                            font.bold: parent.isCurrent
-                            color: parent.isCurrent ? Theme.activeTabText
-                                 : (mediaHover.hovered ? Theme.accent : Theme.text)
-                        }
-
-                        HoverHandler { id: mediaHover }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.currentAction = modelData.name
-                                root.currentActionType = "media-controls"
-                                root.actionSelected(modelData.name, "media-controls")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Component {
         id: descriptionComponent
 
         Item {
@@ -871,6 +578,436 @@ Rectangle {
                 color: "#888888"
                 wrapMode: Text.Wrap
                 lineHeight: 1.5
+            }
+        }
+    }
+
+    // ── Gesture-trigger sub-form ───────────────────────────────────────────
+    // Loaded when currentActionType === "gesture-trigger". Renders the
+    // Presets quick-set, the 5 direction rows (up/down/left/right/click),
+    // and an inline action picker (gesturePickerComponent) that expands
+    // beneath whichever direction row was tapped.
+    //
+    // Bound to GestureActionModel (the gesture-mode ActionFilterModel
+    // wrapper) so the rows shown in the picker are the actions supported
+    // on the active DE, minus the gesture-incompatible ones.
+    Component {
+        id: gestureComponent
+
+        Item {
+            id: gestureRoot
+            implicitHeight: gestureCol.implicitHeight + 24
+            width: parent ? parent.width : 340
+
+            // Counter to force gesture action name re-evaluation when the
+            // backend reports a change.
+            property int _gestureRefresh: 0
+            Connections {
+                target: DeviceModel
+                function onGestureChanged() { gestureRoot._gestureRefresh++ }
+            }
+
+            // Set of all action names listed directly in GestureActionModel.
+            // Used to detect custom captured keystrokes (any binding whose
+            // name isn't a known action) so we can highlight the
+            // "Keyboard shortcut" entry for them in the picker.
+            property var _predefinedNames: new Set()
+            Component.onCompleted: {
+                var s = new Set()
+                for (var i = 0; i < GestureActionModel.rowCount(); i++) {
+                    var idx = GestureActionModel.index(i, 0)
+                    s.add(GestureActionModel.data(idx, 0x101)) // NameRole = Qt::UserRole+1 = 257
+                }
+                _predefinedNames = s
+            }
+
+            // Inline action picker shown beneath whichever direction
+            // row is currently expanded. Bound to the registered
+            // GestureActionModel (ActionFilterModel wrapper). Includes
+            // a "None" sentinel at the top to clear the binding.
+            Component {
+                id: gesturePickerComponent
+
+                Column {
+                    id: pickerRoot
+                    width: parent.width
+                    spacing: 4
+                    topPadding: 8
+                    bottomPadding: 8
+
+                    // Sub-flow state: "" = main list, "keystroke" =
+                    // KeystrokeCapture.
+                    property string subFlow: ""
+
+                    // ── Main list (default sub-flow) ─────────────────
+                    Column {
+                        width: parent.width
+                        spacing: 4
+                        visible: pickerRoot.subFlow === ""
+
+                        Text {
+                            text: "Assign action to " + gestureCol.expandedLabel + ":"
+                            font.pixelSize: 11
+                            font.bold: true
+                            color: "#444444"
+                            bottomPadding: 4
+                        }
+
+                        // "None" sentinel row, always at the top.
+                        Rectangle {
+                            width: parent.width
+                            height: 28
+                            radius: 4
+
+                            readonly property bool isCurrent:
+                                DeviceModel.gestureActionName(gestureCol.expandedDirection).length === 0
+
+                            color: isCurrent
+                                ? Theme.accent
+                                : (noneHover.hovered ? Theme.hoverBg : "transparent")
+                            Text {
+                                anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                                text: "None"
+                                font.pixelSize: 11
+                                font.bold: parent.isCurrent
+                                color: parent.isCurrent
+                                    ? Theme.activeTabText
+                                    : (noneHover.hovered ? Theme.accent : Theme.text)
+                            }
+                            HoverHandler { id: noneHover }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    DeviceModel.setGestureAction(
+                                        gestureCol.expandedDirection, "", "none", "")
+                                    gestureCol.expandedDirection = ""
+                                }
+                            }
+                        }
+
+                        // Scrollable list of all DE-supported actions
+                        // (filtered by ActionFilterModel).
+                        ScrollView {
+                            width: parent.width
+                            height: Math.min(actionsList.contentHeight, 280)
+                            clip: true
+                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+                            ListView {
+                                id: actionsList
+                                model: GestureActionModel
+                                spacing: 2
+                                interactive: true
+
+                                section.property: "category"
+                                section.criteria: ViewSection.FullString
+                                section.delegate: Rectangle {
+                                    width: actionsList.width
+                                    height: 20
+                                    color: "transparent"
+                                    Text {
+                                        anchors {
+                                            left: parent.left; leftMargin: 8
+                                            verticalCenter: parent.verticalCenter
+                                        }
+                                        text: section.toUpperCase()
+                                        font.pixelSize: 9
+                                        font.letterSpacing: 0.8
+                                        font.bold: true
+                                        font.capitalization: Font.AllUppercase
+                                        color: "#888888"
+                                    }
+                                }
+
+                                delegate: Rectangle {
+                                    required property string name
+                                    required property string actionType
+                                    required property string payload
+                                    width: actionsList.width
+                                    height: 28
+                                    radius: 4
+
+                                    readonly property bool isCurrent: {
+                                        if (gestureRoot._gestureRefresh < 0) return false
+                                        var bound = DeviceModel.gestureActionName(gestureCol.expandedDirection)
+                                        if (bound.length === 0) return false
+                                        if (name === bound) return true
+                                        // Highlight "Keyboard shortcut" when the bound name is a
+                                        // captured combo: not in the predefined action list.
+                                        if (name === "Keyboard shortcut"
+                                            && !gestureRoot._predefinedNames.has(bound))
+                                            return true
+                                        return false
+                                    }
+
+                                    color: isCurrent
+                                        ? Theme.accent
+                                        : (itemHover.hovered ? Theme.hoverBg : "transparent")
+
+                                    Text {
+                                        anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                                        text: name
+                                        font.pixelSize: 11
+                                        font.bold: parent.isCurrent
+                                        color: parent.isCurrent
+                                            ? Theme.activeTabText
+                                            : (itemHover.hovered ? Theme.accent : Theme.text)
+                                    }
+                                    HoverHandler { id: itemHover }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (name === "Keyboard shortcut") {
+                                                pickerRoot.subFlow = "keystroke"
+                                            } else {
+                                                DeviceModel.setGestureAction(
+                                                    gestureCol.expandedDirection,
+                                                    name, actionType, payload)
+                                                gestureCol.expandedDirection = ""
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ── Keystroke sub-flow ───────────────────────────
+                    Column {
+                        visible: pickerRoot.subFlow === "keystroke"
+                        width: parent.width
+                        spacing: 4
+
+                        Text {
+                            text: "Capture keystroke for " + gestureCol.expandedLabel + ":"
+                            font.pixelSize: 11
+                            font.bold: true
+                            color: "#444444"
+                            bottomPadding: 4
+                        }
+
+                        KeystrokeCapture {
+                            width: parent.width
+                            keystroke: ""
+                            onKeystrokeCaptured: function(ks) {
+                                if (ks.length > 0) {
+                                    DeviceModel.setGestureAction(
+                                        gestureCol.expandedDirection,
+                                        ks, "keystroke", ks)
+                                    gestureCol.expandedDirection = ""
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: 24
+                            radius: 4
+                            color: kbBackHover.hovered ? Theme.hoverBg : "transparent"
+                            Text {
+                                anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                                text: "← Back"
+                                font.pixelSize: 11
+                                color: Theme.accent
+                            }
+                            HoverHandler { id: kbBackHover }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: pickerRoot.subFlow = ""
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Gesture body (presets + directions). Wrapped in a Flickable
+            // so the picker has somewhere to go on short windows.
+            Flickable {
+                anchors.fill: parent
+                anchors.topMargin: 12
+                contentWidth: width
+                contentHeight: gestureCol.implicitHeight + 24
+                clip: true
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                Column {
+                    id: gestureCol
+                    anchors {
+                        left: parent.left; right: parent.right; top: parent.top
+                        leftMargin: 20; rightMargin: 20; topMargin: 0
+                    }
+                    spacing: 4
+
+                    // State for which direction row currently has the picker open.
+                    property string expandedDirection: ""
+                    property string expandedLabel: ""
+
+                    Text {
+                        text: "Presets"
+                        font.pixelSize: 12
+                        font.bold: true
+                        color: "#444444"
+                        bottomPadding: 4
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: 6
+
+                        Repeater {
+                            // Each direction is { name, type, payload }. type is one of
+                            // "preset" | "keystroke" | "none". Preset ids resolve via
+                            // IDesktopIntegration so they fire correctly on every DE
+                            // (KDE, GNOME, sway, ...) without a hardcoded keystroke.
+                            model: [
+                                {
+                                    label: "Navigation",
+                                    up:    { name: "",                     type: "none",      payload: "" },
+                                    down:  { name: "Show desktop",         type: "preset",    payload: "show-desktop" },
+                                    left:  { name: "Switch desktop left",  type: "preset",    payload: "switch-desktop-left" },
+                                    right: { name: "Switch desktop right", type: "preset",    payload: "switch-desktop-right" },
+                                    click: { name: "Task switcher",        type: "preset",    payload: "task-switcher" }
+                                },
+                                {
+                                    label: "Media",
+                                    up:    { name: "",            type: "none",      payload: "" },
+                                    down:  { name: "Mute",        type: "keystroke", payload: "Mute" },
+                                    left:  { name: "Play/Pause",  type: "keystroke", payload: "Play" },
+                                    right: { name: "Play/Pause",  type: "keystroke", payload: "Play" },
+                                    click: { name: "",            type: "none",      payload: "" }
+                                },
+                                {
+                                    label: "Window",
+                                    up:    { name: "",             type: "none",   payload: "" },
+                                    down:  { name: "Show desktop", type: "preset", payload: "show-desktop" },
+                                    left:  { name: "",             type: "none",   payload: "" },
+                                    right: { name: "",             type: "none",   payload: "" },
+                                    click: { name: "Close window", type: "preset", payload: "close-window" }
+                                }
+                            ]
+
+                            Rectangle {
+                                width: (parent.width - 12) / 3
+                                height: 30
+                                radius: 4
+                                color: presetHover.hovered ? Theme.hoverBg : Theme.cardBg
+                                border.color: presetHover.hovered ? Theme.accentHover : Theme.border
+                                border.width: 1
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: modelData.label
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                    color: presetHover.hovered ? Theme.accent : Theme.text
+                                }
+
+                                HoverHandler { id: presetHover }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        var dirs = ["up", "down", "left", "right", "click"]
+                                        for (var i = 0; i < dirs.length; i++) {
+                                            var d = dirs[i]
+                                            var preset = modelData[d]
+                                            DeviceModel.setGestureAction(d, preset.name, preset.type, preset.payload)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Spacer between presets and directions
+                    Item { width: 1; height: 8 }
+
+                    Text {
+                        text: "Gesture directions"
+                        font.pixelSize: 12
+                        font.bold: true
+                        color: "#444444"
+                        bottomPadding: 4
+                    }
+
+                    Repeater {
+                        model: [
+                            { dir: "↑", label: "Up",    key: "up" },
+                            { dir: "↓", label: "Down",  key: "down" },
+                            { dir: "←", label: "Left",  key: "left" },
+                            { dir: "→", label: "Right", key: "right" },
+                            { dir: "◉", label: "Click", key: "click" },
+                        ]
+
+                        delegate: Column {
+                            width: parent.width
+                            spacing: 0
+
+                            Rectangle {
+                                id: gestureRowRect
+                                width: parent.width
+                                height: 36
+                                radius: 4
+                                color: gestureRowHover.hovered ? Theme.hoverBg : Theme.cardBg
+                                border.color: gestureRowHover.hovered ? Theme.accentHover : Theme.border
+                                border.width: 1
+
+                                readonly property string actionName: gestureRoot._gestureRefresh >= 0 ? DeviceModel.gestureActionName(modelData.key) : ""
+
+                                RowLayout {
+                                    anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
+                                    spacing: 8
+
+                                    Text {
+                                        text: modelData.dir
+                                        font.pixelSize: 14
+                                        color: Theme.accent
+                                    }
+                                    Text {
+                                        text: modelData.label
+                                        font.pixelSize: 12
+                                        color: Theme.text
+                                        Layout.fillWidth: true
+                                    }
+                                    Text {
+                                        text: gestureRowRect.actionName || "None"
+                                        font.pixelSize: 11
+                                        color: gestureRowRect.actionName ? Theme.accent : "#AAAAAA"
+                                        Layout.preferredWidth: implicitWidth
+                                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                    }
+                                }
+
+                                HoverHandler { id: gestureRowHover }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (gestureCol.expandedDirection === modelData.key) {
+                                            gestureCol.expandedDirection = ""
+                                        } else {
+                                            gestureCol.expandedDirection = modelData.key
+                                            gestureCol.expandedLabel = modelData.label
+                                        }
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                width: parent.width
+                                active: gestureCol.expandedDirection === modelData.key
+                                sourceComponent: gesturePickerComponent
+                                visible: active
+                                height: active ? implicitHeight : 0
+                            }
+                        }
+                    }
+                }
             }
         }
     }
