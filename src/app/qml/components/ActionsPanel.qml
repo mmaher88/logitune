@@ -384,11 +384,15 @@ Rectangle {
                 required property string name
                 required property string description
                 required property string actionType
+                required property string category
                 required property int    index
 
-                readonly property bool matchesSearch:
-                    searchInput.text.length === 0 ||
-                    name.toLowerCase().indexOf(searchInput.text.toLowerCase()) !== -1
+                readonly property bool matchesSearch: {
+                    if (searchInput.text.length === 0) return true
+                    var q = searchInput.text.toLowerCase()
+                    return name.toLowerCase().indexOf(q) !== -1
+                        || category.toLowerCase().indexOf(q) !== -1
+                }
 
                 visible: matchesSearch
                 height: matchesSearch ? rowRect.height : 0
