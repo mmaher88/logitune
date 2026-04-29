@@ -58,6 +58,7 @@ static FeatureSupport parseFeatures(const QJsonObject& obj)
     f.lowResWheel               = obj.value(QStringLiteral("lowResWheel")).toBool(false);
     f.smoothScroll              = obj.value(QStringLiteral("smoothScroll")).toBool(true);
     f.thumbWheel                = obj.value(QStringLiteral("thumbWheel")).toBool(false);
+    f.thumbWheelGestureV2       = obj.value(QStringLiteral("thumbWheelGestureV2")).toBool(false);
     f.reprogControls            = obj.value(QStringLiteral("reprogControls")).toBool(false);
     f.gestureV2                 = obj.value(QStringLiteral("gestureV2")).toBool(false);
     f.mouseGesture              = obj.value(QStringLiteral("mouseGesture")).toBool(false);
