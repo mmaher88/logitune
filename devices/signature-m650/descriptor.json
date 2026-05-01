@@ -15,6 +15,7 @@
         "smoothScroll": true,
         "thumbWheel": false,
         "reprogControls": true,
+        "gestureButton": false,
         "gestureV2": false
     },
     "dpi": {
