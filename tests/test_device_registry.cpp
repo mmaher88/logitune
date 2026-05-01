@@ -158,7 +158,7 @@ static const DeviceSpec kDevices[] = {
         .gestureDownPayload = nullptr,
         .gestureUpType = ButtonAction::Default,
     },
-        {
+    {
         .pid = 0xb02a,
         .name = "Signature M650",
         .minDpi = 400, .maxDpi = 4000, .dpiStep = 100,
