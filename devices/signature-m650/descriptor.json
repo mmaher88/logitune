@@ -1,0 +1,110 @@
+{
+    "$schema": "../schema.json",
+    "name": "Signature M650",
+    "status": "beta",
+    "productIds": [
+        "0xb02a"
+    ],
+    "features": {
+        "battery": true,
+        "adjustableDpi": true,
+        "extendedDpi": false,
+        "smartShift": false,
+        "hiResWheel": false,
+        "lowResWheel": true,
+        "smoothScroll": true,
+        "thumbWheel": false,
+        "reprogControls": true,
+        "gestureButton": false,
+        "gestureV2": false
+    },
+    "dpi": {
+        "min": 400,
+        "max": 4000,
+        "step": 100
+    },
+    "controls": [
+        {
+            "controlId": "0x0050",
+            "buttonIndex": 0,
+            "defaultName": "Left click",
+            "defaultActionType": "default",
+            "configurable": false
+        },
+        {
+            "controlId": "0x0051",
+            "buttonIndex": 1,
+            "defaultName": "Right click",
+            "defaultActionType": "default",
+            "configurable": false
+        },
+        {
+            "controlId": "0x0052",
+            "buttonIndex": 2,
+            "defaultName": "Middle click",
+            "defaultActionType": "default",
+            "configurable": true
+        },
+        {
+            "controlId": "0x0053",
+            "buttonIndex": 3,
+            "defaultName": "Back",
+            "defaultActionType": "default",
+            "configurable": true
+        },
+        {
+            "controlId": "0x0056",
+            "buttonIndex": 4,
+            "defaultName": "Forward",
+            "defaultActionType": "default",
+            "configurable": true
+        },
+        {
+            "controlId": "0x0000",
+            "buttonIndex": 5,
+            "defaultName": "Scroll wheel",
+            "defaultActionType": "default",
+            "configurable": false
+        }
+    ],
+    "hotspots": {
+        "buttons": [
+            {
+                "buttonIndex": 2,
+                "xPct": 0.65,
+                "yPct": 0.18,
+                "side": "right",
+                "labelOffsetYPct": 0.0
+            },
+            {
+                "buttonIndex": 4,
+                "xPct": 0.28,
+                "yPct": 0.40,
+                "side": "left",
+                "labelOffsetYPct": 0.0
+            },
+            {
+                "buttonIndex": 3,
+                "xPct": 0.38,
+                "yPct": 0.52,
+                "side": "left",
+                "labelOffsetYPct": 0.0
+            }
+        ],
+        "scroll": [
+            {
+                "buttonIndex": -1,
+                "xPct": 0.65,
+                "yPct": 0.15,
+                "side": "right",
+                "labelOffsetYPct": 0.0,
+                "kind": "scrollwheel"
+            }
+        ]
+    },
+    "images": {
+        "front": "front.png",
+        "side": "side.png",
+        "back": "back.png"
+    }
+}
