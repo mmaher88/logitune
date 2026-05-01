@@ -158,6 +158,21 @@ static const DeviceSpec kDevices[] = {
         .gestureDownPayload = nullptr,
         .gestureUpType = ButtonAction::Default,
     },
+        {
+        .pid = 0xb02a,
+        .name = "Signature M650",
+        .minDpi = 400, .maxDpi = 4000, .dpiStep = 100,
+        .buttonHotspots = 3, .scrollHotspots = 1,
+        .minControls = 6,
+        .control0Cid = 0x0050, .control5Cid = 0x0000,
+        .control5ActionType = "default",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = true, .smartShift = false,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
+        .gestureUpType = ButtonAction::Default,
+    },
 };
 
 class DeviceRegistryTest : public testing::TestWithParam<DeviceSpec> {
