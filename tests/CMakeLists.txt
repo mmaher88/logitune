@@ -49,6 +49,7 @@ add_executable(logitune-tests
     core/actions/test_action_preset.cpp
     core/actions/test_action_preset_registry.cpp
     core/desktop/test_generic_desktop_resolve.cpp
+    core/desktop/test_hyprland_desktop_resolve.cpp
     core/desktop/test_kde_desktop_resolve.cpp
     core/desktop/test_gnome_desktop_resolve.cpp
     services/test_active_device_resolver.cpp
