@@ -1,0 +1,135 @@
+{
+  "devices": {
+    "mx-anywhere-3": {
+      "version": 1,
+      "pids": [
+        "0xb025",
+        "0x4090"
+      ],
+      "files": [
+        "descriptor.json",
+        "back.png",
+        "front.png",
+        "side.png"
+      ]
+    },
+    "mx-anywhere-3-for-business": {
+      "version": 1,
+      "pids": [
+        "0xb02d"
+      ],
+      "files": [
+        "descriptor.json",
+        "back.png",
+        "front.png",
+        "side.png"
+      ]
+    },
+    "mx-anywhere-3s": {
+      "version": 1,
+      "pids": [
+        "0xb037"
+      ],
+      "files": [
+        "descriptor.json",
+        "back.png",
+        "front.png",
+        "side.png"
+      ]
+    },
+    "mx-anywhere-3s-for-business": {
+      "version": 1,
+      "pids": [
+        "0xb038"
+      ],
+      "files": [
+        "descriptor.json",
+        "back.png",
+        "front.png",
+        "side.png"
+      ]
+    },
+    "mx-master-2s": {
+      "version": 1,
+      "pids": [
+        "0xb019"
+      ],
+      "files": [
+        "descriptor.json",
+        "back.png",
+        "front.png",
+        "side.png"
+      ]
+    },
+    "mx-master-3": {
+      "version": 1,
+      "pids": [
+        "0xc52b"
+      ],
+      "files": [
+        "descriptor.json",
+        "back.png",
+        "front.png",
+        "side.png"
+      ]
+    },
+    "mx-master-3s": {
+      "version": 1,
+      "pids": [
+        "0xb034"
+      ],
+      "files": [
+        "descriptor.json",
+        "back.png",
+        "front.png",
+        "side.png"
+      ]
+    },
+    "mx-master-4": {
+      "version": 1,
+      "pids": [
+        "0xb042"
+      ],
+      "files": [
+        "descriptor.json",
+        "back.png",
+        "front.png",
+        "side.png"
+      ]
+    },
+    "mx-mechanical": {
+      "version": 1,
+      "pids": [
+        "0xb366"
+      ],
+      "files": [
+        "descriptor.json"
+      ]
+    },
+    "mx-vertical": {
+      "version": 1,
+      "pids": [
+        "0xb020",
+        "0x407b"
+      ],
+      "files": [
+        "descriptor.json",
+        "back.png",
+        "front.png",
+        "side.png"
+      ]
+    },
+    "mx-vertical-for-business": {
+      "version": 1,
+      "pids": [
+        "0xb020"
+      ],
+      "files": [
+        "descriptor.json",
+        "back.png",
+        "front.png",
+        "side.png"
+      ]
+    }
+  }
+}

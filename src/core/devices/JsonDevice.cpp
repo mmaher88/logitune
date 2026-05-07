@@ -19,11 +19,30 @@ bool JsonDevice::matchesPid(uint16_t pid) const
     return false;
 }
 
-static JsonDevice::Status parseStatus(const QString& s)
+static bool parseStatus(const QString& s, JsonDevice::Status& out)
 {
-    if (s == QStringLiteral("verified") || s == QStringLiteral("implemented"))
-        return JsonDevice::Status::Verified;
-    return JsonDevice::Status::Beta;
+    if (s == QStringLiteral("verified")) {
+        out = JsonDevice::Status::Verified;
+        return true;
+    }
+    if (s == QStringLiteral("beta")) {
+        out = JsonDevice::Status::Beta;
+        return true;
+    }
+    return false;
+}
+
+static bool parseDeviceKind(const QString& s, DeviceKind& out)
+{
+    if (s == QStringLiteral("mouse")) {
+        out = DeviceKind::Mouse;
+        return true;
+    }
+    if (s == QStringLiteral("keyboard")) {
+        out = DeviceKind::Keyboard;
+        return true;
+    }
+    return false;
 }
 
 static ButtonAction::Type parseButtonActionType(const QString& s)
@@ -164,8 +183,15 @@ bool JsonDevice::parseFromObject(const QJsonObject& root, const QString& dirPath
     const QDir dir(dirPath);
     const QString filePath = dir.absoluteFilePath(QStringLiteral("descriptor.json"));
 
-    m_status = parseStatus(root.value(QStringLiteral("status")).toString());
     m_name = root.value(QStringLiteral("name")).toString();
+    if (!parseStatus(root.value(QStringLiteral("status")).toString(), m_status)) {
+        qCWarning(lcDevice) << "JsonDevice: invalid or missing status in" << filePath;
+        return false;
+    }
+    if (!parseDeviceKind(root.value(QStringLiteral("deviceKind")).toString(), m_deviceKind)) {
+        qCWarning(lcDevice) << "JsonDevice: invalid or missing deviceKind in" << filePath;
+        return false;
+    }
 
     const QJsonArray pidArr = root.value(QStringLiteral("productIds")).toArray();
     for (const auto& v : pidArr) {
@@ -295,6 +321,7 @@ bool JsonDevice::refresh()
     m_backImage.clear();
     m_features = FeatureSupport{};
     m_name.clear();
+    m_deviceKind = DeviceKind::Mouse;
     m_status = Status::Beta;
     m_minDpi = 200;
     m_maxDpi = 8000;
@@ -320,6 +347,7 @@ bool JsonDevice::refreshFromObject(const QJsonObject &root)
     m_backImage.clear();
     m_features = FeatureSupport{};
     m_name.clear();
+    m_deviceKind = DeviceKind::Mouse;
     m_status = Status::Beta;
     m_minDpi = 200;
     m_maxDpi = 8000;

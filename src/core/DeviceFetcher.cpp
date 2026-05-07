@@ -1,4 +1,5 @@
 #include "DeviceFetcher.h"
+#include "DeviceRegistry.h"
 #include "logging/LogManager.h"
 
 #include <QDateTime>
@@ -13,9 +14,22 @@
 namespace logitune {
 
 const QString DeviceFetcher::kManifestUrl =
-    QStringLiteral("https://raw.githubusercontent.com/mmaher88/logitune-devices/main/manifest.json");
+    QStringLiteral("https://raw.githubusercontent.com/mmaher88/logitune/master/devices/manifest.json");
 const QString DeviceFetcher::kRawBaseUrl =
-    QStringLiteral("https://raw.githubusercontent.com/mmaher88/logitune-devices/main/");
+    QStringLiteral("https://raw.githubusercontent.com/mmaher88/logitune/master/devices/");
+
+namespace {
+
+QString environmentUrlOrDefault(const char *name, const QString &defaultUrl)
+{
+    const QByteArray value = qgetenv(name);
+    if (value.isEmpty())
+        return defaultUrl;
+
+    return QString::fromUtf8(value);
+}
+
+} // namespace
 
 DeviceFetcher::DeviceFetcher(QObject *parent)
     : QObject(parent)
@@ -87,6 +101,16 @@ QJsonObject DeviceFetcher::loadManifest() const
     return doc.isObject() ? doc.object() : QJsonObject{};
 }
 
+QJsonObject DeviceFetcher::loadBundledManifest() const
+{
+    QFile f(QDir(DeviceRegistry::systemDevicesDir()).filePath(QStringLiteral("manifest.json")));
+    if (!f.open(QIODevice::ReadOnly))
+        return {};
+
+    const auto doc = QJsonDocument::fromJson(f.readAll());
+    return doc.isObject() ? doc.object() : QJsonObject{};
+}
+
 QPair<QString, QJsonObject> DeviceFetcher::findDeviceForPid(const QJsonObject &manifest,
                                                              uint16_t pid) const
 {
@@ -103,6 +127,21 @@ QPair<QString, QJsonObject> DeviceFetcher::findDeviceForPid(const QJsonObject &m
     }
 
     return {QString(), QJsonObject()};
+}
+
+bool DeviceFetcher::isSafeManifestFilename(const QString &filename) const
+{
+    if (filename == QStringLiteral("descriptor.json"))
+        return true;
+    if (filename.isEmpty() || filename.contains(QStringLiteral(".."))
+        || filename.contains(QLatin1Char('/')) || filename.contains(QLatin1Char('\\')))
+        return false;
+    const QString lower = filename.toLower();
+    return lower.endsWith(QStringLiteral(".png"))
+        || lower.endsWith(QStringLiteral(".jpg"))
+        || lower.endsWith(QStringLiteral(".jpeg"))
+        || lower.endsWith(QStringLiteral(".svg"))
+        || lower.endsWith(QStringLiteral(".webp"));
 }
 
 bool DeviceFetcher::deviceNeedsUpdate(const QString &slug, int manifestVersion) const
@@ -125,6 +164,20 @@ QString DeviceFetcher::deviceCachePath(const QString &slug) const
     return m_cacheDir + QStringLiteral("/devices/") + slug;
 }
 
+QString DeviceFetcher::manifestUrl()
+{
+    return environmentUrlOrDefault("LOGITUNE_DEVICE_MANIFEST_URL", kManifestUrl);
+}
+
+QString DeviceFetcher::rawBaseUrl()
+{
+    QString url = environmentUrlOrDefault("LOGITUNE_DEVICE_RAW_BASE_URL", kRawBaseUrl);
+    while (url.endsWith(QLatin1Char('/')))
+        url.chop(1);
+    url += QLatin1Char('/');
+    return url;
+}
+
 // ---- Network implementation --------------------------------------------------
 
 void DeviceFetcher::fetchManifest()
@@ -134,7 +187,7 @@ void DeviceFetcher::fetchManifest()
         return;
     }
 
-    QNetworkRequest req{QUrl(kManifestUrl)};
+    QNetworkRequest req{QUrl(manifestUrl())};
     req.setTransferTimeout(10000);
 
     const QString etag = loadEtag();
@@ -144,9 +197,16 @@ void DeviceFetcher::fetchManifest()
     auto *reply = m_nam.get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         reply->deleteLater();
+        const QJsonObject cached = loadManifest();
 
         if (reply->error() != QNetworkReply::NoError) {
             qCWarning(lcDevice) << "manifest fetch failed:" << reply->errorString();
+            if (!cached.isEmpty()) {
+                qCWarning(lcDevice) << "using stale cached device manifest";
+                onManifestReceived(cached);
+            } else if (!loadBundledManifest().isEmpty()) {
+                qCWarning(lcDevice) << "using bundled descriptors; remote updates unavailable";
+            }
             return;
         }
 
@@ -166,6 +226,12 @@ void DeviceFetcher::fetchManifest()
             const auto doc = QJsonDocument::fromJson(reply->readAll());
             if (!doc.isObject()) {
                 qCWarning(lcDevice) << "manifest is not valid JSON object";
+                if (!cached.isEmpty()) {
+                    qCWarning(lcDevice) << "using stale cached device manifest";
+                    onManifestReceived(cached);
+                } else if (!loadBundledManifest().isEmpty()) {
+                    qCWarning(lcDevice) << "using bundled descriptors; remote updates unavailable";
+                }
                 return;
             }
 
@@ -177,6 +243,12 @@ void DeviceFetcher::fetchManifest()
         }
 
         qCWarning(lcDevice) << "manifest fetch unexpected status:" << status;
+        if (!cached.isEmpty()) {
+            qCWarning(lcDevice) << "using stale cached device manifest";
+            onManifestReceived(cached);
+        } else if (!loadBundledManifest().isEmpty()) {
+            qCWarning(lcDevice) << "using bundled descriptors; remote updates unavailable";
+        }
     });
 }
 
@@ -199,8 +271,17 @@ void DeviceFetcher::fetchForPid(uint16_t pid)
         }
     }
 
+    const QJsonObject bundled = loadBundledManifest();
+    if (!bundled.isEmpty()) {
+        const auto [slug, devInfo] = findDeviceForPid(bundled, pid);
+        if (!slug.isEmpty()) {
+            m_pendingPid = 0;
+            return;
+        }
+    }
+
     // No cached manifest or PID not found — fetch fresh manifest
-    QNetworkRequest req{QUrl(kManifestUrl)};
+    QNetworkRequest req{QUrl(manifestUrl())};
     req.setTransferTimeout(10000);
 
     auto *reply = m_nam.get(req);
@@ -270,12 +351,15 @@ void DeviceFetcher::downloadDevice(const QString &slug, const QJsonObject &devic
 
     for (const auto &fileVal : files) {
         const QString filename = fileVal.toString();
-        if (filename.isEmpty())
+        if (!isSafeManifestFilename(filename)) {
+            qCWarning(lcDevice) << "unsafe manifest filename rejected:" << slug << "/" << filename;
+            m_failedDownloads++;
             continue;
+        }
 
         m_pendingDownloads++;
 
-        const QUrl url(kRawBaseUrl + slug + QStringLiteral("/") + filename);
+        const QUrl url(rawBaseUrl() + slug + QStringLiteral("/") + filename);
         QNetworkRequest req{url};
         req.setTransferTimeout(10000);
 
@@ -286,6 +370,7 @@ void DeviceFetcher::downloadDevice(const QString &slug, const QJsonObject &devic
             if (reply->error() != QNetworkReply::NoError) {
                 qCWarning(lcDevice) << "download failed:" << slug << "/" << filename
                                     << reply->errorString();
+                m_failedDownloads++;
             } else {
                 onFileDownloaded(slug, filename, reply->readAll());
             }
@@ -318,11 +403,12 @@ void DeviceFetcher::checkDownloadsComplete()
     if (m_pendingDownloads > 0)
         return;
 
-    if (m_hasNewDevices) {
+    if (m_hasNewDevices && m_failedDownloads == 0) {
         qCDebug(lcDevice) << "new descriptors downloaded";
-        m_hasNewDevices = false;
         emit descriptorsUpdated();
     }
+    m_hasNewDevices = false;
+    m_failedDownloads = 0;
 }
 
 } // namespace logitune

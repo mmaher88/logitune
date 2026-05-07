@@ -21,6 +21,7 @@ public:
     qint64 loadedMtime() const { return m_loadedMtime; }
 
     QString deviceName() const override { return m_name; }
+    DeviceKind deviceKind() const override { return m_deviceKind; }
     std::vector<uint16_t> productIds() const override { return m_pids; }
     bool matchesPid(uint16_t pid) const override;
     QList<ControlDescriptor> controls() const override { return m_controls; }
@@ -43,6 +44,7 @@ private:
     bool parseFromObject(const QJsonObject& root, const QString& dirPath, bool strict = true);
 
     Status m_status = Status::Beta;
+    DeviceKind m_deviceKind = DeviceKind::Mouse;
     QString m_name;
     std::vector<uint16_t> m_pids;
     FeatureSupport m_features;

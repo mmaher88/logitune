@@ -10,8 +10,10 @@ using namespace logitune;
 struct DeviceSpec {
     uint16_t pid;
     const char* name;
+    DeviceKind kind;
     int minDpi, maxDpi, dpiStep;
     size_t buttonHotspots, scrollHotspots;
+    size_t easySwitchSlots;
     size_t minControls;
     uint16_t control0Cid, control5Cid;
     const char* control5ActionType, *control6ActionType;
@@ -26,8 +28,9 @@ static const DeviceSpec kDevices[] = {
     {
         .pid = 0xb019,
         .name = "MX Master 2S",
+        .kind = DeviceKind::Mouse,
         .minDpi = 200, .maxDpi = 4000, .dpiStep = 50,
-        .buttonHotspots = 6, .scrollHotspots = 3,
+        .buttonHotspots = 6, .scrollHotspots = 3, .easySwitchSlots = 3,
         .minControls = 7,
         .control0Cid = 0x0050, .control5Cid = 0x00C3,
         .control5ActionType = "gesture-trigger",
@@ -41,8 +44,9 @@ static const DeviceSpec kDevices[] = {
     {
         .pid = 0xb034,
         .name = "MX Master 3S",
+        .kind = DeviceKind::Mouse,
         .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
-        .buttonHotspots = 6, .scrollHotspots = 3,
+        .buttonHotspots = 6, .scrollHotspots = 3, .easySwitchSlots = 3,
         .minControls = 7,
         .control0Cid = 0x0050, .control5Cid = 0x00C3,
         .control5ActionType = "gesture-trigger",
@@ -56,8 +60,9 @@ static const DeviceSpec kDevices[] = {
     {
         .pid = 0xc52b,
         .name = "MX Master 3",
+        .kind = DeviceKind::Mouse,
         .minDpi = 200, .maxDpi = 4000, .dpiStep = 50,
-        .buttonHotspots = 6, .scrollHotspots = 3,
+        .buttonHotspots = 6, .scrollHotspots = 3, .easySwitchSlots = 3,
         .minControls = 7,
         .control0Cid = 0x0050, .control5Cid = 0x00C3,
         .control5ActionType = "gesture-trigger",
@@ -71,8 +76,9 @@ static const DeviceSpec kDevices[] = {
     {
         .pid = 0xb042,
         .name = "MX Master 4",
+        .kind = DeviceKind::Mouse,
         .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
-        .buttonHotspots = 6, .scrollHotspots = 3,
+        .buttonHotspots = 6, .scrollHotspots = 3, .easySwitchSlots = 3,
         .minControls = 7,
         .control0Cid = 0x0050, .control5Cid = 0x00C3,
         .control5ActionType = "gesture-trigger",
@@ -86,8 +92,9 @@ static const DeviceSpec kDevices[] = {
     {
         .pid = 0xb037,
         .name = "MX Anywhere 3S",
+        .kind = DeviceKind::Mouse,
         .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
-        .buttonHotspots = 4, .scrollHotspots = 2,
+        .buttonHotspots = 4, .scrollHotspots = 2, .easySwitchSlots = 3,
         .minControls = 6,
         .control0Cid = 0x0050, .control5Cid = 0x00C4,
         .control5ActionType = "smartshift-toggle",
@@ -101,8 +108,9 @@ static const DeviceSpec kDevices[] = {
     {
         .pid = 0xb038,
         .name = "MX Anywhere 3S for Business",
+        .kind = DeviceKind::Mouse,
         .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
-        .buttonHotspots = 4, .scrollHotspots = 2,
+        .buttonHotspots = 4, .scrollHotspots = 2, .easySwitchSlots = 3,
         .minControls = 6,
         .control0Cid = 0x0050, .control5Cid = 0x00C4,
         .control5ActionType = "smartshift-toggle",
@@ -116,8 +124,9 @@ static const DeviceSpec kDevices[] = {
     {
         .pid = 0xb025,
         .name = "MX Anywhere 3",
+        .kind = DeviceKind::Mouse,
         .minDpi = 200, .maxDpi = 4000, .dpiStep = 50,
-        .buttonHotspots = 4, .scrollHotspots = 2,
+        .buttonHotspots = 4, .scrollHotspots = 2, .easySwitchSlots = 3,
         .minControls = 6,
         .control0Cid = 0x0050, .control5Cid = 0x00C4,
         .control5ActionType = "smartshift-toggle",
@@ -131,8 +140,9 @@ static const DeviceSpec kDevices[] = {
     {
         .pid = 0xb02d,
         .name = "MX Anywhere 3 for Business",
+        .kind = DeviceKind::Mouse,
         .minDpi = 200, .maxDpi = 4000, .dpiStep = 50,
-        .buttonHotspots = 4, .scrollHotspots = 2,
+        .buttonHotspots = 4, .scrollHotspots = 2, .easySwitchSlots = 3,
         .minControls = 6,
         .control0Cid = 0x0050, .control5Cid = 0x00C4,
         .control5ActionType = "smartshift-toggle",
@@ -146,13 +156,30 @@ static const DeviceSpec kDevices[] = {
     {
         .pid = 0xb020,
         .name = "MX Vertical",
+        .kind = DeviceKind::Mouse,
         .minDpi = 400, .maxDpi = 4000, .dpiStep = 50,
-        .buttonHotspots = 4, .scrollHotspots = 2,
+        .buttonHotspots = 4, .scrollHotspots = 2, .easySwitchSlots = 3,
         .minControls = 6,
         .control0Cid = 0x0050, .control5Cid = 0x00C3,
         .control5ActionType = "dpi-cycle",
         .control6ActionType = nullptr,
         .battery = true, .adjustableDpi = true, .smartShift = false,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
+        .gestureUpType = ButtonAction::Default,
+    },
+    {
+        .pid = 0xb366,
+        .name = "MX Mechanical",
+        .kind = DeviceKind::Keyboard,
+        .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
+        .buttonHotspots = 0, .scrollHotspots = 0, .easySwitchSlots = 3,
+        .minControls = 36,
+        .control0Cid = 0x000A, .control5Cid = 0x00D4,
+        .control5ActionType = "default",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = false, .smartShift = false,
         .reprogControls = true, .gestureV2 = false,
         .gestureDownType = ButtonAction::Default,
         .gestureDownPayload = nullptr,
@@ -170,6 +197,7 @@ TEST_P(DeviceRegistryTest, FindsByPid) {
     auto* dev = reg.findByPid(s.pid);
     ASSERT_NE(dev, nullptr);
     EXPECT_EQ(dev->deviceName(), s.name);
+    EXPECT_EQ(dev->deviceKind(), s.kind);
 }
 
 TEST_P(DeviceRegistryTest, ControlsHaveExpectedCids) {
@@ -217,6 +245,8 @@ TEST_P(DeviceRegistryTest, DpiRange) {
     auto* dev = reg.findByPid(GetParam().pid);
     ASSERT_NE(dev, nullptr);
     auto& s = GetParam();
+    if (s.kind != DeviceKind::Mouse)
+        GTEST_SKIP() << "DPI assertions are mouse-only";
     EXPECT_EQ(dev->minDpi(), s.minDpi);
     EXPECT_EQ(dev->maxDpi(), s.maxDpi);
     EXPECT_EQ(dev->dpiStep(), s.dpiStep);
@@ -228,6 +258,7 @@ TEST_P(DeviceRegistryTest, Hotspots) {
     auto& s = GetParam();
     EXPECT_EQ(dev->buttonHotspots().size(), s.buttonHotspots);
     EXPECT_EQ(dev->scrollHotspots().size(), s.scrollHotspots);
+    EXPECT_EQ(dev->easySwitchSlotPositions().size(), s.easySwitchSlots);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -248,6 +279,18 @@ TEST(DeviceRegistry, ReturnsNullForUnknownPid) {
     EXPECT_EQ(reg.findByPid(0xFFFF), nullptr);
 }
 
+TEST(DeviceRegistry, MxMechanicalBoltReceiverPidFallsBackToName) {
+    DeviceRegistry reg;
+    EXPECT_EQ(reg.findByPid(0xc548), nullptr);
+
+    const auto *dev = reg.findByName(QStringLiteral("MX Mechanical"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceKind(), DeviceKind::Keyboard);
+    const auto ids = dev->productIds();
+    EXPECT_NE(std::find(ids.begin(), ids.end(), 0xb366), ids.end());
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Mechanical"));
+}
+
 TEST(DeviceRegistry, ReloadByPathRefreshesSingleDevice) {
     QTemporaryDir tmp;
     ASSERT_TRUE(tmp.isValid());
@@ -259,7 +302,7 @@ TEST(DeviceRegistry, ReloadByPathRefreshesSingleDevice) {
         QFile f(descPath);
         if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
             return false;
-        f.write(QStringLiteral(R"({"name":"%1","status":"beta","productIds":["0xffff"],"features":{},"controls":[],"hotspots":{"buttons":[],"scroll":[]},"images":{},"easySwitchSlots":[]})").arg(name).toUtf8());
+        f.write(QStringLiteral(R"({"name":"%1","deviceKind":"mouse","status":"beta","productIds":["0xffff"],"features":{},"controls":[],"hotspots":{"buttons":[],"scroll":[]},"images":{},"easySwitchSlots":[]})").arg(name).toUtf8());
         f.close();
         return true;
     };

@@ -1,8 +1,10 @@
 {
   "$schema": "../schema.json",
   "name": "MX Master 3",
+  "deviceKind": "mouse",
   "status": "verified",
   "productIds": ["0xc52b"],
+  "version": 1,
   "features": {
     "battery": true,
     "adjustableDpi": true,

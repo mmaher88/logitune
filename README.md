@@ -1,7 +1,7 @@
 <p align="center">
   <img src="data/com.logitune.Logitune.svg" width="80">
   <h1 align="center">Logitune</h1>
-  <p align="center">A Linux configurator for Logitech peripherals — per-application profiles, gesture mapping, thumb wheel modes, and a dark-themed Qt Quick UI matching Logitech Options+.</p>
+  <p align="center">A Linux configurator for Logitech peripherals — per-application profiles, gesture mapping, thumb wheel modes, and a dark-themed Qt Quick UI inspired by Logitech Options+.</p>
 </p>
 
 <p align="center">
@@ -120,6 +120,7 @@ logitune
 | MX Anywhere 3 for Business | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
 | MX Anywhere 3S | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
 | MX Anywhere 3S for Business | 🧪 Beta | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ |
+| MX Mechanical | 🧪 Beta | ✅ | — | — | — | ✅ | — | — | ✅ |
 | MX Vertical | 🧪 Beta | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ |
 | MX Vertical for Business | 🧪 Beta | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ |
 <!-- END DEVICES TABLE -->
@@ -129,6 +130,24 @@ logitune
 The four MX Anywhere family descriptors ship as 🧪 **Beta** pending hardware confirmation. Issue [#46](https://github.com/mmaher88/logitune/issues/46) tracks the verification.
 
 Other Logitech HID++ 2.0 devices can be added by contributing a [device descriptor](https://github.com/mmaher88/logitune/wiki/Adding-a-Device). See [Device Support Status](https://github.com/mmaher88/logitune/wiki/Getting-Started#device-support-status) for what the badges mean.
+
+For local descriptor-feed testing from a fork or branch, override the generated manifest and raw device file base at launch:
+
+```bash
+LOGITUNE_DEVICE_MANIFEST_URL="https://raw.githubusercontent.com/<owner>/<repo>/<branch>/devices/manifest.json" \
+LOGITUNE_DEVICE_RAW_BASE_URL="https://raw.githubusercontent.com/<owner>/<repo>/<branch>/devices/" \
+logitune
+```
+
+Unset either variable, or set it to an empty value, to use the upstream defaults.
+
+### Options+ parity scope
+
+Logitune implements feasible Linux HID++ functionality; it is not a proprietary Logitech Options+ clone. Feasible scope includes battery state, Easy-Switch state, mouse DPI/scroll/SmartShift/thumb wheel/gestures, key or button remapping where HID++ controls are exposed, and per-app profile switching on supported desktop environments.
+
+Logitech account/cloud features, Flow internals, firmware update services, Marketplace, AI Prompt Builder, Smart Actions cloud features, and macOS-only APIs or services are not currently reproducible in Logitune.
+
+MX Mechanical beta support covers recognition by name/WPID, battery, Easy-Switch display, and beta key remapping CIDs. Backlight, fn-inversion, disable-keys, and multiplatform UI are future HID++ feature work.
 
 ## 🖥️ Desktop Environment Support
 

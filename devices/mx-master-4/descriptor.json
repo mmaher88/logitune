@@ -1,8 +1,10 @@
 {
   "$schema": "../schema.json",
   "name": "MX Master 4",
+  "deviceKind": "mouse",
   "status": "verified",
   "productIds": ["0xb042"],
+  "version": 1,
   "features": {
     "battery": true,
     "adjustableDpi": true,

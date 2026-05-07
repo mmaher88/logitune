@@ -219,6 +219,12 @@ Each capability is a plain struct that stores the `FeatureId` it matches, the fu
 
 Protocol-level feature code (parsing one variant, building one request) lives in `src/core/hidpp/features/` (`AdjustableDPI`, `Battery`, `DeviceName`, `GestureV2`, `HiResWheel`, `ReprogControls`, `SmartShift`, `ThumbWheel`). Features without multiple variants (`AdjustableDPI`, `HiResWheel`, `ThumbWheel`, `DeviceName`, `GestureV2`) are called directly against their `FeatureId`; only Battery, SmartShift, and ReprogControls currently need the dispatch-table layer.
 
+### Descriptor device kinds and parity boundaries
+
+Every JSON descriptor declares a canonical `deviceKind` of `mouse` or `keyboard`. Mouse descriptors can expose pointer, DPI, wheel, thumb-wheel, SmartShift, gestures, and button hotspot metadata. Keyboard descriptors use the same registry and ReprogControls plumbing for HID++ key CIDs, but omit mouse-only DPI and hotspot expectations unless runtime support exists for a keyboard-specific feature.
+
+Options+ exports, Solaar reports, and local Logitune logs are evidence sources for descriptor data: names, WPIDs, HID++ feature IDs, divertable controls, and observed state such as battery or Easy-Switch host. They do not make Logitune an Options+ clone. Cloud services, Flow internals, firmware update services, Marketplace/AI Prompt Builder/Smart Actions features, and macOS-only APIs are outside the Linux HID++ architecture documented here.
+
 ### FeatureDispatcher
 
 `hidpp::FeatureDispatcher` (`src/core/hidpp/FeatureDispatcher.{h,cpp}`) owns the per-device feature index table. HID++ 2.0 assigns each feature a device-specific 8-bit index at runtime (Root is always `0x00`, the rest vary), so every feature call has to resolve `FeatureId -> index` before building a report. `callAsync` assigns a rotating `softwareId` (1 to 15) so responses can be routed back to the original caller even when multiple requests are in flight; `handleResponse` is invoked by `DeviceManager` whenever an incoming report has non-zero `softwareId` (that is, a response rather than an unsolicited notification).
@@ -1063,15 +1069,15 @@ For the contributor-facing workflow, see
 
 ## Device Descriptors
 
-A device in Logitune is data, not code. Every supported mouse is a directory under `devices/{slug}/` containing one `descriptor.json` plus `front.png`, `side.png`, and `back.png`. At startup `DeviceRegistry` enumerates these directories, wraps each one in a `JsonDevice`, and that `JsonDevice *` is what the rest of the app sees through the `IDevice` interface. Adding a new mouse requires no C++ changes.
+A device in Logitune is data, not code. Every supported peripheral is a directory under `devices/{slug}/` containing one `descriptor.json` plus any device images the descriptor references. Mouse descriptors usually ship `front.png`, `side.png`, and `back.png`; beta keyboard descriptors may omit images until keyboard-specific visual layout is implemented. At startup `DeviceRegistry` enumerates these directories, wraps each one in a `JsonDevice`, and that `JsonDevice *` is what the rest of the app sees through the `IDevice` interface. Adding a descriptor normally requires no C++ changes unless the device needs a HID++ feature variant that the runtime cannot drive yet.
 
 ### IDevice
 
-`IDevice` (`src/core/interfaces/IDevice.h`) is the pure-virtual interface every descriptor satisfies. It is intentionally read-only: getters for identity (`deviceName`, `productIds`, `matchesPid(pid)`), DPI range (`minDpi`, `maxDpi`, `dpiStep`, `dpiCycleRing`), buttons (`controls()` returning `QList<ControlDescriptor>`), hotspots (`buttonHotspots()`, `scrollHotspots()`), feature support flags (`features()` returning `FeatureSupport`), images (`frontImagePath`, `sideImagePath`, `backImagePath`), default gestures (`defaultGestures()` keyed by `"up" / "down" / "left" / "right" / "click"`), and Easy-Switch slot positions (`easySwitchSlotPositions()`).
+`IDevice` (`src/core/interfaces/IDevice.h`) is the pure-virtual interface every descriptor satisfies. It is intentionally read-only: getters for identity (`deviceName`, `deviceKind`, `productIds`, `matchesPid(pid)`), DPI range (`minDpi`, `maxDpi`, `dpiStep`, `dpiCycleRing`), controls (`controls()` returning `QList<ControlDescriptor>`), hotspots (`buttonHotspots()`, `scrollHotspots()`), feature support flags (`features()` returning `FeatureSupport`), images (`frontImagePath`, `sideImagePath`, `backImagePath`), default gestures (`defaultGestures()` keyed by `"up" / "down" / "left" / "right" / "click"`), and Easy-Switch slot positions (`easySwitchSlotPositions()`).
 
 Three structs carry the runtime values:
 
-- `ControlDescriptor`: HID++ `controlId` (e.g. `0x00C3` for the gesture button), zero-based `buttonIndex`, default name, `defaultActionType` (`"default"`, `"gesture-trigger"`, `"smartshift-toggle"`), and a `configurable` flag that tells the UI whether the user can remap this button.
+- `ControlDescriptor`: HID++ `controlId` (e.g. `0x00C3` for the gesture button), zero-based `buttonIndex`, default name, `defaultActionType` (`"default"`, `"keystroke"`, `"gesture-trigger"`, `"smartshift-toggle"`, `"dpi-cycle"`, `"app-launch"`, `"dbus"`, or `"media"`), and a `configurable` flag that tells the UI whether the user can remap this control.
 - `HotspotDescriptor`: per-button annotation coordinates for the QML overlay. `xPct` / `yPct` are 0 to 1 floats, `side` is `"front" / "side" / "back"`, `kind` distinguishes scroll / thumb-wheel hotspots from button hotspots.
 - `FeatureSupport`: 27 booleans gating UI visibility. When `smartShift` is `false`, the SmartShift slider is hidden; when `thumbWheel` is `false`, the Point & Scroll page hides thumb-wheel controls; and so on. See the MX Master 3S descriptor at `devices/mx-master-3s/descriptor.json` for the shape.
 
@@ -1081,7 +1087,7 @@ Three structs carry the runtime values:
 
 `JsonDevice` (`src/core/devices/JsonDevice.{h,cpp}`) is the only concrete `IDevice` implementation shipped with Logitune. `JsonDevice::load(dirPath)` opens `descriptor.json` in the given directory, parses it into the member structures (`m_pids`, `m_features`, `m_minDpi`, `m_controls`, `m_buttonHotspots`, `m_scrollHotspots`, `m_frontImage`, `m_sideImage`, `m_backImage`, `m_defaultGestures`, `m_easySwitchSlots`, `m_dpiCycleRing`), and stores `m_sourcePath` + `m_loadedMtime` so `DeviceRegistry::reload(path)` can do targeted live reloads when the descriptor changes on disk. `refreshFromObject(QJsonObject)` lets `EditorModel` push pending in-memory edits into the live device without going through disk.
 
-`status()` distinguishes `Verified` from `Beta` devices; the UI uses this to show a "beta descriptor" banner on first launch for community-contributed entries. There are no per-device C++ subclasses.
+`status()` distinguishes `Verified` from `Beta` devices; the UI uses this to show a "beta descriptor" banner on first launch for community-contributed entries. The descriptor schema accepts only `"verified"` and `"beta"`; older status spellings are rejected instead of coerced. There are no per-device C++ subclasses.
 
 ### DescriptorWriter
 
@@ -1089,9 +1095,19 @@ Three structs carry the runtime values:
 
 ### DeviceFetcher
 
-`DeviceFetcher` (`src/core/DeviceFetcher.{h,cpp}`) brings community-contributed descriptors from GitHub into the user's local devices directory. `fetchManifest()` is called at startup (when `isCacheFresh()` returns false; the TTL is `kCacheTtlSeconds = 3600`), GETs `kManifestUrl` (the `manifest.json` in the `logitune-devices` GitHub repository), and compares each listed slug's `manifestVersion` against what is already cached. `fetchForPid(pid)` is wired to `DeviceManager::unknownDeviceDetected(pid)`: when an unrecognized Logitech device appears, the fetcher looks up that PID in the cached manifest, downloads the matching descriptor plus images, and writes them into `deviceCachePath(slug)`.
+`DeviceFetcher` (`src/core/DeviceFetcher.{h,cpp}`) brings updated descriptors from GitHub into the user's local devices directory. `fetchManifest()` is called at startup (when `isCacheFresh()` returns false; the TTL is `kCacheTtlSeconds = 3600`), GETs `manifestUrl()` (the generated `devices/manifest.json` shipped from the main `mmaher88/logitune` repository unless `LOGITUNE_DEVICE_MANIFEST_URL` is set), and compares each listed slug's `manifestVersion` against what is already cached. `fetchForPid(pid)` is wired to `DeviceManager::unknownDeviceDetected(pid)`: when an unrecognized Logitech device appears, the fetcher looks up that PID in the cached manifest, then the bundled manifest, then the remote manifest if needed.
 
-On successful fetch, `DeviceFetcher` emits `descriptorsUpdated()`, which `DeviceRegistry` subscribes to so it can rescan the local directory and expose the new device without a restart. The HTTP cache is keyed on ETag (`saveEtag` / `loadEtag`) and timestamp (`saveTimestamp` / `isCacheFresh`) to avoid re-downloading unchanged manifests.
+Local fork or branch descriptor feeds can be tested without rebuilding by launching with both feed overrides:
+
+```bash
+LOGITUNE_DEVICE_MANIFEST_URL="https://raw.githubusercontent.com/<owner>/<repo>/<branch>/devices/manifest.json" \
+LOGITUNE_DEVICE_RAW_BASE_URL="https://raw.githubusercontent.com/<owner>/<repo>/<branch>/devices/" \
+logitune
+```
+
+Unset or empty override values use the upstream defaults. `rawBaseUrl()` normalizes `LOGITUNE_DEVICE_RAW_BASE_URL` to one trailing slash before descriptor image URLs are built.
+
+On successful fetch, `DeviceFetcher` emits `descriptorsUpdated()`, which `DeviceRegistry` subscribes to so it can rescan the local directory and expose the new device without a restart. The HTTP cache is keyed on ETag (`saveEtag` / `loadEtag`) and timestamp (`saveTimestamp` / `isCacheFresh`) to avoid re-downloading unchanged manifests. If the remote manifest request fails, returns invalid JSON, or returns an unexpected status, startup falls back to the stale cached manifest and only falls back to bundled descriptors when no cache exists.
 
 **Methods:**
 
@@ -1106,9 +1122,13 @@ On successful fetch, `DeviceFetcher` emits `descriptorsUpdated()`, which `Device
 | `loadEtag()` | Returns the last-saved ETag, or an empty string. |
 | `saveManifest(const QJsonObject &manifest)` | Persists the downloaded manifest JSON to disk. |
 | `loadManifest()` | Returns the cached manifest as a `QJsonObject`. |
+| `loadBundledManifest()` | Returns the shipped `devices/manifest.json` from the installed system devices directory. |
 | `findDeviceForPid(const QJsonObject &manifest, uint16_t pid)` | Returns `(slug, deviceInfo)` for the first manifest entry that claims `pid`, or an empty pair. |
+| `isSafeManifestFilename(const QString &filename)` | Rejects manifest file names that could escape the target device cache directory. |
 | `deviceNeedsUpdate(const QString &slug, int manifestVersion)` | Returns true if the cached descriptor for `slug` is older than `manifestVersion`. |
 | `deviceCachePath(const QString &slug)` | Returns the on-disk cache path for the device `slug`. |
+| `manifestUrl()` | Returns the manifest URL, honoring `LOGITUNE_DEVICE_MANIFEST_URL` when non-empty. |
+| `rawBaseUrl()` | Returns the raw descriptor-file base URL, honoring `LOGITUNE_DEVICE_RAW_BASE_URL` when non-empty and normalizing one trailing slash. |
 
 **Signals:**
 

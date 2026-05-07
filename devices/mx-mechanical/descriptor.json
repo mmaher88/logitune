@@ -1,0 +1,315 @@
+{
+  "name": "MX Mechanical",
+  "deviceKind": "keyboard",
+  "status": "beta",
+  "productIds": [
+    "0xb366"
+  ],
+  "version": 1,
+  "features": {
+    "battery": true,
+    "adjustableDpi": false,
+    "extendedDpi": false,
+    "smartShift": false,
+    "hiResWheel": false,
+    "hiResScrolling": false,
+    "lowResWheel": false,
+    "smoothScroll": false,
+    "thumbWheel": false,
+    "reprogControls": true,
+    "gestureV2": false,
+    "mouseGesture": false,
+    "hapticFeedback": false,
+    "forceSensingButton": false,
+    "crown": false,
+    "reportRate": false,
+    "extendedReportRate": false,
+    "pointerSpeed": false,
+    "leftRightSwap": false,
+    "surfaceTuning": false,
+    "angleSnapping": false,
+    "colorLedEffects": false,
+    "rgbEffects": false,
+    "onboardProfiles": false,
+    "gkey": false,
+    "mkeys": false,
+    "persistentRemappableAction": false
+  },
+  "controls": [
+    {
+      "controlId": "0x000A",
+      "buttonIndex": 0,
+      "defaultName": "Calculator",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x006E",
+      "buttonIndex": 1,
+      "defaultName": "Show Desktop",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x006F",
+      "buttonIndex": 2,
+      "defaultName": "Lock PC",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00C7",
+      "buttonIndex": 3,
+      "defaultName": "Brightness Down",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00C8",
+      "buttonIndex": 4,
+      "defaultName": "Brightness Up",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00D4",
+      "buttonIndex": 5,
+      "defaultName": "MultiPlatform Search",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00E2",
+      "buttonIndex": 6,
+      "defaultName": "Backlight Down",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00E3",
+      "buttonIndex": 7,
+      "defaultName": "Backlight Up",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00E4",
+      "buttonIndex": 8,
+      "defaultName": "Previous Fn",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00E5",
+      "buttonIndex": 9,
+      "defaultName": "Play/Pause Fn",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00E6",
+      "buttonIndex": 10,
+      "defaultName": "Next Fn",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00E7",
+      "buttonIndex": 11,
+      "defaultName": "Mute Fn",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00E8",
+      "buttonIndex": 12,
+      "defaultName": "Volume Down Fn",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x00E9",
+      "buttonIndex": 13,
+      "defaultName": "Volume Up Fn",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0103",
+      "buttonIndex": 14,
+      "defaultName": "Voice Dictation",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0108",
+      "buttonIndex": 15,
+      "defaultName": "Open Emoji Panel",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x010A",
+      "buttonIndex": 16,
+      "defaultName": "Snipping Tool",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x010B",
+      "buttonIndex": 17,
+      "defaultName": "Grave Accent",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x010C",
+      "buttonIndex": 18,
+      "defaultName": "Tab Key",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x010D",
+      "buttonIndex": 19,
+      "defaultName": "Caps Lock",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x010E",
+      "buttonIndex": 20,
+      "defaultName": "Left Shift",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x010F",
+      "buttonIndex": 21,
+      "defaultName": "Left Control",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0110",
+      "buttonIndex": 22,
+      "defaultName": "Left Option/Start",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0111",
+      "buttonIndex": 23,
+      "defaultName": "Left Command/Alt",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0112",
+      "buttonIndex": 24,
+      "defaultName": "Right Command/Alt",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0113",
+      "buttonIndex": 25,
+      "defaultName": "Right Option/Start",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0114",
+      "buttonIndex": 26,
+      "defaultName": "Right Control",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0115",
+      "buttonIndex": 27,
+      "defaultName": "Right Shift",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0116",
+      "buttonIndex": 28,
+      "defaultName": "Insert",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0117",
+      "buttonIndex": 29,
+      "defaultName": "Delete",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0118",
+      "buttonIndex": 30,
+      "defaultName": "Home",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x0119",
+      "buttonIndex": 31,
+      "defaultName": "End",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x011A",
+      "buttonIndex": 32,
+      "defaultName": "Page Up",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x011B",
+      "buttonIndex": 33,
+      "defaultName": "Page Down",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x011C",
+      "buttonIndex": 34,
+      "defaultName": "Mute Microphone",
+      "defaultActionType": "default",
+      "configurable": true
+    },
+    {
+      "controlId": "0x011E",
+      "buttonIndex": 35,
+      "defaultName": "Backslash",
+      "defaultActionType": "default",
+      "configurable": true
+    }
+  ],
+  "hotspots": {
+    "buttons": [],
+    "scroll": []
+  },
+  "images": {},
+  "easySwitchSlots": [
+    {
+      "xPct": 0.4,
+      "yPct": 0.5,
+      "label": "1"
+    },
+    {
+      "xPct": 0.5,
+      "yPct": 0.5,
+      "label": "2"
+    },
+    {
+      "xPct": 0.6,
+      "yPct": 0.5,
+      "label": "3"
+    }
+  ],
+  "defaultGestures": {}
+}

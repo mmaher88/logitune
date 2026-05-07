@@ -4,7 +4,7 @@
   "title": "Logitune device descriptor",
   "description": "Schema for a Logitune device descriptor. Matches the fields parsed by JsonDevice::parseFromObject in src/core/devices/JsonDevice.cpp.",
   "type": "object",
-  "required": ["name", "status", "productIds"],
+  "required": ["name", "deviceKind", "status", "productIds"],
   "additionalProperties": true,
   "properties": {
     "$schema": {
@@ -15,10 +15,15 @@
       "type": "string",
       "description": "Display name, e.g. \"MX Master 3S\"."
     },
+    "deviceKind": {
+      "type": "string",
+      "enum": ["mouse", "keyboard"],
+      "description": "Canonical physical device family. Mouse descriptors may expose pointer, wheel, DPI, and mouse-button capabilities; keyboard descriptors expose keyboard controls and Easy-Switch state."
+    },
     "status": {
       "type": "string",
-      "enum": ["verified", "beta", "implemented"],
-      "description": "Support status. \"verified\" = maintainer hardware-tested. \"beta\" = community-submitted or not yet hardware-verified. \"implemented\" is a legacy alias for \"verified\"."
+      "enum": ["verified", "beta"],
+      "description": "Support status. \"verified\" = maintainer hardware-tested. \"beta\" = community-submitted or not yet hardware-verified."
     },
     "productIds": {
       "type": "array",

@@ -54,7 +54,7 @@ EOF
 chmod 755 "$PKGDIR/DEBIAN/postinst"
 
 # Build .deb
-dpkg-deb --build "$PKGDIR" "logitune-${VERSION}_${ARCH}.deb"
+dpkg-deb --root-owner-group --build "$PKGDIR" "logitune-${VERSION}_${ARCH}.deb"
 rm -rf "$PKGDIR" build-release
 
 echo "logitune-${VERSION}_${ARCH}.deb"

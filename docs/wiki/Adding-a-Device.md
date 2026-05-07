@@ -10,6 +10,7 @@ The MX Master 3S descriptor (`devices/mx-master-3s/`) is used as the worked exam
 
 Gather the following before you start:
 
+- **Device kind:** decide whether the descriptor is `"mouse"` or `"keyboard"`. This is the required `deviceKind` field and controls which coverage rules apply to the descriptor.
 - **Product ID (PID):** run `lsusb | grep Logitech` and note the hex ID after `ID 046d:`, or read it from Solaar (`solaar show`). Bolt-receiver connections and Bluetooth connections often report different PIDs; include both. Use the **device WPID** (e.g. `0xb034`), not the Unifying receiver's USB PID (`0xc52b`).
 - **Control IDs (CIDs):** logging is enabled by default (toggle it in **Settings → Debug logging** if you disabled it). Launch Logitune, connect the device, then press each physical button one at a time. The log records a line per press:
   ```
@@ -63,6 +64,7 @@ A machine-readable [JSON Schema](https://json-schema.org) for this format lives 
 | Field | Type | Required | Meaning |
 |-------|------|----------|---------|
 | `name` | string | yes | Display name shown in the UI, e.g. `"MX Master 3S"` |
+| `deviceKind` | string | yes | Canonical device family: `"mouse"` or `"keyboard"` |
 | `status` | string | yes | `"verified"` or `"beta"`. See [Device Support Status](Getting-Started#device-support-status) |
 | `productIds` | array of string | yes | Hex PIDs as strings, e.g. `["0xb034"]`. Include all known PIDs (Bolt, Bluetooth, USB) |
 | `features` | object | yes | Map of HID++ feature flags. All keys default to `false`; set to `true` if the device supports the feature |
@@ -132,11 +134,14 @@ A machine-readable [JSON Schema](https://json-schema.org) for this format lives 
 
 > **Tip on feature flags:** you do not need to know which HID++ sub-variant a feature uses. Set `"battery": true` regardless of whether the device uses Battery Unified (0x1004) or Battery Status (0x1000). DeviceManager selects the right variant at runtime via capability dispatch tables in `src/core/hidpp/capabilities/`.
 
+For keyboard descriptors, omit the `dpi` block and leave mouse-specific feature flags false unless runtime code exists for that feature. Keyboard control entries still use ReprogControls CIDs and can be remappable when the firmware exposes divertable controls. Options+ dumps, Solaar output, and local Logitune logs are evidence inputs for names, WPIDs, features, and CIDs; they are not a guarantee that every proprietary Options+ behavior is reproducible on Linux.
+
 ### Minimal bootstrap example
 
 ```json
 {
   "name": "My Device",
+  "deviceKind": "mouse",
   "status": "beta",
   "productIds": ["0xb037"],
   "features": {
@@ -243,6 +248,8 @@ This loads all descriptors in simulate mode, bypassing the real HID++ device. Us
 - [ ] Easy-Switch page shows three slot circles
 - [ ] DPI range and step display correctly
 - [ ] No `JsonDevice` warnings in `~/.local/share/Logitune/Logitune/logs/logitune-*.log`
+
+For keyboard beta descriptors without images, the first pass is recognition, battery, Easy-Switch, and control-list validation. Mouse image, hotspot, Point & Scroll, and DPI checks apply only when the descriptor exposes those features.
 
 ### Descriptor fixture test
 

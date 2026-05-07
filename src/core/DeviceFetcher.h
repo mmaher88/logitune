@@ -23,9 +23,13 @@ public:
     QString loadEtag() const;
     void saveManifest(const QJsonObject &manifest);
     QJsonObject loadManifest() const;
+    QJsonObject loadBundledManifest() const;
     QPair<QString, QJsonObject> findDeviceForPid(const QJsonObject &manifest, uint16_t pid) const;
+    bool isSafeManifestFilename(const QString &filename) const;
     bool deviceNeedsUpdate(const QString &slug, int manifestVersion) const;
     QString deviceCachePath(const QString &slug) const;
+    static QString manifestUrl();
+    static QString rawBaseUrl();
 
 signals:
     void descriptorsUpdated();
@@ -40,6 +44,7 @@ private:
     QString m_cacheDir;
     uint16_t m_pendingPid = 0;
     int m_pendingDownloads = 0;
+    int m_failedDownloads = 0;
     bool m_hasNewDevices = false;
 
     static constexpr int kCacheTtlSeconds = 3600;

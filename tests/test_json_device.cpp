@@ -42,6 +42,7 @@ static QJsonObject makeMinimalVerified()
 {
     QJsonObject root;
     root[QStringLiteral("name")] = QStringLiteral("Test Device");
+    root[QStringLiteral("deviceKind")] = QStringLiteral("mouse");
     root[QStringLiteral("status")] = QStringLiteral("verified");
     root[QStringLiteral("productIds")] = QJsonArray{QStringLiteral("0xAAAA")};
     root[QStringLiteral("features")] = QJsonObject{
@@ -91,6 +92,7 @@ static QJsonObject makeMinimalBeta()
 {
     QJsonObject root;
     root[QStringLiteral("name")] = QStringLiteral("Beta Mouse");
+    root[QStringLiteral("deviceKind")] = QStringLiteral("mouse");
     root[QStringLiteral("status")] = QStringLiteral("beta");
     root[QStringLiteral("productIds")] = QJsonArray{QStringLiteral("0xBBBB")};
     root[QStringLiteral("features")] = QJsonObject{};
@@ -134,6 +136,7 @@ TEST(JsonDevice, LoadValidVerified)
     ASSERT_NE(dev, nullptr);
 
     EXPECT_EQ(dev->deviceName(), QStringLiteral("Test Device"));
+    EXPECT_EQ(dev->deviceKind(), DeviceKind::Mouse);
     EXPECT_EQ(dev->status(), JsonDevice::Status::Verified);
 
     // Product IDs
@@ -178,6 +181,28 @@ TEST(JsonDevice, LoadValidVerified)
     EXPECT_EQ(gestures[QStringLiteral("up")].type, ButtonAction::Default);
     EXPECT_EQ(gestures[QStringLiteral("down")].type, ButtonAction::Keystroke);
     EXPECT_EQ(gestures[QStringLiteral("down")].payload, QStringLiteral("Super+D"));
+}
+
+TEST(JsonDevice, RejectsMissingDeviceKind)
+{
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    auto obj = makeMinimalBeta();
+    obj.remove(QStringLiteral("deviceKind"));
+    writeJson(tmp.path(), obj);
+
+    EXPECT_EQ(JsonDevice::load(tmp.path()), nullptr);
+}
+
+TEST(JsonDevice, RejectsInvalidDeviceKind)
+{
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    auto obj = makeMinimalBeta();
+    obj[QStringLiteral("deviceKind")] = QStringLiteral("trackball");
+    writeJson(tmp.path(), obj);
+
+    EXPECT_EQ(JsonDevice::load(tmp.path()), nullptr);
 }
 
 TEST(JsonDevice, HotspotKindRoundTrip)
@@ -411,6 +436,7 @@ TEST(JsonDevice, TracksSourcePathAndLoadMtime) {
     ASSERT_TRUE(f.open(QIODevice::WriteOnly));
     f.write(R"({
   "name": "Tester",
+  "deviceKind": "mouse",
   "status": "beta",
   "productIds": ["0xffff"],
   "features": {},
@@ -438,6 +464,7 @@ TEST(JsonDevice, ParsesOptionalEditorFields) {
     ASSERT_TRUE(f.open(QIODevice::WriteOnly));
     f.write(R"({
   "name": "Tester",
+  "deviceKind": "mouse",
   "status": "beta",
   "productIds": ["0xffff"],
   "features": {},
@@ -480,6 +507,7 @@ TEST(JsonDevice, OptionalEditorFieldsDefaultEmptyWhenAbsent) {
     ASSERT_TRUE(f.open(QIODevice::WriteOnly));
     f.write(R"({
   "name": "Tester",
+  "deviceKind": "mouse",
   "status": "beta",
   "productIds": ["0xffff"],
   "features": {},
@@ -510,6 +538,7 @@ TEST(JsonDevice, RefreshRereadsDescriptorInPlace) {
         ASSERT_TRUE(f.open(QIODevice::WriteOnly | QIODevice::Truncate));
         f.write(QStringLiteral(R"({
   "name": "%1",
+  "deviceKind": "mouse",
   "status": "beta",
   "productIds": ["0xffff"],
   "features": {},
@@ -532,14 +561,13 @@ TEST(JsonDevice, RefreshRereadsDescriptorInPlace) {
     EXPECT_EQ(dev.get(), raw);
 }
 
-TEST(JsonDevice, OldStatusStringsStillParse) {
+TEST(JsonDevice, RejectsInvalidStatus) {
     QTemporaryDir tmp;
     ASSERT_TRUE(tmp.isValid());
     auto root = makeMinimalVerified();
     root[QStringLiteral("status")] = QStringLiteral("implemented");
     writeJson(tmp.path(), root);
     writeDummyImage(tmp.path(), QStringLiteral("front.png"));
-    auto dev = logitune::JsonDevice::load(tmp.path());
-    ASSERT_NE(dev, nullptr);
-    EXPECT_EQ(dev->status(), logitune::JsonDevice::Status::Verified);
+
+    EXPECT_EQ(logitune::JsonDevice::load(tmp.path()), nullptr);
 }

@@ -1,5 +1,7 @@
 {
     "$schema": "../schema.json",
+    "deviceKind": "mouse",
+    "version": 1,
     "controls": [
         {
             "buttonIndex": 0,

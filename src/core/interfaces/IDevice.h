@@ -8,6 +8,11 @@
 
 namespace logitune {
 
+enum class DeviceKind {
+    Mouse,
+    Keyboard,
+};
+
 struct ControlDescriptor {
     uint16_t controlId;
     int buttonIndex;
@@ -67,6 +72,7 @@ public:
     virtual ~IDevice() = default;
 
     virtual QString deviceName() const = 0;
+    virtual DeviceKind deviceKind() const = 0;
     virtual std::vector<uint16_t> productIds() const = 0;
     virtual bool matchesPid(uint16_t pid) const = 0;
     virtual QList<ControlDescriptor> controls() const = 0;

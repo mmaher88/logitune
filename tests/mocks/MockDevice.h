@@ -14,6 +14,7 @@ public:
 
     // --- Configurable member data ---
     QString m_deviceName        = QStringLiteral("Mock Device");
+    DeviceKind m_deviceKind     = DeviceKind::Mouse;
     std::vector<uint16_t> m_productIds;
     QList<ControlDescriptor> m_controls;
     QList<HotspotDescriptor> m_buttonHotspots;
@@ -32,6 +33,7 @@ public:
     // --- IDevice implementation ---
 
     QString deviceName() const override { return m_deviceName; }
+    DeviceKind deviceKind() const override { return m_deviceKind; }
     std::vector<uint16_t> productIds() const override { return m_productIds; }
     bool matchesPid(uint16_t pid) const override {
         for (auto id : m_productIds)
