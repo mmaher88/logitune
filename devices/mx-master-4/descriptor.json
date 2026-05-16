@@ -45,7 +45,8 @@
     { "controlId": "0x0056", "buttonIndex": 4, "defaultName": "Forward",          "defaultActionType": "default",           "configurable": true  },
     { "controlId": "0x00C3", "buttonIndex": 5, "defaultName": "Gesture button",   "defaultActionType": "gesture-trigger",   "configurable": true  },
     { "controlId": "0x00C4", "buttonIndex": 6, "defaultName": "Shift wheel mode", "defaultActionType": "smartshift-toggle", "configurable": true  },
-    { "controlId": "0x0000", "buttonIndex": 7, "defaultName": "Thumb wheel",      "defaultActionType": "default",           "configurable": true  }
+    { "controlId": "0x0000", "buttonIndex": 7, "defaultName": "Thumb wheel",      "defaultActionType": "default",           "configurable": true  },
+    { "controlId": "0x01A0", "buttonIndex": 8, "defaultName": "Action Ring",      "defaultActionType": "default",           "configurable": true  }
   ],
   "hotspots": {
     "buttons": [
@@ -53,7 +54,8 @@
       { "buttonIndex": 6,  "xPct": 0.81, "yPct": 0.43,  "side": "right", "labelOffsetYPct": 0.0   },
       { "buttonIndex": 7,  "xPct": 0.55, "yPct": 0.515, "side": "right", "labelOffsetYPct": 0.20  },
       { "buttonIndex": 4,  "xPct": 0.43, "yPct": 0.50,  "side": "left",  "labelOffsetYPct": 0.0   },
-      { "buttonIndex": 3,  "xPct": 0.47, "yPct": 0.60,  "side": "left",  "labelOffsetYPct": 0.20  },
+      { "buttonIndex": 3,  "xPct": 0.47, "yPct": 0.60,  "side": "left",  "labelOffsetYPct": 0.30  },
+      { "buttonIndex": 8,  "xPct": 0.31, "yPct": 0.69,  "side": "left",  "labelOffsetYPct": 0.05  },
       { "buttonIndex": 5,  "xPct": 0.39, "yPct": 0.38,  "side": "left",  "labelOffsetYPct": -0.05 }
     ],
     "scroll": [
