@@ -70,7 +70,14 @@ void ButtonModel::setAction(int buttonId, const QString &actionName, const QStri
 void ButtonModel::loadFromProfile(const QList<ButtonAssignment> &assignments)
 {
     beginResetModel();
-    for (int i = 0; i < assignments.size() && i < m_buttons.size(); ++i) {
+    for (int i = m_buttons.size(); i < assignments.size(); ++i) {
+        m_buttons.append({ i,
+                           QStringLiteral("Button %1").arg(i),
+                           QString(),
+                           QStringLiteral("default"),
+                           0xFFFF });
+    }
+    for (int i = 0; i < assignments.size(); ++i) {
         m_buttons[i].actionName = assignments[i].actionName;
         m_buttons[i].actionType = assignments[i].actionType;
         m_buttons[i].controlId  = assignments[i].controlId;
