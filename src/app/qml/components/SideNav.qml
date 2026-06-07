@@ -39,7 +39,7 @@ Rectangle {
         // Device name area at the top of the sidebar
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 35
+            Layout.leftMargin: 20
             Layout.rightMargin: 16
             spacing: 8
 
@@ -69,7 +69,7 @@ Rectangle {
 
             delegate: Item {
                 Layout.fillWidth: true
-                Layout.topMargin: index > 0 ? 17 : 0    // 17px vertical margin between tabs
+                Layout.topMargin: index > 0 ? 6 : 0
                 height: 40
                 opacity: modelData.enabled ? 1.0 : 0.4
 

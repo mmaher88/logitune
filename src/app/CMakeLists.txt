@@ -86,6 +86,7 @@ qt_add_qml_module(logitune-app-lib
     RESOURCES
         qml/assets/logitune-icon.svg
         qml/assets/logitune-tray.svg
+        qml/assets/logitune-logo.png
 )
 
 # ── Executable: main entry point ─────────────────────────────────────────

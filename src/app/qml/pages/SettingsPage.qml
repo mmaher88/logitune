@@ -36,7 +36,7 @@ Item {
             Row {
                 width: parent.width
                 Text { text: "Per-app profiles"; width: 160; color: Theme.textSecondary; font.pixelSize: 13 }
-                Text { text: "Active"; color: Theme.batteryGreen; font.pixelSize: 13 }
+                Text { text: "Active"; color: Theme.accent; font.pixelSize: 13 }
             }
         }
     }
