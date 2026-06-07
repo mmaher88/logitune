@@ -38,8 +38,8 @@ Item {
                 if (nav.navItems[i].name === name) { idx = i; break; }
             }
             verify(idx >= 0, "no nav item named " + name)
-            // 16 spacer + 53 header block + idx * (40 item + 17 margin) + 20 to centre
-            return 16 + 53 + idx * 57 + 20;
+            // 16 spacer + 53 header block + idx * (40 item + 6 margin) + 20 to centre
+            return 16 + 53 + idx * 46 + 20;
         }
 
         function test_clickSettingsChangesPage() {
