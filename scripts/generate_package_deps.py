@@ -57,9 +57,18 @@ def debian_packages(modules: set[str]) -> set[str]:
 
 
 def qml_tokens(depends_value: str) -> set[str]:
-    """The set of qml6-module-* tokens in a Depends: field value."""
-    return {t.strip() for t in depends_value.split(",")
-            if t.strip().startswith("qml6-module-")}
+    """The set of qml6-module-* package names in a Depends: field value,
+    with any version-constraint suffix removed
+    (e.g. 'qml6-module-x (>= 6.4)' -> 'qml6-module-x')."""
+    names: set[str] = set()
+    for raw in depends_value.split(","):
+        token = raw.strip()
+        if not token:
+            continue
+        name = token.split()[0]
+        if name.startswith("qml6-module-"):
+            names.add(name)
+    return names
 
 
 def rewrite_depends_value(depends_value: str, packages: set[str]) -> str:

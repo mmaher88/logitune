@@ -49,3 +49,8 @@ def test_rewrite_preserves_dpkg_substvars():
     out = g.rewrite_depends_value(value, {"qml6-module-qtquick", "qml6-module-qtqml"})
     assert out.startswith("${shlibs:Depends}, ${misc:Depends}, libudev1, ")
     assert out.endswith("qml6-module-qtqml, qml6-module-qtquick")
+
+
+def test_qml_tokens_strips_version_constraint():
+    value = "qml6-module-qtquick (>= 6.4), libudev1, qml6-module-qtqml"
+    assert g.qml_tokens(value) == {"qml6-module-qtquick", "qml6-module-qtqml"}
