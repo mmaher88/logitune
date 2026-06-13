@@ -47,7 +47,7 @@ jobs:
               qml6-module-qtquick qml6-module-qtquick-controls
               qml6-module-qtquick-layouts qml6-module-qtquick-window
               qml6-module-qtquick-templates qml6-module-qtqml-workerscript
-              qml6-module-qtquick-dialogs qml6-module-qt5compat-graphicaleffects
+              qml6-module-qtquick-dialogs
               qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev
               libxkbcommon-dev qml6-module-qttest
               libudev-dev libgtest-dev
@@ -163,6 +163,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install pytest
+        run: sudo apt-get update -qq && sudo apt-get install -y python3-pytest
+
       - name: Verify README.md table matches descriptors
         run: python3 scripts/generate-readme-devices.py --check
 
@@ -204,7 +207,7 @@ jobs:
             qml6-module-qtquick qml6-module-qtquick-controls \
             qml6-module-qtquick-layouts qml6-module-qtquick-window \
             qml6-module-qtquick-templates qml6-module-qtqml-workerscript \
-            qml6-module-qtquick-dialogs qml6-module-qt5compat-graphicaleffects \
+            qml6-module-qtquick-dialogs \
             qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev \
             libxkbcommon-dev libudev-dev
           # Ensure the cache dir is owned by the runner user before save.
