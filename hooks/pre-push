@@ -17,6 +17,18 @@ if ! python3 "${REPO_ROOT}/scripts/generate-readme-devices.py" --check > /dev/nu
     exit 1
 fi
 
+# Debian package deps must match the QML imports in src/. Regenerate on
+# drift so the developer just has to `git add` and retry.
+echo "📦 Checking Debian package deps..."
+if ! python3 "${REPO_ROOT}/scripts/generate_package_deps.py" --check > /dev/null 2>&1; then
+    echo "⚠️  Debian package deps are out of sync with src/**/*.qml imports."
+    python3 "${REPO_ROOT}/scripts/generate_package_deps.py" > /dev/null
+    echo "   Regenerated package-deb.sh + debian.control. Review the diff, then:"
+    echo "     git add scripts/package-deb.sh pkg/obs/debian.control && git commit --amend --no-edit"
+    echo "   or make a fresh commit and re-push."
+    exit 1
+fi
+
 echo "🔍 Running tests before push..."
 
 # Set XDG_DATA_DIRS so DeviceRegistry finds JSON descriptors in the build tree
@@ -57,6 +69,14 @@ fi
 if [ $? -ne 0 ]; then
     echo "❌ Extractor pytest failed. Push aborted."
     (cd scripts && python3 -m pytest ../tests/scripts/test_extractor.py -q 2>&1 | tail -20)
+    exit 1
+fi
+
+# Package-deps Python tests
+(cd scripts && python3 -m pytest ../tests/scripts/test_package_deps.py -q > /dev/null 2>&1)
+if [ $? -ne 0 ]; then
+    echo "❌ Package-deps pytest failed. Push aborted."
+    (cd scripts && python3 -m pytest ../tests/scripts/test_package_deps.py -q 2>&1 | tail -20)
     exit 1
 fi
 

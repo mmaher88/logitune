@@ -166,6 +166,12 @@ jobs:
       - name: Verify README.md table matches descriptors
         run: python3 scripts/generate-readme-devices.py --check
 
+      - name: Verify Debian package deps match QML imports
+        run: python3 scripts/generate_package_deps.py --check
+
+      - name: Verify package-deps generator tests
+        run: cd scripts && python3 -m pytest ../tests/scripts/test_package_deps.py -q
+
   # --------------------------------------------------------------------------
   # Job 3: Debian package
   # --------------------------------------------------------------------------
