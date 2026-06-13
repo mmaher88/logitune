@@ -110,10 +110,11 @@ def main() -> int:
                     help="Exit 1 if any packaging file is stale; do not modify.")
     args = ap.parse_args()
 
-    packages = debian_packages(qml_imports(SRC_DIR))
-    if not packages:
+    modules = qml_imports(SRC_DIR)
+    if not modules:
         sys.stderr.write("error: no QML imports found under src/\n")
         return 2
+    packages = debian_packages(modules)
 
     stale = [p for p in TARGETS if not process_file(p, packages, args.check)]
 

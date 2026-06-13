@@ -3,6 +3,7 @@ docs/superpowers/specs/2026-06-13-code-derived-debian-deps-design.md.
 Run from the scripts/ dir so the module is importable:
     (cd scripts && python3 -m pytest ../tests/scripts/test_package_deps.py -q)
 """
+import pytest
 import generate_package_deps as g
 
 
@@ -76,3 +77,17 @@ def test_process_file_check_detects_stale_then_synced(tmp_path):
 
     # check mode again: now in sync
     assert g.process_file(f, want, check=True) is True
+
+
+def test_process_file_errors_without_depends_line(tmp_path):
+    f = tmp_path / "control"
+    f.write_text("Package: x\nDescription: y\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        g.process_file(f, {"qml6-module-qtquick"}, check=True)
+    assert exc.value.code == 2
+
+
+def test_main_returns_2_when_no_qml_imports(tmp_path, monkeypatch):
+    monkeypatch.setattr(g, "SRC_DIR", tmp_path)  # empty dir -> no imports
+    monkeypatch.setattr("sys.argv", ["generate_package_deps.py", "--check"])
+    assert g.main() == 2
