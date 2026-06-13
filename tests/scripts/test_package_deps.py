@@ -54,3 +54,25 @@ def test_rewrite_preserves_dpkg_substvars():
 def test_qml_tokens_strips_version_constraint():
     value = "qml6-module-qtquick (>= 6.4), libudev1, qml6-module-qtqml"
     assert g.qml_tokens(value) == {"qml6-module-qtquick", "qml6-module-qtqml"}
+
+
+def test_process_file_check_detects_stale_then_synced(tmp_path):
+    f = tmp_path / "debian.control"
+    f.write_text(
+        "Package: logitune\n"
+        "Depends: ${misc:Depends}, libudev1, qml6-module-qtquick\n"
+        "Description: x\n", encoding="utf-8")
+    want = {"qml6-module-qtquick", "qml6-module-qtqml"}
+
+    # check mode: stale -> returns False, file unchanged
+    assert g.process_file(f, want, check=True) is False
+    assert "qml6-module-qtqml" not in f.read_text()
+
+    # write mode: applies, file now contains both, sorted after non-qml
+    assert g.process_file(f, want, check=False) is False
+    text = f.read_text()
+    assert ("Depends: ${misc:Depends}, libudev1, "
+            "qml6-module-qtqml, qml6-module-qtquick\n") in text
+
+    # check mode again: now in sync
+    assert g.process_file(f, want, check=True) is True

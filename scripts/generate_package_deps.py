@@ -77,3 +77,64 @@ def rewrite_depends_value(depends_value: str, packages: set[str]) -> str:
     non_qml = [t.strip() for t in depends_value.split(",")
                if t.strip() and not t.strip().startswith("qml6-module-")]
     return ", ".join(non_qml + sorted(packages))
+
+
+def process_file(path: pathlib.Path, packages: set[str], check: bool) -> bool:
+    """Rewrite (or, in check mode, validate) the qml6-module-* segment of the
+    `Depends:` line. Returns True if the file is already in sync."""
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    out: list[str] = []
+    found = False
+    in_sync = True
+    for line in lines:
+        m = DEPENDS_RE.match(line.rstrip("\n"))
+        if m:
+            found = True
+            if qml_tokens(m.group(1)) != packages:
+                in_sync = False
+            newline = "Depends: " + rewrite_depends_value(m.group(1), packages)
+            out.append(newline + ("\n" if line.endswith("\n") else ""))
+        else:
+            out.append(line)
+    if not found:
+        sys.stderr.write(f"error: no 'Depends:' line in {path}\n")
+        sys.exit(2)
+    if not check and not in_sync:
+        path.write_text("".join(out), encoding="utf-8")
+    return in_sync
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--check", action="store_true",
+                    help="Exit 1 if any packaging file is stale; do not modify.")
+    args = ap.parse_args()
+
+    packages = debian_packages(qml_imports(SRC_DIR))
+    if not packages:
+        sys.stderr.write("error: no QML imports found under src/\n")
+        return 2
+
+    stale = [p for p in TARGETS if not process_file(p, packages, args.check)]
+
+    if args.check:
+        if stale:
+            sys.stderr.write(
+                "Debian package deps are out of sync with QML imports:\n"
+                + "".join(f"  {p}\n" for p in stale)
+                + "Expected qml6-module-* set:\n  "
+                + ", ".join(sorted(packages)) + "\n"
+                + "Run: python3 scripts/generate_package_deps.py\n")
+            return 1
+        print("Debian package deps in sync.")
+        return 0
+
+    for p in stale:
+        print(f"Updated {p}")
+    if not stale:
+        print("Debian package deps already up to date.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
