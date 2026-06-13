@@ -54,3 +54,17 @@ def debian_packages(modules: set[str]) -> set[str]:
         if trigger in pkgs:
             pkgs.add(implied)
     return pkgs
+
+
+def qml_tokens(depends_value: str) -> set[str]:
+    """The set of qml6-module-* tokens in a Depends: field value."""
+    return {t.strip() for t in depends_value.split(",")
+            if t.strip().startswith("qml6-module-")}
+
+
+def rewrite_depends_value(depends_value: str, packages: set[str]) -> str:
+    """Keep every non-qml token in its original order, then append the
+    qml packages sorted. Reproduces the existing libs-then-modules layout."""
+    non_qml = [t.strip() for t in depends_value.split(",")
+               if t.strip() and not t.strip().startswith("qml6-module-")]
+    return ", ".join(non_qml + sorted(packages))
