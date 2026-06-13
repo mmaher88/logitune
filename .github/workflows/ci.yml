@@ -230,15 +230,17 @@ jobs:
     name: CI Summary
     if: always()
     runs-on: ubuntu-latest
-    needs: [build, deb-pkg]
+    needs: [build, deb-pkg, devices-table-check]
     steps:
       - name: Check all jobs passed
         run: |
-          echo "Build:  ${{ needs.build.result }}"
-          echo "Deb:    ${{ needs.deb-pkg.result }}"
+          echo "Build:                ${{ needs.build.result }}"
+          echo "Deb:                  ${{ needs.deb-pkg.result }}"
+          echo "Devices table check:  ${{ needs.devices-table-check.result }}"
 
           if [ "${{ needs.build.result }}" != "success" ] || \
-             [ "${{ needs.deb-pkg.result }}" != "success" ]; then
+             [ "${{ needs.deb-pkg.result }}" != "success" ] || \
+             [ "${{ needs.devices-table-check.result }}" != "success" ]; then
             echo ""
             echo "One or more jobs failed."
             exit 1
