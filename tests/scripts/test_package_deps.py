@@ -91,3 +91,12 @@ def test_main_returns_2_when_no_qml_imports(tmp_path, monkeypatch):
     monkeypatch.setattr(g, "SRC_DIR", tmp_path)  # empty dir -> no imports
     monkeypatch.setattr("sys.argv", ["generate_package_deps.py", "--check"])
     assert g.main() == 2
+
+
+def test_real_packaging_files_in_sync():
+    """The committed package-deb.sh and debian.control must match the
+    QML imports — this is what the CI/pre-push --check enforces."""
+    packages = g.debian_packages(g.qml_imports(g.SRC_DIR))
+    for path in g.TARGETS:
+        assert g.process_file(path, packages, check=True) is True, (
+            f"{path} out of sync; run python3 scripts/generate_package_deps.py")
