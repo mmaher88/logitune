@@ -6,7 +6,9 @@
 #include "desktop/GenericDesktop.h"
 #include "input/UinputInjector.h"
 #include "logging/LogManager.h"
+#include <QDBusConnection>
 #include <QProcessEnvironment>
+#include <QTimer>
 
 namespace logitune {
 
@@ -158,6 +160,19 @@ void AppRoot::wireSignals()
             this, &AppRoot::onPhysicalDeviceAdded);
     connect(&m_deviceManager, &DeviceManager::physicalDeviceRemoved,
             this, &AppRoot::onPhysicalDeviceRemoved);
+    connect(&m_deviceManager, &DeviceManager::physicalDeviceTransportReady,
+            this, &AppRoot::onPhysicalDeviceTransportReady);
+
+    // systemd-logind PrepareForSleep(before): before=true before suspend,
+    // before=false on resume. Re-apply profiles on resume to restore device
+    // state that the firmware reset while powered down.
+    QDBusConnection::systemBus().connect(
+        QStringLiteral("org.freedesktop.login1"),
+        QStringLiteral("/org/freedesktop/login1"),
+        QStringLiteral("org.freedesktop.login1.Manager"),
+        QStringLiteral("PrepareForSleep"),
+        this,
+        SLOT(onPrepareForSleep(bool)));
 
     // Gesture keystroke edits in the UI. saveCurrentProfile re-serializes
     // the displayed profile; the orchestrator's own userChangedSomething
@@ -287,6 +302,32 @@ void AppRoot::onPhysicalDeviceRemoved(PhysicalDevice *device)
 
     if (m_deviceModel.count() > 0 && m_deviceModel.selectedIndex() < 0)
         m_deviceModel.setSelectedIndex(0);
+}
+
+// A new transport attached to an existing PhysicalDevice (e.g. Bolt receiver
+// reconnects while a BT session is still alive, or rapid udev remove+add
+// where the PhysicalDevice object was not destroyed). physicalDeviceAdded is
+// NOT re-emitted in this case, so profile re-application needs this path.
+void AppRoot::onPhysicalDeviceTransportReady(PhysicalDevice *device)
+{
+    m_profileOrchestrator.onTransportSetupComplete(device);
+}
+
+// systemd-logind signals PrepareForSleep(true) before suspend and
+// PrepareForSleep(false) on resume. On resume we wait 2 s for HID++ to
+// stabilise, then re-apply the stored profile to every known device.
+// This covers the common case where the Bolt receiver does not send a
+// 0x41 reconnect notification after the laptop wakes from sleep.
+void AppRoot::onPrepareForSleep(bool beforeSleep)
+{
+    if (beforeSleep)
+        return;
+
+    QTimer::singleShot(2000, this, [this]() {
+        qCInfo(lcApp) << "system resumed from sleep — re-applying device profiles";
+        for (PhysicalDevice *pd : m_deviceManager.physicalDevices())
+            m_profileOrchestrator.onTransportSetupComplete(pd);
+    });
 }
 
 // Carousel selection changed. Refresh the UI from the newly-selected

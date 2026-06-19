@@ -72,6 +72,8 @@ public:
 private slots:
     void onPhysicalDeviceAdded(PhysicalDevice *device);
     void onPhysicalDeviceRemoved(PhysicalDevice *device);
+    void onPhysicalDeviceTransportReady(PhysicalDevice *device);
+    void onPrepareForSleep(bool beforeSleep);
 
 private:
     void wireSignals();

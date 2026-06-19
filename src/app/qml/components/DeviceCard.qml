@@ -17,7 +17,7 @@ Item {
 
     signal clicked()
 
-    width: 180; height: 280
+    width: 280; height: 420
 
     Image {
         id: deviceImg
