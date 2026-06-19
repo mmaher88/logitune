@@ -34,9 +34,11 @@ COLUMNS: list[tuple[str, object]] = [
     ("DPI",           lambda d: d["features"].get("adjustableDpi", False)
                                  or d["features"].get("extendedDpi", False)),
     ("SmartShift",    lambda d: d["features"].get("smartShift", False)),
-    ("Thumb wheel",   lambda d: d["features"].get("thumbWheel", False)),
+    ("Thumb wheel",   lambda d: d["features"].get("thumbWheel", False)
+                                 or d["features"].get("thumbWheelGestureV2", False)),
     ("Button remap",  lambda d: d["features"].get("reprogControls", False)),
-    ("Gestures",      lambda d: d["features"].get("thumbWheel", False)),
+    ("Gestures",      lambda d: any(c.get("defaultActionType") == "gesture-trigger"
+                                     for c in d.get("controls", []))),
     ("Smooth scroll", lambda d: d["features"].get("smoothScroll", False)),
     ("Easy-Switch",   lambda d: bool(d.get("easySwitchSlots"))),
 ]
