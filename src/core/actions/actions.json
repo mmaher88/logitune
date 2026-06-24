@@ -26,7 +26,8 @@
     "category": "workspace",
     "variants": {
       "kde":   { "kglobalaccel": { "component": "kwin", "name": "Switch to Previous Desktop" } },
-      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "switch-to-workspace-left" } }
+      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "switch-to-workspace-left" } },
+      "hyprland": { "hyprland-bind": { "dispatcher": "workspace", "arg": "r-1" } }
     }
   },
   {
@@ -36,7 +37,8 @@
     "category": "workspace",
     "variants": {
       "kde":   { "kglobalaccel": { "component": "kwin", "name": "Switch to Next Desktop" } },
-      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "switch-to-workspace-right" } }
+      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "switch-to-workspace-right" } },
+      "hyprland": { "hyprland-bind": { "dispatcher": "workspace", "arg": "r+1" } }
     }
   },
   {
@@ -56,7 +58,8 @@
     "category": "window",
     "variants": {
       "kde":   { "kglobalaccel": { "component": "kwin", "name": "Window Close" } },
-      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "close" } }
+      "gnome": { "gsettings":    { "schema": "org.gnome.desktop.wm.keybindings", "key": "close" } },
+      "hyprland": { "hyprland-bind": { "dispatcher": "killactive" } }
     }
   },
   {

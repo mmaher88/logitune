@@ -141,6 +141,27 @@ TEST(ActionPresetRegistry, ShippedShowDesktopHasKdeAndGnomeVariants) {
     r.loadFromResource();
     EXPECT_TRUE(r.supportedBy("show-desktop", "kde"));
     EXPECT_TRUE(r.supportedBy("show-desktop", "gnome"));
+    EXPECT_FALSE(r.supportedBy("show-desktop", "hyprland"));
+}
+
+TEST(ActionPresetRegistry, ShippedHyprlandVariantsUseLiveBinds) {
+    ActionPresetRegistry r;
+    r.loadFromResource();
+
+    EXPECT_TRUE(r.supportedBy("close-window", "hyprland"));
+    EXPECT_TRUE(r.supportedBy("switch-desktop-left", "hyprland"));
+    EXPECT_TRUE(r.supportedBy("switch-desktop-right", "hyprland"));
+    EXPECT_FALSE(r.supportedBy("task-switcher", "hyprland"));
+    EXPECT_FALSE(r.supportedBy("screenshot", "hyprland"));
+
+    QJsonObject close = r.variantData("close-window", "hyprland")
+                            .value("hyprland-bind").toObject();
+    EXPECT_EQ(close.value("dispatcher").toString(), "killactive");
+
+    QJsonObject left = r.variantData("switch-desktop-left", "hyprland")
+                           .value("hyprland-bind").toObject();
+    EXPECT_EQ(left.value("dispatcher").toString(), "workspace");
+    EXPECT_EQ(left.value("arg").toString(), "r-1");
 }
 
 TEST(ActionPresetRegistry, ShippedCalculatorUsesAppLaunch) {
