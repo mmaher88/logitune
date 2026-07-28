@@ -57,8 +57,30 @@ public:
             hardwareForward();
     }
 
+    /// Mirror of applyDisplayedChange for changes that originate at the
+    /// device (a diverted button cycling DPI or toggling SmartShift). The
+    /// button acted on the hardware, so the change belongs to the HARDWARE
+    /// profile — not whichever profile the user happens to be viewing — and
+    /// no hardware forward is needed because the device is already in the
+    /// new state. The UI is refreshed only when the viewed profile is the
+    /// active one.
+    template<typename Mutator>
+    void applyHardwareChange(Mutator mutator) {
+        const QString serial = activeSerial();
+        if (serial.isEmpty()) return;
+        const QString name = m_profileEngine->hardwareProfile(serial);
+        if (name.isEmpty()) return;
+        Profile &p = m_profileEngine->cachedProfile(serial, name);
+        mutator(p);
+        m_profileEngine->saveProfileToDisk(serial, name);
+        if (name == m_profileEngine->displayProfile(serial))
+            pushDisplayValues(p);
+    }
+
 public slots:
     void saveCurrentProfile();
+    void onDpiChangedByButton(int dpi);
+    void onSmartShiftChangedByButton(bool enabled, int threshold);
     void onUserButtonChanged(int buttonId, const QString &actionName, const QString &actionType);
     void onTabSwitched(const QString &profileName);
     void onDisplayProfileChanged(const QString &serial, const Profile &profile);

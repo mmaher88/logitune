@@ -211,6 +211,14 @@ void AppRoot::wireSignals()
     connect(&m_profileOrchestrator, &ProfileOrchestrator::currentDeviceChanged,
             &m_buttonDispatcher, &ButtonActionDispatcher::onCurrentDeviceChanged);
 
+    // Button-initiated device changes persist into the active profile, so a
+    // DPI cycle or SmartShift toggle survives the next profile apply instead
+    // of snapping back to the stored value.
+    connect(&m_buttonDispatcher, &ButtonActionDispatcher::dpiChangedByButton,
+            &m_profileOrchestrator, &ProfileOrchestrator::onDpiChangedByButton);
+    connect(&m_buttonDispatcher, &ButtonActionDispatcher::smartShiftChangedByButton,
+            &m_profileOrchestrator, &ProfileOrchestrator::onSmartShiftChangedByButton);
+
     // DeviceModel *ChangeRequested -> cache + disk + UI + (if active)
     // hardware. The orchestrator owns the guard logic; AppRoot
     // only supplies the mutator / forwarder pair for each control.

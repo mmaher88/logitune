@@ -509,3 +509,43 @@ TEST_F(AppRootFixture, DisplayProfileChangedIgnoredForNonSelectedDevice) {
     // onDisplayProfileChanged filter rejected device B's signal.
     EXPECT_EQ(deviceModel().currentDPI(), 1000);
 }
+
+// --- button-initiated changes reach the UI and the active profile ---------
+//
+// Regression guard: a diverted button that cycles DPI or toggles SmartShift
+// changes the device directly, bypassing the UI's change path. The value must
+// still show up in the UI and be persisted into the active profile, so the
+// next profile apply does not snap it back.
+
+TEST_F(AppRootFixture, DpiCycleButtonUpdatesUiAndActiveProfile) {
+    setProfileButton(QStringLiteral("default"), 6,
+                     ButtonAction{ButtonAction::DpiCycle, {}});
+
+    const int before = deviceModel().currentDPI();
+    pressButton(0x00C4);
+    releaseButton(0x00C4);
+    const int after = deviceModel().currentDPI();
+
+    EXPECT_NE(after, before) << "UI did not reflect the DPI cycled by the button";
+
+    const Profile &p = profileEngine().cachedProfile(QStringLiteral("mock-serial"),
+                                                     QStringLiteral("default"));
+    EXPECT_EQ(p.dpi, after) << "cycled DPI was not persisted into the active profile";
+}
+
+TEST_F(AppRootFixture, SmartShiftButtonUpdatesUiAndActiveProfile) {
+    setProfileButton(QStringLiteral("default"), 6,
+                     ButtonAction{ButtonAction::SmartShiftToggle, {}});
+
+    const bool before = deviceModel().smartShiftEnabled();
+    pressButton(0x00C4);
+    releaseButton(0x00C4);
+    const bool after = deviceModel().smartShiftEnabled();
+
+    EXPECT_NE(after, before) << "UI did not reflect the SmartShift toggled by the button";
+
+    const Profile &p = profileEngine().cachedProfile(QStringLiteral("mock-serial"),
+                                                     QStringLiteral("default"));
+    EXPECT_EQ(p.smartShiftEnabled, after)
+        << "toggled SmartShift was not persisted into the active profile";
+}

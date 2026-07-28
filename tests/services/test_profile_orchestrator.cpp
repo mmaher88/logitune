@@ -238,3 +238,46 @@ TEST_F(ProfileOrchestratorFixture, PresetRefRoundTripRestoresTypeAndName) {
     EXPECT_EQ(m_buttonModel->actionTypeForButton(3), QStringLiteral("preset"));
     EXPECT_EQ(m_buttonModel->actionNameForButton(3),  QStringLiteral("Show desktop"));
 }
+
+// --- button-initiated hardware changes persist to the active profile -------
+
+TEST_F(ProfileOrchestratorFixture, ButtonDpiChangePersistsToHardwareProfile) {
+    attachMockSession();
+
+    m_orchestrator->onDpiChangedByButton(4100);
+
+    // Persisted into the hardware (active) profile...
+    EXPECT_EQ(cached().dpi, 4100);
+    // ...and the UI reflects it, because display == hardware.
+    EXPECT_EQ(m_deviceModel->currentDPI(), 4100);
+}
+
+TEST_F(ProfileOrchestratorFixture, ButtonSmartShiftChangePersistsToHardwareProfile) {
+    attachMockSession();
+
+    m_orchestrator->onSmartShiftChangedByButton(false, 200);
+
+    EXPECT_FALSE(cached().smartShiftEnabled);
+    EXPECT_EQ(cached().smartShiftThreshold, 200);
+    EXPECT_FALSE(m_deviceModel->smartShiftEnabled());
+}
+
+TEST_F(ProfileOrchestratorFixture, ButtonChangeWritesHardwareProfileWhileViewingAnother) {
+    attachMockSession();
+    const QString kSerial = QStringLiteral("mock-serial");
+
+    // View a different profile while hardware stays on "default". A button
+    // press acts on the device, so it must persist to the HARDWARE profile
+    // and must not disturb the profile the user is currently viewing.
+    m_profileEngine->createProfileForApp(kSerial, QStringLiteral("other"),
+                                         QStringLiteral("other"));
+    m_profileEngine->setDisplayProfile(kSerial, QStringLiteral("other"));
+    const int viewedDpiBefore = cached(QStringLiteral("other")).dpi;
+    const int shownDpiBefore  = m_deviceModel->currentDPI();
+
+    m_orchestrator->onDpiChangedByButton(4100);
+
+    EXPECT_EQ(cached().dpi, 4100);                                    // hardware profile updated
+    EXPECT_EQ(cached(QStringLiteral("other")).dpi, viewedDpiBefore);  // viewed profile untouched
+    EXPECT_EQ(m_deviceModel->currentDPI(), shownDpiBefore);           // UI unchanged
+}
