@@ -54,6 +54,13 @@ protected:
                                        nullptr, m_ctrl.get());
         m_session->m_connected = true;
         m_session->m_deviceName = QStringLiteral("Mock Device");
+        // Match the seeded default profile. On real hardware enumeration
+        // fills these in and applyProfileToHardware keeps them in step; the
+        // mock session has neither, so seed them explicitly. A diverted
+        // button toggles SmartShift relative to this value, so leaving it at
+        // the zero-initialised default would make the toggle a no-op.
+        m_session->m_smartShiftEnabled = true;
+        m_session->m_smartShiftThreshold = 128;
         // PhysicalDevice::descriptor() forwards to its primary session's
         // descriptor(). onPhysicalDeviceAdded writes that into AppRoot's
         // m_currentDevice, so the mock session must already know which
