@@ -20,8 +20,13 @@ bool HiResWheel::parseRatchetSwitch(const Report &r)
 
 std::vector<uint8_t> HiResWheel::buildSetWheelMode(uint8_t currentMode, bool hiRes, bool invert)
 {
-    // Read-modify-write: preserve bit 0 (diversion), set bits 1+2
-    uint8_t newMode = currentMode & 0x01;
+    // Force bit 0 (diversion target) to 0 = hardware/native. logitune never
+    // consumes software-diverted wheel movement, so if the wheel comes back
+    // diverted-to-software (e.g. a KVM round-trip through a host whose driver
+    // left it that way), preserving that bit would silently kill scrolling.
+    // currentMode is intentionally ignored for the target bit.
+    (void)currentMode;
+    uint8_t newMode = 0;
     if (hiRes)  newMode |= 0x02;
     if (invert) newMode |= 0x04;
     return { newMode };
