@@ -274,9 +274,10 @@ jobs:
         (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
         || (github.event_name == 'workflow_dispatch' && inputs.trigger_obs)
       )
-    # Poll OBS for up to 30 minutes before giving up. Typical stable-tag
-    # rebuild across Fedora + xUbuntu settles in 5-15 min.
-    timeout-minutes: 40
+    # Wait up to ~35 minutes for the triggered rebuild to settle (after a
+    # 60s guard delay + up to 5 min confirming it actually started). Typical
+    # stable-tag rebuild across Fedora + xUbuntu settles in 5-15 min.
+    timeout-minutes: 45
     steps:
       - name: Trigger OBS source service
         run: |
@@ -287,7 +288,7 @@ jobs:
       - name: Wait for OBS builds to settle
         run: |
           set -u
-          MAX_WAIT=1800   # 30 min
+          MAX_WAIT=2100   # 35 min
           SLEEP=30
           elapsed=0
           last_codes=""
@@ -301,6 +302,46 @@ jobs:
             echo "$1" | grep -qE '<status[^>]+code="(building|blocked|scheduled|dispatching|finished|unknown|signing)"'
           }
 
+          # Right after the trigger POST, OBS has not yet re-dispatched the
+          # build, so the first _result query returns the PREVIOUS, already-
+          # settled state — a false green. Guard-delay, then confirm THIS
+          # rebuild actually starts before waiting for it to settle.
+
+          # Initial guard delay so OBS has a chance to pick up the trigger.
+          echo "Guard delay before first poll (60s) so OBS can dispatch the trigger..."
+          sleep 60
+          elapsed=$((elapsed + 60))
+
+          # Phase A — wait for the triggered rebuild to START. Poll until the
+          # result is flagged dirty="true" (scheduled for recalculation after
+          # the trigger) or a status reports a genuinely active build code.
+          # Deliberately excludes finished/unknown, which can be STALE residue
+          # from the previous build. Bounded to ~5 min so a never-starting
+          # build hard-fails the gate rather than passing by default.
+          START_WAIT=300   # 5 min to observe the rebuild kicking off
+          start_elapsed=0
+          started=0
+          while [ "$start_elapsed" -lt "$START_WAIT" ]; do
+            xml=$(curl -sSf --retry 3 --retry-delay 5 "$result_url" || true)
+            if [ -z "$xml" ] || ! echo "$xml" | grep -q '<resultlist'; then
+              echo "[phaseA ${start_elapsed}s] OBS result query failed; retrying"
+              sleep "$SLEEP"; start_elapsed=$((start_elapsed + SLEEP)); elapsed=$((elapsed + SLEEP)); continue
+            fi
+            if echo "$xml" | grep -qE '<result[^>]+dirty="true"' \
+               || echo "$xml" | grep -qE '<status[^>]+code="(building|dispatching|scheduled|blocked|signing)"'; then
+              echo "[phaseA ${start_elapsed}s] rebuild observed running."
+              started=1
+              break
+            fi
+            echo "[phaseA ${start_elapsed}s] rebuild not started yet; waiting"
+            sleep "$SLEEP"; start_elapsed=$((start_elapsed + SLEEP)); elapsed=$((elapsed + SLEEP))
+          done
+          if [ "$started" -ne 1 ]; then
+            echo "::error::Triggered OBS rebuild never entered a busy state within ${START_WAIT}s — cannot confirm THIS release rebuilt. Failing the release gate."
+            exit 1
+          fi
+
+          # Phase B — wait for the rebuild to SETTLE.
           while [ "$elapsed" -lt "$MAX_WAIT" ]; do
             # Tolerate a flaky OBS API: one timeout should not fail the whole wait.
             xml=$(curl -sSf --retry 3 --retry-delay 5 "$result_url" || true)
