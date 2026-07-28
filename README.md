@@ -132,19 +132,19 @@ Other Logitech HID++ 2.0 devices can be added by contributing a [device descript
 
 ## 🖥️ Desktop Environment Support
 
-| Feature | KDE Plasma 6 | GNOME 42+ (Wayland) | Other DEs |
-|---------|:---:|:---:|:---:|
-| Button remapping | ✅ | ✅ | ✅ |
-| Media controls | ✅ | ✅ | ✅ |
-| DPI / SmartShift / Scroll | ✅ | ✅ | ✅ |
-| Thumb wheel modes | ✅ | ✅ | ✅ |
-| Gesture actions | ✅ | ✅ | ✅ |
-| Per-app profiles | ✅ | ✅ | ❌ |
-| Auto profile switching | ✅ | ✅ | ❌ |
-| Block shortcuts during capture | ✅ | ✅ | ❌ |
-| System tray | ✅ | ✅ | ✅ |
+| Feature | KDE Plasma 6 | GNOME 42+ (Wayland) | Hyprland | Other DEs |
+|---------|:---:|:---:|:---:|:---:|
+| Button remapping | ✅ | ✅ | ✅ | ✅ |
+| Media controls | ✅ | ✅ | ✅ | ✅ |
+| DPI / SmartShift / Scroll | ✅ | ✅ | ✅ | ✅ |
+| Thumb wheel modes | ✅ | ✅ | ✅ | ✅ |
+| Gesture actions | ✅ | ✅ | ✅ | ✅ |
+| Per-app profiles | ✅ | ✅ | ✅ | ❌ |
+| Auto profile switching | ✅ | ✅ | ✅ | ❌ |
+| Block shortcuts during capture | ✅ | ✅ | ❌ | ❌ |
+| System tray | ✅ | ✅ | ✅ | ✅ |
 
-> **Note:** All device configuration (buttons, DPI, scroll, gestures, thumb wheel) works on every DE — it's pure HID++ over hidraw. Per-app profile switching requires desktop-specific focus tracking. KDE uses a KWin script, GNOME uses a Shell extension (auto-installed on first run). See [Adding a Desktop Environment](https://github.com/mmaher88/logitune/wiki/Adding-a-Desktop-Environment) to contribute support for other DEs.
+> **Note:** All device configuration (buttons, DPI, scroll, gestures, thumb wheel) works on every DE — it's pure HID++ over hidraw. Per-app profile switching requires desktop-specific focus tracking. KDE uses a KWin script, GNOME uses a Shell extension (auto-installed on first run), and Hyprland subscribes to the compositor's event socket. Hyprland has no stable compositor-wide shortcut-blocking API, so global bindings may still fire while capturing a keystroke — capture itself works. See [Adding a Desktop Environment](https://github.com/mmaher88/logitune/wiki/Adding-a-Desktop-Environment) to contribute support for other DEs.
 
 ## 🛠️ Tech Stack
 
