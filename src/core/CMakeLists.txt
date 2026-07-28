@@ -32,6 +32,7 @@ target_sources(logitune-core PRIVATE
     interfaces/ITransport.cpp
     desktop/LinuxDesktopBase.cpp
     desktop/GnomeDesktop.cpp
+    desktop/HyprlandDesktop.cpp
     desktop/KDeDesktop.cpp
     desktop/GenericDesktop.cpp
     input/UinputInjector.cpp

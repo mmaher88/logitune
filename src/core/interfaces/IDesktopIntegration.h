@@ -20,7 +20,7 @@ public:
     virtual QStringList detectedCompositors() const = 0;
 
     /// Short key identifying this DE in the action preset variants map
-    /// (e.g. "kde", "gnome", "generic"). Matches a top-level key under
+    /// (e.g. "kde", "gnome", "hyprland", "generic"). Matches a top-level key under
     /// "variants" in actions.json.
     virtual QString variantKey() const = 0;
 
