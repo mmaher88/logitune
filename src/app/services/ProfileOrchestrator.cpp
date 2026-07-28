@@ -174,6 +174,19 @@ void ProfileOrchestrator::onUserButtonChanged(int buttonId,
     }
 }
 
+void ProfileOrchestrator::onDpiChangedByButton(int dpi)
+{
+    applyHardwareChange([dpi](Profile &p) { p.dpi = dpi; });
+}
+
+void ProfileOrchestrator::onSmartShiftChangedByButton(bool enabled, int threshold)
+{
+    applyHardwareChange([enabled, threshold](Profile &p) {
+        p.smartShiftEnabled   = enabled;
+        p.smartShiftThreshold = threshold;
+    });
+}
+
 void ProfileOrchestrator::onTabSwitched(const QString &profileName)
 {
     const QString serial = activeSerial();

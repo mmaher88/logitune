@@ -36,6 +36,15 @@ public:
     friend class test::AppRootFixture;
     friend class test::ButtonActionDispatcherFixture;
 
+signals:
+    /// Emitted after a diverted button changes a device setting, so the
+    /// orchestrator can persist it into the active profile. Notifying
+    /// explicitly (rather than having the orchestrator listen to
+    /// DeviceSession's change signals) keeps a profile *application* from
+    /// echoing back and rewriting the profile it just applied.
+    void dpiChangedByButton(int dpi);
+    void smartShiftChangedByButton(bool enabled, int threshold);
+
 public slots:
     void onGestureRaw(int16_t dx, int16_t dy);
     void onDivertedButtonPressed(uint16_t controlId, bool pressed);
