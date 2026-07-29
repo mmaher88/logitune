@@ -278,3 +278,54 @@ TEST(ActionModel, buttonActionToNamePresetLooksUpLabel) {
     EXPECT_EQ(m.buttonActionToName(ButtonAction{ButtonAction::PresetRef, "show-desktop"}),
               "Show desktop");
 }
+
+// ---------------------------------------------------------------------------
+// Domain -> UI vocabulary: buttonActionToType / buttonActionToName
+// ---------------------------------------------------------------------------
+
+TEST(ActionModel, buttonActionToTypeCoversEveryActionType) {
+    ActionModel m;
+    EXPECT_EQ(m.buttonActionToType({ButtonAction::Default, {}}),          "default");
+    EXPECT_EQ(m.buttonActionToType({ButtonAction::GestureTrigger, {}}),   "gesture-trigger");
+    EXPECT_EQ(m.buttonActionToType({ButtonAction::SmartShiftToggle, {}}), "smartshift-toggle");
+    EXPECT_EQ(m.buttonActionToType({ButtonAction::DpiCycle, {}}),         "dpi-cycle");
+    EXPECT_EQ(m.buttonActionToType({ButtonAction::Keystroke, "Ctrl+C"}),  "keystroke");
+    EXPECT_EQ(m.buttonActionToType({ButtonAction::AppLaunch, "kcalc"}),   "app-launch");
+    EXPECT_EQ(m.buttonActionToType({ButtonAction::PresetRef, "screenshot"}), "preset");
+}
+
+TEST(ActionModel, buttonActionToTypeFoldsMediaOntoKeystroke) {
+    ActionModel m;
+    EXPECT_EQ(m.buttonActionToType({ButtonAction::Media, "Mute"}), "keystroke");
+}
+
+TEST(ActionModel, buttonActionToNameNamesMediaPayload) {
+    // A legacy "media:Mute" binding must reach the same row as "keystroke:Mute".
+    ActionModel m;
+    EXPECT_EQ(m.buttonActionToName({ButtonAction::Media, "Mute"}), "Mute");
+}
+
+TEST(ActionModel, buttonActionToNameNamesPayloadlessDeviceActions) {
+    ActionModel m;
+    EXPECT_EQ(m.buttonActionToName({ButtonAction::GestureTrigger, {}}),   "Gestures");
+    EXPECT_EQ(m.buttonActionToName({ButtonAction::SmartShiftToggle, {}}), "Shift wheel mode");
+    EXPECT_EQ(m.buttonActionToName({ButtonAction::DpiCycle, {}}),         "DPI cycle");
+}
+
+TEST(ActionModel, buttonActionToNameDefaultHasNoName) {
+    // The factory label belongs to the device descriptor, not the action list.
+    ActionModel m;
+    EXPECT_TRUE(m.buttonActionToName({ButtonAction::Default, {}}).isEmpty());
+}
+
+TEST(ActionModel, buttonActionToNameEmptyKeystrokeIsCustomShortcut) {
+    ActionModel m;
+    EXPECT_EQ(m.buttonActionToName({ButtonAction::Keystroke, {}}), "Keyboard shortcut");
+}
+
+TEST(ActionModel, buttonActionToNameFallsBackToPayload) {
+    ActionModel m;
+    EXPECT_EQ(m.buttonActionToName({ButtonAction::Keystroke, "Ctrl+Q"}),  "Ctrl+Q");
+    EXPECT_EQ(m.buttonActionToName({ButtonAction::AppLaunch, "kcalc"}),   "kcalc");
+    EXPECT_EQ(m.buttonActionToName({ButtonAction::PresetRef, "no-such"}), "no-such");
+}

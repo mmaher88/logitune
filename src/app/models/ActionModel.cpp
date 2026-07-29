@@ -119,26 +119,41 @@ QString ActionModel::payloadForName(const QString &name) const
     return {};
 }
 
+QString ActionModel::buttonActionToType(const ButtonAction &ba) const
+{
+    switch (ba.type) {
+    case ButtonAction::GestureTrigger:   return QStringLiteral("gesture-trigger");
+    case ButtonAction::SmartShiftToggle: return QStringLiteral("smartshift-toggle");
+    case ButtonAction::DpiCycle:         return QStringLiteral("dpi-cycle");
+    case ButtonAction::AppLaunch:        return QStringLiteral("app-launch");
+    case ButtonAction::PresetRef:        return QStringLiteral("preset");
+    case ButtonAction::Keystroke:        return QStringLiteral("keystroke");
+
+    // Profiles written by older releases store media keys as "media:...".
+    // The picker has no separate row for them, so they surface — and are
+    // injected — as ordinary keystrokes.
+    case ButtonAction::Media:            return QStringLiteral("keystroke");
+
+    case ButtonAction::Default:          return QStringLiteral("default");
+    }
+    return QStringLiteral("default");
+}
+
 QString ActionModel::buttonActionToName(const ButtonAction &ba) const
 {
     if (ba.type == ButtonAction::Default)
         return QString();
-    if (ba.type == ButtonAction::GestureTrigger)
-        return QStringLiteral("Gestures");
-    if (ba.type == ButtonAction::PresetRef) {
-        for (const auto &a : m_actions) {
-            if (a.actionType == QStringLiteral("preset") && a.payload == ba.payload)
-                return a.name;
-        }
-        return ba.payload;
+
+    // Every row is identified by its (actionType, payload) pair, and the
+    // payload-less action types each own exactly one row, so one uniform
+    // lookup names all of them.
+    const QString type = buttonActionToType(ba);
+    for (const auto &a : m_actions) {
+        if (a.actionType == type && a.payload == ba.payload)
+            return a.name;
     }
-    if (ba.type == ButtonAction::Keystroke) {
-        for (const auto &a : m_actions) {
-            if (a.actionType == QStringLiteral("keystroke") && a.payload == ba.payload)
-                return a.name;
-        }
-        return ba.payload;
-    }
+
+    // A custom binding the picker has no row for — show the payload itself.
     return ba.payload;
 }
 
