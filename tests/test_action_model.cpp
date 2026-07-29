@@ -329,3 +329,53 @@ TEST(ActionModel, buttonActionToNameFallsBackToPayload) {
     EXPECT_EQ(m.buttonActionToName({ButtonAction::AppLaunch, "kcalc"}),   "kcalc");
     EXPECT_EQ(m.buttonActionToName({ButtonAction::PresetRef, "no-such"}), "no-such");
 }
+
+// ---------------------------------------------------------------------------
+// Sticky modifier rows
+// ---------------------------------------------------------------------------
+
+TEST(ActionModel, StickyRowsCarryModifierPayloads) {
+    ActionModel m;
+    for (const auto &[name, payload] : {
+             std::pair{"Sticky Alt",   "Alt"},
+             std::pair{"Sticky Ctrl",  "Ctrl"},
+             std::pair{"Sticky Meta",  "Meta"},
+             std::pair{"Sticky Shift", "Shift"},
+         }) {
+        int idx = m.indexForName(name);
+        ASSERT_GE(idx, 0) << name;
+        auto i = m.index(idx, 0);
+        EXPECT_EQ(m.data(i, ActionModel::ActionTypeRole).toString(), "sticky");
+        EXPECT_EQ(m.data(i, ActionModel::PayloadRole).toString(), payload);
+        EXPECT_EQ(m.data(i, ActionModel::CategoryRole).toString(), "Modifiers");
+    }
+}
+
+TEST(ActionModel, StickyActionRoundTripsThroughTheUiVocabulary) {
+    ActionModel m;
+    ButtonAction orig{ButtonAction::StickyModifier, QStringLiteral("Meta")};
+
+    EXPECT_EQ(m.buttonActionToType(orig), "sticky");
+    const QString name = m.buttonActionToName(orig);
+    EXPECT_EQ(name, "Sticky Meta");
+    EXPECT_EQ(m.buttonEntryToAction("sticky", name), orig);
+}
+
+TEST(ActionModel, HandWrittenStickyComboRoundTripsAsItsPayload) {
+    // No row spells "Ctrl+Meta", so the payload itself is the display name —
+    // and it must survive a save unchanged.
+    ActionModel m;
+    ButtonAction orig{ButtonAction::StickyModifier, QStringLiteral("Ctrl+Meta")};
+
+    const QString name = m.buttonActionToName(orig);
+    EXPECT_EQ(name, "Ctrl+Meta");
+    EXPECT_EQ(m.buttonEntryToAction("sticky", name), orig);
+}
+
+TEST(ActionModel, DBusActionRoundTripsInsteadOfBeingDropped) {
+    ActionModel m;
+    ButtonAction orig{ButtonAction::DBus, QStringLiteral("svc,/path,iface,method")};
+
+    EXPECT_EQ(m.buttonActionToType(orig), "dbus");
+    EXPECT_EQ(m.buttonEntryToAction("dbus", m.buttonActionToName(orig)), orig);
+}

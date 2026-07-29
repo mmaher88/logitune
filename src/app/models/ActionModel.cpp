@@ -28,6 +28,13 @@ ActionModel::ActionModel(QObject *parent)
         { "Volume down",           "Decrease system volume",                     "keystroke",         "VolumeDown",        "Media" },
         { "Volume up",             "Increase system volume",                     "keystroke",         "VolumeUp",          "Media" },
 
+        // Modifiers — held down until the button fires again, so a drag
+        // started afterwards carries the modifier.
+        { "Sticky Alt",            "Hold Alt until pressed again",               "sticky",            "Alt",               "Modifiers" },
+        { "Sticky Ctrl",           "Hold Ctrl until pressed again",              "sticky",            "Ctrl",              "Modifiers" },
+        { "Sticky Meta",           "Hold Meta until pressed again",              "sticky",            "Meta",              "Modifiers" },
+        { "Sticky Shift",          "Hold Shift until pressed again",             "sticky",            "Shift",             "Modifiers" },
+
         // Navigation
         { "Back",                  "Navigate backward in browser/file manager",  "keystroke",         "Alt+Left",          "Navigation" },
         { "Forward",               "Navigate forward in browser/file manager",   "keystroke",         "Alt+Right",         "Navigation" },
@@ -127,7 +134,9 @@ QString ActionModel::buttonActionToType(const ButtonAction &ba) const
     case ButtonAction::DpiCycle:         return QStringLiteral("dpi-cycle");
     case ButtonAction::AppLaunch:        return QStringLiteral("app-launch");
     case ButtonAction::PresetRef:        return QStringLiteral("preset");
+    case ButtonAction::DBus:             return QStringLiteral("dbus");
     case ButtonAction::Keystroke:        return QStringLiteral("keystroke");
+    case ButtonAction::StickyModifier:   return QStringLiteral("sticky");
 
     // Profiles written by older releases store media keys as "media:...".
     // The picker has no separate row for them, so they surface — and are
@@ -173,11 +182,21 @@ ButtonAction ActionModel::buttonEntryToAction(const QString &actionType, const Q
             payload = actionName;
         return {ButtonAction::Keystroke, payload};
     }
+    if (actionType == QStringLiteral("sticky")) {
+        QString payload = payloadForName(actionName);
+        if (payload.isEmpty()) payload = actionName;
+        return {ButtonAction::StickyModifier, payload};
+    }
     if (actionType == QStringLiteral("app-launch")) {
         QString payload = payloadForName(actionName);
         if (payload.isEmpty()) payload = actionName;
         return {ButtonAction::AppLaunch, payload};
     }
+    // No picker row spells a D-Bus call — only a hand-edited profile does —
+    // but the type still has to survive a UI save, or editing any other
+    // button would quietly reset this one.
+    if (actionType == QStringLiteral("dbus"))
+        return {ButtonAction::DBus, actionName};
     if (actionType == QStringLiteral("preset")) {
         QString payload = payloadForName(actionName);
         if (payload.isEmpty()) payload = actionName;
