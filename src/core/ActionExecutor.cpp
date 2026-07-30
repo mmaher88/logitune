@@ -60,6 +60,9 @@ void ActionExecutor::executeAction(const ButtonAction &action)
     case ButtonAction::Keystroke:
         injectKeystroke(action.payload);
         break;
+    case ButtonAction::StickyModifier:
+        toggleModifierLatch(action.payload);
+        break;
     case ButtonAction::DBus:
         executeDBusCall(action.payload);
         break;
@@ -80,6 +83,11 @@ void ActionExecutor::executeAction(const ButtonAction &action)
 void ActionExecutor::injectKeystroke(const QString &combo)
 {
     m_injector->injectKeystroke(combo);
+}
+
+bool ActionExecutor::toggleModifierLatch(const QString &combo)
+{
+    return m_injector->toggleModifierLatch(combo);
 }
 
 void ActionExecutor::injectCtrlScroll(int direction)

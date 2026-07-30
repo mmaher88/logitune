@@ -19,9 +19,9 @@
 ## ✨ Features
 
 - 🖱️ **Per-app profiles** — automatic button/scroll/DPI switching on window focus
-- ⌨️ **Button remapping** — keystrokes, media controls, app launch, gestures, SmartShift toggle
+- ⌨️ **Button remapping** — keystrokes, sticky modifiers, media controls, app launch, gestures, SmartShift toggle
 - 🎛️ **Thumb wheel modes** — volume, zoom, horizontal scroll with invert control
-- 👆 **Gesture support** — hold + swipe for desktop switching, task view, custom keystrokes
+- 👆 **Gesture support** — hold + swipe for desktop switching, task view, custom keystrokes, sticky modifiers
 - ⚡ **DPI / SmartShift / Scroll** — full control with live preview
 - 🔋 **System tray** — battery status, minimize to tray
 - 📡 **HID++ 2.0** — direct communication via Bolt receiver, no daemon needed

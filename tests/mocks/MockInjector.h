@@ -1,5 +1,6 @@
 #pragma once
 #include "interfaces/IInputInjector.h"
+#include <QSet>
 #include <QVector>
 #include <QString>
 
@@ -23,6 +24,17 @@ public:
         m_calls.append({QStringLiteral("injectKeystroke"), combo});
     }
 
+    /// Mirrors UinputInjector's flip-flop at combo granularity, which is all
+    /// a caller can observe: the real injector's key-level bookkeeping only
+    /// matters where two latched combos overlap.
+    bool toggleModifierLatch(const QString &combo) override {
+        m_calls.append({QStringLiteral("toggleModifierLatch"), combo});
+        if (m_latched.remove(combo))
+            return false;
+        m_latched.insert(combo);
+        return true;
+    }
+
     void injectCtrlScroll(int direction) override {
         m_calls.append({QStringLiteral("injectCtrlScroll"), QString::number(direction)});
     }
@@ -42,6 +54,8 @@ public:
     // --- Test helpers ---
 
     void clear() { m_calls.clear(); }
+
+    bool isLatched(const QString &combo) const { return m_latched.contains(combo); }
 
     bool hasCalled(const QString &method) const {
         for (const auto &c : m_calls) {
@@ -63,6 +77,7 @@ public:
 
 private:
     QVector<Call> m_calls;
+    QSet<QString> m_latched;
 };
 
 } // namespace logitune::test

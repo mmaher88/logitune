@@ -264,51 +264,14 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
             ? p.buttons[static_cast<std::size_t>(i)]
             : ButtonAction{ButtonAction::Default, {}};
 
-        QString aType, aName;
-        switch (ba.type) {
-        case ButtonAction::Default:
-            aType = QStringLiteral("default");
-            aName = ctrl.defaultName;
-            break;
-        case ButtonAction::GestureTrigger:
-            aType = QStringLiteral("gesture-trigger");
-            aName = QStringLiteral("Gestures");
-            break;
-        case ButtonAction::SmartShiftToggle:
-            aType = QStringLiteral("smartshift-toggle");
-            aName = QStringLiteral("Shift wheel mode");
-            break;
-        case ButtonAction::DpiCycle:
-            aType = QStringLiteral("dpi-cycle");
-            aName = QStringLiteral("DPI cycle");
-            break;
-        case ButtonAction::Keystroke:
-            aType = QStringLiteral("keystroke");
-            aName = m_actionModel->buttonActionToName(ba);
-            break;
-        case ButtonAction::AppLaunch:
-            aType = QStringLiteral("app-launch");
-            aName = m_actionModel->buttonActionToName(ba);
-            break;
-        case ButtonAction::PresetRef:
-            aType = QStringLiteral("preset");
-            aName = m_actionModel->buttonActionToName(ba);
-            break;
-        case ButtonAction::Media: {
-            // Legacy ButtonAction::Media (from older serialized profiles
-            // using the "media:..." form) surfaces in the UI as a regular
-            // keystroke entry; the dispatcher still injects the keystroke
-            // payload through the same code path.
-            aType = QStringLiteral("keystroke");
-            ButtonAction asKs{ButtonAction::Keystroke, ba.payload};
-            aName = m_actionModel->buttonActionToName(asKs);
-            break;
-        }
-        default:
-            aType = QStringLiteral("default");
-            aName = ctrl.defaultName;
-            break;
-        }
+        // ActionModel owns the domain -> UI vocabulary in both directions.
+        // The one thing it cannot know is the button's factory label, which
+        // is what an unbound button shows.
+        const QString aType = m_actionModel->buttonActionToType(ba);
+        const QString aName = (ba.type == ButtonAction::Default)
+            ? ctrl.defaultName
+            : m_actionModel->buttonActionToName(ba);
+
         assignments.append({aName, aType, ctrl.controlId});
     }
 

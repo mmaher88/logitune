@@ -417,3 +417,78 @@ TEST_F(ButtonActionDispatcherFixture, GesturePresetUnresolvedFiresNothing) {
     EXPECT_FALSE(m_injector->hasCalled("sendDBusCall"));
     EXPECT_FALSE(m_injector->hasCalled("launchApp"));
 }
+
+// --- Sticky modifiers -------------------------------------------------------
+
+TEST_F(ButtonActionDispatcherFixture, StickyModifierButtonTogglesTheLatch) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::StickyModifier, QStringLiteral("Meta")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_EQ(m_injector->lastArg("toggleModifierLatch"), QStringLiteral("Meta"));
+    EXPECT_TRUE(m_injector->isLatched(QStringLiteral("Meta")));
+
+    // Second press is the release half of the toggle, not a second hold.
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_FALSE(m_injector->isLatched(QStringLiteral("Meta")));
+}
+
+TEST_F(ButtonActionDispatcherFixture, StickyModifierNeverPulsesAKeystroke) {
+    // A latch must not also fire the pulse path — that would tap Meta and
+    // let the compositor treat it as a Meta press-and-release.
+    attachMockSession();
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::StickyModifier, QStringLiteral("Meta")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, StickyModifierWithEmptyPayloadIsNoOp) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 3, ButtonAction{ButtonAction::StickyModifier, {}});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_FALSE(m_injector->hasCalled("toggleModifierLatch"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, GestureClickTogglesStickyModifier) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    hwProfile().gestures["click"] = ButtonAction{ButtonAction::StickyModifier,
+                                                 QStringLiteral("Meta")};
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(3, 3);   // under kGestureThreshold — a click
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+
+    EXPECT_EQ(m_injector->lastArg("toggleModifierLatch"), QStringLiteral("Meta"));
+    EXPECT_TRUE(m_injector->isLatched(QStringLiteral("Meta")));
+}
+
+TEST_F(ButtonActionDispatcherFixture, GestureDirectionTogglesStickyModifier) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    hwProfile().gestures["up"] = ButtonAction{ButtonAction::StickyModifier,
+                                              QStringLiteral("Ctrl+Meta")};
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(2, -80);
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+
+    EXPECT_EQ(m_injector->lastArg("toggleModifierLatch"), QStringLiteral("Ctrl+Meta"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, DBusButtonFiresTheCall) {
+    // Only a hand-edited profile can spell this, but it now reaches the bus
+    // instead of being silently dropped by the dispatcher.
+    attachMockSession();
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::DBus, QStringLiteral("a,b,c,d")});
+
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    EXPECT_EQ(m_injector->lastArg("sendDBusCall"), QStringLiteral("a,b,c,d"));
+}
