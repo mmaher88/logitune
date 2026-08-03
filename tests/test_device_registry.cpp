@@ -24,6 +24,21 @@ struct DeviceSpec {
 
 static const DeviceSpec kDevices[] = {
     {
+        .pid = 0xb01e,
+        .name = "MX Master",
+        .minDpi = 400, .maxDpi = 1600, .dpiStep = 200,
+        .buttonHotspots = 6, .scrollHotspots = 3,
+        .minControls = 7,
+        .control0Cid = 0x0050, .control5Cid = 0x00C3,
+        .control5ActionType = "gesture-trigger",
+        .control6ActionType = "smartshift-toggle",
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Keystroke,
+        .gestureDownPayload = "Super+D",
+        .gestureUpType = ButtonAction::Default,
+    },
+    {
         .pid = 0xb019,
         .name = "MX Master 2S",
         .minDpi = 200, .maxDpi = 4000, .dpiStep = 50,

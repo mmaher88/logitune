@@ -640,8 +640,12 @@ bool DeviceModel::smoothScrollSupported() const
 bool DeviceModel::thumbWheelSupported() const
 {
     auto *s = selectedDevice();
-    if (s && s->descriptor())
-        return s->descriptor()->features().thumbWheel;
+    if (s && s->descriptor()) {
+        const auto &f = s->descriptor()->features();
+        // Either the dedicated 0x2150 ThumbWheel feature OR the 0x6501-based
+        // diverted-gesture path counts as "has a thumb wheel" for UI purposes.
+        return f.thumbWheel || f.thumbWheelGestureV2;
+    }
     return true;
 }
 

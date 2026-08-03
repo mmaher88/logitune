@@ -36,6 +36,7 @@ struct FeatureSupport {
     bool lowResWheel = false;
     bool smoothScroll = true;
     bool thumbWheel = false;
+    bool thumbWheelGestureV2 = false;
     bool reprogControls = false;
     bool gestureV2 = false;
     bool mouseGesture = false;
