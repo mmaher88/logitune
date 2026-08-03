@@ -57,6 +57,11 @@ signals:
     void physicalDeviceAdded(PhysicalDevice *device);
     void physicalDeviceRemoved(PhysicalDevice *device);
 
+    // Emitted when a new transport attaches to an EXISTING PhysicalDevice.
+    // physicalDeviceAdded is NOT re-emitted in this case, so profile
+    // re-application must also connect to this signal.
+    void physicalDeviceTransportReady(PhysicalDevice *device);
+
     void unknownDeviceDetected(uint16_t pid);
 
 private slots:

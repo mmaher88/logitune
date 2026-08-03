@@ -8,39 +8,43 @@ Item {
     signal deviceClicked()
     signal settingsClicked()
 
-    RowLayout {
+    Item {
         id: topBar
         anchors {
             top: parent.top
             left: parent.left
             right: parent.right
         }
-        height: Math.min(root.height * 0.185, 144)
-        spacing: 12
+        height: 72
 
-        Item { width: 24 }
+        // Centered logo + wordmark
+        Row {
+            anchors.centerIn: parent
+            spacing: 14
 
-        Text {
-            id: greeting
-            text: {
-                var hour = new Date().getHours();
-                if (hour >= 5 && hour < 12) return "Good Morning";
-                if (hour >= 12 && hour < 17) return "Good Afternoon";
-                return "Good Evening";
+            Image {
+                width: 60; height: 60
+                source: "qrc:/Logitune/qml/assets/logitune-logo.png"
+                smooth: true; mipmap: true
+                fillMode: Image.PreserveAspectFit
+                anchors.verticalCenter: parent.verticalCenter
             }
-            font.pixelSize: Math.max(24, Math.min(36, root.width * 0.01 + root.height * 0.028))
-            font.bold: true
-            font.family: "Inter, sans-serif"
-            color: Theme.text
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Logitune"
+                font { pixelSize: 28; bold: true; letterSpacing: 0.6; family: "Cantarell" }
+                color: Theme.text
+            }
         }
 
-        Item { Layout.fillWidth: true }
-
+        // Gear icon \u2014 right side
         Text {
             id: settingsGear
+            anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
             text: "\u2699"
-            font.pixelSize: 20
-            color: settingsHover.hovered ? Theme.accent : "#999999"
+            font.pixelSize: 18
+            color: settingsHover.hovered ? Theme.accent : Theme.textSecondary
 
             HoverHandler { id: settingsHover }
             Behavior on color { ColorAnimation { duration: 150 } }
@@ -51,8 +55,6 @@ Item {
                 onClicked: root.settingsClicked()
             }
         }
-
-        Item { width: 24 }
     }
 
     Item {
@@ -86,8 +88,8 @@ Item {
             highlightMoveDuration: 300
 
             path: Path {
-                startX: 0; startY: carousel.height / 2
-                PathLine { x: carousel.width; y: carousel.height / 2 }
+                startX: 0; startY: carousel.height * 0.5
+                PathLine { x: carousel.width; y: carousel.height * 0.5 }
             }
 
             delegate: DeviceCard {

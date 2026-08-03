@@ -451,7 +451,15 @@ void DeviceSession::enumerateAndSetup()
     m_lastResponseTime = QDateTime::currentMSecsSinceEpoch();
     m_enumerating = false;
 
-    if (!m_commandProcessor && m_features && m_transport) {
+    // Always recreate so the CommandProcessor holds fresh pointers to the
+    // new FeatureDispatcher built above. Reusing the old one would leave it
+    // pointing at the already-destroyed object (dangling pointer UB).
+    if (m_commandProcessor) {
+        m_commandProcessor->clear();
+        m_commandProcessor->stop();
+        m_commandProcessor.reset();
+    }
+    if (m_features && m_transport) {
         m_commandProcessor = std::make_unique<hidpp::CommandProcessor>(
             m_features.get(), m_transport.get(), m_deviceIndex);
         m_commandProcessor->start();
