@@ -90,12 +90,15 @@ TEST_F(ButtonModelTest, LoadFromProfileDoesNotEmitUserActionChanged) {
 
 TEST_F(ButtonModelTest, LoadFromProfileUpdatesData) {
     QList<ButtonAssignment> buttons;
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < 9; ++i)
         buttons.append({ QStringLiteral("NewAction%1").arg(i), QStringLiteral("type%1").arg(i), 0xFFFF });
     model.loadFromProfile(buttons);
     // loadFromProfile maps by index position (button at index 0 has buttonId 0)
+    EXPECT_EQ(model.rowCount(), 9);
     EXPECT_EQ(model.actionNameForButton(0), QStringLiteral("NewAction0"));
     EXPECT_EQ(model.actionNameForButton(7), QStringLiteral("NewAction7"));
+    EXPECT_EQ(model.actionNameForButton(8), QStringLiteral("NewAction8"));
+    EXPECT_EQ(model.actionTypeForButton(8), QStringLiteral("type8"));
 }
 
 // ---------------------------------------------------------------------------
