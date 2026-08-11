@@ -2,6 +2,8 @@
 #include "ActionExecutor.h"
 #include "logging/LogManager.h"
 
+#include <algorithm>
+
 #include <QProcess>
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -90,6 +92,7 @@ bool UinputInjector::init()
 void UinputInjector::shutdown()
 {
     if (m_uinputFd >= 0) {
+        releaseLatchedModifiers();
         ::ioctl(m_uinputFd, UI_DEV_DESTROY);
         ::close(m_uinputFd);
         m_uinputFd = -1;
@@ -143,6 +146,50 @@ void UinputInjector::injectKeystroke(const QString &combo)
     for (auto it = keys.rbegin(); it != keys.rend(); ++it)
         emitKey(*it, false);
     emitSync();
+}
+
+bool UinputInjector::toggleModifierLatch(const QString &combo)
+{
+    const auto mods = parseModifierCombo(combo);
+    if (mods.empty()) {
+        qCWarning(lcInput) << "refusing to latch" << combo
+                           << "— only modifier combos can be held";
+        return false;
+    }
+
+    // A combo whose every key is already held releases; otherwise the keys it
+    // adds join the latch. Toggling one combo twice therefore always returns
+    // the virtual keyboard to the state it started in, even where two latched
+    // combos share a modifier.
+    const bool release = std::all_of(mods.begin(), mods.end(),
+                                     [this](int k) { return m_latched.count(k) > 0; });
+
+    for (int k : mods) {
+        if (release) {
+            if (m_latched.erase(k) > 0)
+                emitKey(k, false);
+        } else if (m_latched.insert(k).second) {
+            emitKey(k, true);
+        }
+    }
+    emitSync();
+
+    qCDebug(lcInput) << "modifier latch" << combo << (release ? "released" : "held")
+                     << "— latched keys:" << static_cast<int>(m_latched.size());
+
+    return !release;
+}
+
+void UinputInjector::releaseLatchedModifiers()
+{
+    if (m_latched.empty())
+        return;
+
+    for (int k : m_latched)
+        emitKey(k, false);
+    emitSync();
+
+    m_latched.clear();
 }
 
 void UinputInjector::injectCtrlScroll(int direction)
@@ -304,6 +351,25 @@ std::vector<int> UinputInjector::parseKeystroke(const QString &combo)
             }
         }
 
+    }
+
+    return keys;
+}
+
+std::vector<int> UinputInjector::parseModifierCombo(const QString &combo)
+{
+    static constexpr int kModifiers[] = {
+        KEY_LEFTCTRL, KEY_LEFTSHIFT, KEY_LEFTALT, KEY_LEFTMETA,
+    };
+
+    const auto keys = parseKeystroke(combo);
+    if (keys.empty())
+        return {};
+
+    for (int k : keys) {
+        if (std::find(std::begin(kModifiers), std::end(kModifiers), k)
+            == std::end(kModifiers))
+            return {};
     }
 
     return keys;

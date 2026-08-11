@@ -38,6 +38,7 @@ ButtonAction ButtonAction::parse(const QString &str)
         if (payload == "smartshift-toggle") return {SmartShiftToggle, {}};
         return {Keystroke, payload};
     }
+    if (prefix == "sticky")     return {StickyModifier, payload};
     if (prefix == "media")      return {Media,       payload};
     if (prefix == "dbus")       return {DBus,        payload};
     if (prefix == "app-launch") return {AppLaunch,   payload};
@@ -53,12 +54,13 @@ QString ButtonAction::serialize() const
     case Default:       return "default";
     case GestureTrigger:  return "gesture-trigger";
     case SmartShiftToggle: return "smartshift-toggle";
-    case DpiCycle:      return "dpi-cycle";
-    case Keystroke:     return "keystroke:" + payload;
-    case Media:         return "media:" + payload;
-    case DBus:          return "dbus:" + payload;
-    case AppLaunch:     return "app-launch:" + payload;
-    case PresetRef:     return "preset:" + payload;
+    case DpiCycle:       return "dpi-cycle";
+    case Keystroke:      return "keystroke:" + payload;
+    case StickyModifier: return "sticky:" + payload;
+    case Media:          return "media:" + payload;
+    case DBus:           return "dbus:" + payload;
+    case AppLaunch:      return "app-launch:" + payload;
+    case PresetRef:      return "preset:" + payload;
     }
     return "default";
 }

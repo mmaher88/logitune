@@ -561,9 +561,9 @@ graph LR
 |------|------|-------------|
 | `NameRole` | QString | Display name (e.g., "Copy") |
 | `DescriptionRole` | QString | Help text |
-| `ActionTypeRole` | QString | "default", "keystroke", "app-launch", "preset", etc. |
-| `PayloadRole` | QString | Keystroke combo, app command, or preset id (when type is "preset") |
-| `CategoryRole` | QString | Group label ("Workspace", "Window", "Media", "System", "Edit", "Navigation", "Device", "Other"). The picker uses `ListView.section.property` to render section headers between groups. Rows are stored ordered by category, then alphabetically. |
+| `ActionTypeRole` | QString | "default", "keystroke", "sticky", "app-launch", "preset", etc. |
+| `PayloadRole` | QString | Keystroke combo, modifier combo (when type is "sticky"), app command, or preset id (when type is "preset") |
+| `CategoryRole` | QString | Group label ("Workspace", "Window", "Media", "Modifiers", "System", "Edit", "Navigation", "Device", "Other"). The picker uses `ListView.section.property` to render section headers between groups. Rows are stored ordered by category, then alphabetically. |
 
 **ProfileModel** — `QAbstractListModel` for the profile tab bar:
 
@@ -792,13 +792,19 @@ After the extension is in place, `GnomeDesktop` registers the service `com.logit
 
 ### Input Injection
 
-`IInputInjector` (`src/core/interfaces/IInputInjector.h`) is the abstract interface through which the app delivers synthesized input: `init()`, `injectKeystroke(combo)`, `injectCtrlScroll(direction)`, `injectHorizontalScroll(direction)`, `sendDBusCall(spec)`, `launchApp(command)`. `ActionExecutor` holds a non-owning pointer to one; tests substitute `MockInjector` to capture the calls for assertions.
+`IInputInjector` (`src/core/interfaces/IInputInjector.h`) is the abstract interface through which the app delivers synthesized input: `init()`, `injectKeystroke(combo)`, `toggleModifierLatch(combo)`, `injectCtrlScroll(direction)`, `injectHorizontalScroll(direction)`, `sendDBusCall(spec)`, `launchApp(command)`. `ActionExecutor` holds a non-owning pointer to one; tests substitute `MockInjector` to capture the calls for assertions.
 
 `UinputInjector` (`src/core/input/UinputInjector.{h,cpp}`) is the production `/dev/uinput` implementation. `init()` opens `/dev/uinput` with `O_WRONLY | O_NONBLOCK`, registers the key and relative-axis bits the app can emit (modifiers, arrows, media keys, F1 to F12, A to Z, 0 to 9, plus `REL_WHEEL` and `REL_HWHEEL`), sets up a `uinput_setup` with vendor `0x046d` and product `0x0001` under the name `logitune-virtual-kbd`, and finalizes with `UI_DEV_CREATE`. If any step fails (most often because `/dev/uinput` is not accessible under the user's group or the `logitune` udev rules are missing), `init()` returns false and all subsequent `injectKeystroke` calls are silent no-ops.
 
 Keystroke chord parsing lives in `UinputInjector::parseKeystroke(combo)` (static, unit-tested directly). It splits on `+`, maps modifier tokens (`Ctrl`, `Shift`, `Alt`, `Super` / `Meta`), special keys (`Tab`, `Space`, `Enter`, `Up`, `Down`, `Home`, `PageUp`, `VolumeUp`, `Print`, `BrightnessDown`, etc.), symbols (`Minus`, `Equal`, `LeftBrace`, `Semicolon`, `Comma`), and letters / digits to `KEY_*` codes from `<linux/input-event-codes.h>`. The bare `"+"` chord is handled before the split to preserve the `KEY_KPPLUS` case. `ActionExecutor::parseKeystroke` forwards to this function so tests can cover the parser without constructing an injector.
 
+`UinputInjector::parseModifierCombo(combo)` refines that parse to the combos a latch will accept: it defers to `parseKeystroke` and then rejects the whole combo unless every keycode is one of `KEY_LEFTCTRL`, `KEY_LEFTSHIFT`, `KEY_LEFTALT`, `KEY_LEFTMETA`. Latching is meaningful for modifiers alone — a client autorepeats an ordinary key that stays down — so `sticky:Ctrl+C` is refused rather than latched in part.
+
 Key emission in `injectKeystroke` presses all resolved keycodes in order (`emitKey(k, true)` + `emitSync()`), then releases them in reverse order. `injectCtrlScroll(direction)` wraps a `REL_WHEEL` write in a `KEY_LEFTCTRL` press / release so applications that bind zoom to Ctrl+scroll respond. `injectHorizontalScroll(direction)` writes a `REL_HWHEEL` event for the thumb-wheel scroll mode. `launchApp(command)` uses `QProcess::startDetached`; `sendDBusCall(spec)` parses a four-part `service,path,interface,method` string and dispatches through `QDBusConnection::sessionBus().send`.
+
+`toggleModifierLatch(combo)` separates the press from the release so a modifier can outlive the event that requested it, which is what lets a pointer drag started afterwards carry it — KDE's Meta+drag window move and Meta+right-drag resize are the motivating case. The keys a latch holds are the virtual keyboard's own state, so the held set lives in `UinputInjector` (`m_latched`) rather than in `ButtonActionDispatcher`, and the invariant that follows is enforceable in one place: no key survives the device it was pressed on, so `shutdown()` drains the latch before `UI_DEV_DESTROY`. Quitting the app is therefore always an escape from a stuck modifier.
+
+The toggle is a flip-flop over that set. A combo releases only when *every* one of its keycodes is already held; otherwise the keycodes it adds join the set. Toggling one combo twice therefore returns the keyboard to the state it started in even where two latched combos share a modifier, and the return value reports whether the combo is held afterwards (`false` also covers a combo `parseModifierCombo` refused).
 
 ## Device Discovery and Connection
 
@@ -1196,7 +1202,7 @@ Direction resolution:
 - If `|dy| > |dx|`: Up (dy < 0) or Down (dy > 0)
 - If neither exceeds threshold (50 units): Click
 
-Per-direction `ButtonAction` is stored in `Profile::gestures` (a `std::map<QString, ButtonAction>` keyed by direction name). The fire path supports the same action types as button presses: keystroke, media, app-launch, DBus, and `PresetRef` (resolved via `IDesktopIntegration::resolveNamedAction` exactly like the button-press path - see [PresetRef resolution](#presetref-resolution)).
+Per-direction `ButtonAction` is stored in `Profile::gestures` (a `std::map<QString, ButtonAction>` keyed by direction name). The fire path supports the same action types as button presses: keystroke, sticky modifier, media, app-launch, DBus, and `PresetRef` (resolved via `IDesktopIntegration::resolveNamedAction` exactly like the button-press path - see [PresetRef resolution](#presetref-resolution)). Both paths converge on `ActionExecutor::executeAction`, which is the single place that knows how to fire an action needing no device state; `ButtonActionDispatcher` handles only the types that do — `SmartShiftToggle` and `DpiCycle` need the `DeviceSession`, and `GestureTrigger` arms the accumulator.
 
 The gesture button (CID `0x00C3` on MX Master 3S) is diverted with `rawXY=true`, which causes the device to send `DivertedRawXYEvent` notifications instead of normal mouse movement.
 

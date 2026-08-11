@@ -130,16 +130,11 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     } else if (ba.type == ButtonAction::DpiCycle) {
         session->cycleDpi();
         emit dpiChangedByButton(session->currentDPI());
-    } else if ((ba.type == ButtonAction::Keystroke || ba.type == ButtonAction::Media)
-               && !ba.payload.isEmpty()) {
-        m_actionExecutor->injectKeystroke(ba.payload);
     } else if (ba.type == ButtonAction::GestureTrigger) {
         state.gestureAccumX = 0;
         state.gestureAccumY = 0;
         state.gestureActive = true;
         state.gestureControlId = controlId;
-    } else if (ba.type == ButtonAction::AppLaunch && !ba.payload.isEmpty()) {
-        m_actionExecutor->launchApp(ba.payload);
     } else if (ba.type == ButtonAction::PresetRef && !ba.payload.isEmpty()) {
         if (!m_desktop) {
             qCWarning(lcApp) << "preset action requested but desktop integration is null"
@@ -153,6 +148,11 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
             return;
         }
         m_actionExecutor->executeAction(*resolved);
+    } else if (!ba.payload.isEmpty()) {
+        // Everything left — keystrokes, sticky modifiers, legacy media keys,
+        // app launches, D-Bus calls — needs no device state, so the executor's
+        // own dispatch is the single place that knows how to fire it.
+        m_actionExecutor->executeAction(ba);
     }
 }
 

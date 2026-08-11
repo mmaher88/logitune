@@ -37,6 +37,7 @@ public:
 
     void executeAction(const ButtonAction &action);
     void injectKeystroke(const QString &combo);
+    bool toggleModifierLatch(const QString &combo);
     void injectCtrlScroll(int direction);
     void injectHorizontalScroll(int direction);
     void executeDBusCall(const QString &spec);

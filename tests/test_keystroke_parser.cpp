@@ -296,3 +296,79 @@ TEST(KeystrokeParser, EdgeCaseWhitespaceInCombo) {
     EXPECT_EQ(UinputInjector::parseKeystroke("Ctrl + C"),
               (std::vector<int>{KEY_LEFTCTRL, KEY_C}));
 }
+
+// ---------------------------------------------------------------------------
+// parseModifierCombo — the refinement a latch accepts
+// ---------------------------------------------------------------------------
+
+TEST(ModifierCombo, SingleModifier) {
+    EXPECT_EQ(UinputInjector::parseModifierCombo("Meta"), (std::vector<int>{KEY_LEFTMETA}));
+    EXPECT_EQ(UinputInjector::parseModifierCombo("Ctrl"), (std::vector<int>{KEY_LEFTCTRL}));
+    EXPECT_EQ(UinputInjector::parseModifierCombo("Shift"), (std::vector<int>{KEY_LEFTSHIFT}));
+    EXPECT_EQ(UinputInjector::parseModifierCombo("Alt"), (std::vector<int>{KEY_LEFTALT}));
+}
+
+TEST(ModifierCombo, SuperIsMeta) {
+    EXPECT_EQ(UinputInjector::parseModifierCombo("Super"), (std::vector<int>{KEY_LEFTMETA}));
+}
+
+TEST(ModifierCombo, ModifierOnlyCombo) {
+    EXPECT_EQ(UinputInjector::parseModifierCombo("Ctrl+Shift"),
+              (std::vector<int>{KEY_LEFTCTRL, KEY_LEFTSHIFT}));
+}
+
+TEST(ModifierCombo, MixedComboRefusedWhole) {
+    // Not "latch the Ctrl and drop the C" — the whole combo is rejected.
+    EXPECT_TRUE(UinputInjector::parseModifierCombo("Ctrl+C").empty());
+    EXPECT_TRUE(UinputInjector::parseModifierCombo("Alt+Tab").empty());
+}
+
+TEST(ModifierCombo, OrdinaryKeyRefused) {
+    EXPECT_TRUE(UinputInjector::parseModifierCombo("A").empty());
+    EXPECT_TRUE(UinputInjector::parseModifierCombo("F5").empty());
+    EXPECT_TRUE(UinputInjector::parseModifierCombo("VolumeUp").empty());
+}
+
+TEST(ModifierCombo, EmptyAndUnknownRefused) {
+    EXPECT_TRUE(UinputInjector::parseModifierCombo("").empty());
+    EXPECT_TRUE(UinputInjector::parseModifierCombo("NoSuchKey").empty());
+}
+
+// ---------------------------------------------------------------------------
+// toggleModifierLatch — the flip-flop, observable without a uinput device
+// ---------------------------------------------------------------------------
+
+TEST(ModifierLatch, TogglingOneComboAlternates) {
+    // No init() here: with no fd the key writes are no-ops, but the latch
+    // bookkeeping (which is what callers act on) still runs.
+    UinputInjector inj;
+    EXPECT_TRUE(inj.toggleModifierLatch("Meta"));
+    EXPECT_FALSE(inj.toggleModifierLatch("Meta"));
+    EXPECT_TRUE(inj.toggleModifierLatch("Meta"));
+}
+
+TEST(ModifierLatch, RefusedComboNeverLatches) {
+    UinputInjector inj;
+    EXPECT_FALSE(inj.toggleModifierLatch("Ctrl+C"));
+    EXPECT_FALSE(inj.toggleModifierLatch("Ctrl+C"));
+}
+
+TEST(ModifierLatch, DistinctCombosLatchIndependently) {
+    UinputInjector inj;
+    EXPECT_TRUE(inj.toggleModifierLatch("Meta"));
+    EXPECT_TRUE(inj.toggleModifierLatch("Alt"));
+    EXPECT_FALSE(inj.toggleModifierLatch("Meta"));
+    EXPECT_FALSE(inj.toggleModifierLatch("Alt"));
+}
+
+TEST(ModifierLatch, OverlappingCombosReleaseOnlyWhenFullyHeld) {
+    UinputInjector inj;
+
+    EXPECT_TRUE(inj.toggleModifierLatch("Meta"));        // Meta held
+    EXPECT_TRUE(inj.toggleModifierLatch("Ctrl+Meta"));   // Ctrl joins, not a release
+    EXPECT_FALSE(inj.toggleModifierLatch("Ctrl+Meta"));  // both held -> both released
+
+    // Meta went down once and came back up with the pair, so the next toggle
+    // starts from nothing held.
+    EXPECT_TRUE(inj.toggleModifierLatch("Meta"));
+}

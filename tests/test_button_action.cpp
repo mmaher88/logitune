@@ -178,3 +178,34 @@ TEST(ButtonAction, RoundTripPresetRefSwitchDesktopLeft) {
     ButtonAction result = ButtonAction::parse(orig.serialize());
     EXPECT_EQ(result, orig);
 }
+
+// ---------------------------------------------------------------------------
+// StickyModifier
+// ---------------------------------------------------------------------------
+
+TEST(ButtonAction, ParseSticky) {
+    auto a = ButtonAction::parse("sticky:Meta");
+    EXPECT_EQ(a.type, ButtonAction::StickyModifier);
+    EXPECT_EQ(a.payload, "Meta");
+}
+
+TEST(ButtonAction, ParseStickyCombo) {
+    auto a = ButtonAction::parse("sticky:Ctrl+Meta");
+    EXPECT_EQ(a.type, ButtonAction::StickyModifier);
+    EXPECT_EQ(a.payload, "Ctrl+Meta");
+}
+
+TEST(ButtonAction, SerializeSticky) {
+    ButtonAction a{ButtonAction::StickyModifier, "Meta"};
+    EXPECT_EQ(a.serialize(), "sticky:Meta");
+}
+
+TEST(ButtonAction, RoundTripSticky) {
+    ButtonAction orig{ButtonAction::StickyModifier, "Shift"};
+    EXPECT_EQ(ButtonAction::parse(orig.serialize()), orig);
+}
+
+TEST(ButtonAction, StickyIsDistinctFromKeystroke) {
+    // Same payload, different temporal envelope: one pulses, one latches.
+    EXPECT_NE(ButtonAction::parse("sticky:Meta"), ButtonAction::parse("keystroke:Meta"));
+}

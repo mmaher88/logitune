@@ -40,8 +40,13 @@ public:
     Q_INVOKABLE int indexForName(const QString &name) const;
     Q_INVOKABLE QString payloadForName(const QString &name) const;
 
-    /// Translate a ButtonAction (domain type) to the (typeName, displayName)
-    /// pair the UI uses. Inverse of buttonEntryToAction.
+    /// The UI's type token for a ButtonAction. Together with
+    /// buttonActionToName this is the (actionType, actionName) pair the UI
+    /// speaks in, and the inverse of buttonEntryToAction.
+    QString buttonActionToType(const ButtonAction &ba) const;
+
+    /// The UI's display name for a ButtonAction, resolved by looking up the
+    /// row whose (actionType, payload) the action carries.
     QString buttonActionToName(const ButtonAction &ba) const;
 
     /// Translate the UI's (typeName, displayName) pair back to a ButtonAction.

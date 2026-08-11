@@ -7,6 +7,9 @@ struct ButtonAction {
     enum Type {
         Default,
         Keystroke,
+        /// Latch a modifier-only combo down until the action fires again,
+        /// which is what lets a pointer drag carry the modifier.
+        StickyModifier,
         GestureTrigger,
         SmartShiftToggle,
         DpiCycle,
