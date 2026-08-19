@@ -61,3 +61,48 @@ TEST_F(AppRootFixture, ButtonDiversionsMatchHwProfile) {
     pressButton(0x0056);
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Alt+Right");
 }
+
+// ---------------------------------------------------------------------------
+// Transport re-attach
+// ---------------------------------------------------------------------------
+// When a transport re-attaches to a PhysicalDevice that already exists —
+// a Bolt receiver coming back while the Bluetooth session is still alive, or
+// a udev remove+add fast enough that the PhysicalDevice was never destroyed —
+// DeviceManager does not emit physicalDeviceAdded a second time. Nothing then
+// re-applies the profile, and the device keeps whatever its firmware reset to
+// (issue #132).
+//
+// DeviceManager::probeDevice needs a real /dev node, so these tests start one
+// step downstream: at the signal it emits and the AppRoot slot behind it.
+
+TEST_F(AppRootFixture, TransportReadyReappliesStoredProfile) {
+    const QString kSerial = QStringLiteral("mock-serial");
+    profileEngine().cachedProfile(kSerial, QStringLiteral("default")).dpi = 2400;
+
+    // The link dropped and the device came back at its firmware default.
+    m_session->setDPI(400);
+    ASSERT_EQ(m_session->currentDPI(), 400);
+
+    emitTransportReady(m_physicalDevice);
+
+    EXPECT_EQ(m_session->currentDPI(), 2400);
+}
+
+// The re-applied profile is the one the device is actually on, not "default".
+// A per-app profile that was active before the drop has to survive it.
+TEST_F(AppRootFixture, TransportReadyReappliesActiveAppProfile) {
+    const QString kSerial = QStringLiteral("mock-serial");
+    createAppProfile("google-chrome", "Google Chrome");
+    // createAppProfile writes the profile to disk; the cache is what
+    // onTransportSetupComplete reads, so set the DPI there too.
+    profileEngine().cachedProfile(kSerial, QStringLiteral("Google Chrome")).dpi = 3200;
+    focusApp("google-chrome");
+    ASSERT_EQ(profileEngine().hardwareProfile(kSerial),
+              QStringLiteral("Google Chrome"));
+
+    m_session->setDPI(400);
+
+    emitTransportReady(m_physicalDevice);
+
+    EXPECT_EQ(m_session->currentDPI(), 3200);
+}

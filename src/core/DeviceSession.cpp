@@ -139,6 +139,28 @@ QString DeviceSession::deviceId() const
 }
 
 // ---------------------------------------------------------------------------
+// rebuildCommandProcessor()
+// ---------------------------------------------------------------------------
+// Point the command processor at the FeatureDispatcher and Transport that are
+// current *now*. enumerateAndSetup() builds a fresh FeatureDispatcher on every
+// run, so a processor carried over from a previous run would keep a raw
+// pointer to the destroyed dispatcher and use it on the next queued command.
+// Tearing the old one down first also drops any commands queued against it.
+void DeviceSession::rebuildCommandProcessor()
+{
+    if (m_commandProcessor) {
+        m_commandProcessor->clear();
+        m_commandProcessor->stop();
+        m_commandProcessor.reset();
+    }
+    if (!m_features || !m_transport)
+        return;
+    m_commandProcessor = std::make_unique<hidpp::CommandProcessor>(
+        m_features.get(), m_transport.get(), m_deviceIndex);
+    m_commandProcessor->start();
+}
+
+// ---------------------------------------------------------------------------
 // enumerateAndSetup()
 // ---------------------------------------------------------------------------
 
@@ -451,11 +473,7 @@ void DeviceSession::enumerateAndSetup()
     m_lastResponseTime = QDateTime::currentMSecsSinceEpoch();
     m_enumerating = false;
 
-    if (!m_commandProcessor && m_features && m_transport) {
-        m_commandProcessor = std::make_unique<hidpp::CommandProcessor>(
-            m_features.get(), m_transport.get(), m_deviceIndex);
-        m_commandProcessor->start();
-    }
+    rebuildCommandProcessor();
 
     // Start periodic battery polling (60s)
     if (!m_batteryPollTimer) {

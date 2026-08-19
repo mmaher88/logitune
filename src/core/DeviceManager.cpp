@@ -520,6 +520,12 @@ void DeviceManager::probeDevice(const QString &devNode)
         emit physicalDeviceAdded(pdPtr);
     } else {
         pdIt->second->attachTransport(sessionPtr);
+        // Signal that a transport just (re-)attached to an existing device so
+        // the profile orchestrator can re-apply settings. The standard
+        // transportSetupComplete path only fires when the signal was already
+        // wired — but enumerateAndSetup() emits setupComplete() before
+        // attachTransport() connects the signal, so we notify explicitly here.
+        emit physicalDeviceTransportReady(pdIt->second.get());
     }
 }
 

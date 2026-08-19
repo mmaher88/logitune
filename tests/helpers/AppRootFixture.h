@@ -179,6 +179,14 @@ protected:
         m_ctrl->m_profileModel.selectTab(hwIndex);
     }
 
+    /// Fire the DeviceManager signal that marks a transport re-attaching to a
+    /// PhysicalDevice that already exists. DeviceManager::probeDevice emits it
+    /// from a udev callback and needs a real /dev node, so tests raise it here
+    /// and exercise everything downstream of it.
+    void emitTransportReady(PhysicalDevice *device) {
+        emit m_ctrl->m_deviceManager.physicalDeviceTransportReady(device);
+    }
+
     void pressButton(uint16_t controlId) {
         m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(controlId, true);
     }

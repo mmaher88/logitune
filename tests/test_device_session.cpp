@@ -4,6 +4,7 @@
 #include "DeviceRegistry.h"
 #include "hidpp/HidrawDevice.h"
 #include "hidpp/HidppTypes.h"
+#include "helpers/DeviceSessionFixture.h"
 
 using namespace logitune;
 using namespace logitune::hidpp;
@@ -207,4 +208,48 @@ TEST_F(DeviceSessionTest, AccessorsReturnNullables) {
     // transport is created in constructor
     EXPECT_NE(session->transport(), nullptr);
     EXPECT_NE(session->device(), nullptr);
+}
+
+// ---------------------------------------------------------------------------
+// Command processor lifetime across re-enumeration
+// ---------------------------------------------------------------------------
+// enumerateAndSetup() builds a new FeatureDispatcher every time it runs. The
+// CommandProcessor holds that dispatcher by raw pointer, so a processor kept
+// from an earlier run points at freed memory the moment the dispatcher is
+// replaced. Issue #132 hit this on every reconnect.
+
+using logitune::test::DeviceSessionFixture;
+
+TEST_F(DeviceSessionFixture, FirstEnumerationBuildsProcessorForCurrentDispatcher) {
+    ASSERT_EQ(processor(), nullptr);
+
+    reenumerate();
+
+    ASSERT_NE(processor(), nullptr);
+    EXPECT_EQ(processor()->features(), dispatcher());
+}
+
+TEST_F(DeviceSessionFixture, ReEnumerationRepointsProcessorAtNewDispatcher) {
+    reenumerate();
+    auto *firstDispatcher = dispatcher();
+    ASSERT_NE(firstDispatcher, nullptr);
+    ASSERT_EQ(processor()->features(), firstDispatcher);
+
+    reenumerate();
+
+    // The dispatcher the first processor was built against is gone. Reading
+    // through it is the use-after-free, so the processor must have followed
+    // the swap rather than survived it.
+    ASSERT_NE(dispatcher(), firstDispatcher);
+    EXPECT_EQ(processor()->features(), dispatcher());
+}
+
+TEST_F(DeviceSessionFixture, RebuildDropsCommandsQueuedAgainstTheOldDispatcher) {
+    reenumerate();
+    processor()->enqueue(logitune::hidpp::FeatureId::AdjustableDPI, 0x03, {});
+    ASSERT_GT(processor()->pending(), 0);
+
+    reenumerate();
+
+    EXPECT_EQ(processor()->pending(), 0);
 }

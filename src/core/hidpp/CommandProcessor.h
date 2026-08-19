@@ -43,6 +43,10 @@ public:
     /// Number of pending commands.
     int pending() const;
 
+    /// The dispatcher this processor sends through. Held by raw pointer, so
+    /// whoever replaces the dispatcher must replace the processor with it.
+    const FeatureDispatcher *features() const { return m_features; }
+
 signals:
     void queueDrained();
 

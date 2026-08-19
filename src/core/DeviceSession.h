@@ -14,7 +14,7 @@
 #include <optional>
 #include <vector>
 
-namespace logitune::test { class AppRootFixture; }
+namespace logitune::test { class AppRootFixture; class DeviceSessionFixture; }
 
 namespace logitune {
 
@@ -24,6 +24,7 @@ class IDevice;
 class DeviceSession : public QObject {
     Q_OBJECT
     friend class test::AppRootFixture;
+    friend class test::DeviceSessionFixture;
 
 public:
     DeviceSession(std::unique_ptr<hidpp::HidrawDevice> device,
@@ -128,6 +129,7 @@ public:
 private:
     void checkSleepWake();
     bool isDirectDevice(uint16_t pid) const;
+    void rebuildCommandProcessor();
 
     DeviceRegistry *m_registry = nullptr;
     const IDevice *m_activeDevice = nullptr;
