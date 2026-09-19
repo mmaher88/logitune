@@ -6,6 +6,8 @@ import Logitune
 ApplicationWindow {
     id: root
 
+    RadialMenuOverlay {}
+
     // ── Window geometry ─────────────────────────────────────────────────
     // Design minimum keeps the Buttons page sane: the right action
     // panel needs ~360px wide plus the main area needs ~560px for the

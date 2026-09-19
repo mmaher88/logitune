@@ -21,6 +21,13 @@ ActionFilterModel::ActionFilterModel(DeviceModel *deviceModel,
     }
 }
 
+void ActionFilterModel::setRadialMode(bool mode)
+{
+    if (m_radialMode == mode) return;
+    m_radialMode = mode;
+    invalidateFilter();
+}
+
 void ActionFilterModel::setGestureMode(bool mode)
 {
     if (m_gestureMode == mode) return;
@@ -41,8 +48,9 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
     // device-only actions (DPI cycle, Shift wheel mode, Middle click)
     // stay in the list; the dispatcher currently no-ops on them and
     // can be extended later to handle them as gesture actions.
-    if (m_gestureMode) {
-        if (type == QLatin1String("gesture-trigger")) return false;
+    if (m_radialMode && type == QLatin1String("default")) return false;
+    if (m_gestureMode || m_radialMode) {
+        if (type == QLatin1String("gesture-trigger") || type == QLatin1String("radial-menu")) return false;
         if (type == QLatin1String("none")) return false;
     }
 
@@ -68,7 +76,7 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
         return m_deviceModel->adjustableDpiSupported();
     if (type == QLatin1String("smartshift-toggle"))
         return m_deviceModel->smartShiftSupported();
-    if (type == QLatin1String("gesture-trigger"))
+    if (type == QLatin1String("gesture-trigger") || type == QLatin1String("radial-menu"))
         return m_deviceModel->reprogControlsSupported();
     if (type == QLatin1String("wheel-mode"))
         return m_deviceModel->thumbWheelSupported();

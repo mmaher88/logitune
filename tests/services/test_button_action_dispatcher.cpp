@@ -417,3 +417,33 @@ TEST_F(ButtonActionDispatcherFixture, GesturePresetUnresolvedFiresNothing) {
     EXPECT_FALSE(m_injector->hasCalled("sendDBusCall"));
     EXPECT_FALSE(m_injector->hasCalled("launchApp"));
 }
+
+TEST_F(ButtonActionDispatcherFixture, RadialMenuRunsSelectionAndCancelsOnProfileChange) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5, {ButtonAction::RadialMenu, {}});
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(0, -100);
+    EXPECT_TRUE(m_dispatcher->radialMenu()->visible());
+    m_dispatcher->onDivertedButtonPressed(kBackCid, false);
+    EXPECT_TRUE(m_dispatcher->radialMenu()->visible());
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Ctrl+C");
+    m_injector->clear();
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(0, -100);
+    m_dispatcher->onProfileApplied("mock-serial");
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    EXPECT_FALSE(m_dispatcher->radialMenu()->visible());
+    EXPECT_TRUE(m_injector->calls().isEmpty());
+}
+
+TEST_F(ButtonActionDispatcherFixture, RadialMenuCancelsWhenDeviceRemoved) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5, {ButtonAction::RadialMenu, {}});
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(0, -100);
+    m_dispatcher->onDeviceRemoved("mock-serial");
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    EXPECT_FALSE(m_dispatcher->radialMenu()->visible());
+    EXPECT_TRUE(m_injector->calls().isEmpty());
+}

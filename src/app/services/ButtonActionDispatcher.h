@@ -1,4 +1,5 @@
 #pragma once
+#include "RadialMenuController.h"
 #include <QMap>
 #include <QObject>
 #include <QString>
@@ -30,6 +31,10 @@ public:
                            ActiveDeviceResolver *selection,
                            IDesktopIntegration *desktop = nullptr,
                            QObject *parent = nullptr);
+
+    RadialMenuController *radialMenu() { return &m_radialMenu; }
+    void cancelRadialMenu();
+    void executeMenuAction(const ButtonAction &action);
 
     void onDeviceRemoved(const QString &serial);
 
@@ -63,6 +68,9 @@ private:
     static constexpr int kGestureThreshold = 50;
     static constexpr int kThumbThreshold = 15;
 
+    RadialMenuController m_radialMenu;
+    QString m_radialDevice;
+    uint16_t m_radialControl = 0;
     ProfileEngine   *m_profileEngine;
     ActionExecutor  *m_actionExecutor;
     ActiveDeviceResolver *m_selection;

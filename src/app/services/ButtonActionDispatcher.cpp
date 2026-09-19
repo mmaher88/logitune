@@ -20,21 +20,27 @@ ButtonActionDispatcher::ButtonActionDispatcher(ProfileEngine *profileEngine,
     , m_actionExecutor(actionExecutor)
     , m_selection(selection)
     , m_desktop(desktop)
-{}
+{
+    connect(&m_radialMenu, &RadialMenuController::triggered,
+            this, &ButtonActionDispatcher::executeMenuAction);
+}
 
 void ButtonActionDispatcher::onDeviceRemoved(const QString &serial)
 {
+    if (m_radialDevice == serial) cancelRadialMenu();
     m_state.remove(serial);
 }
 
 void ButtonActionDispatcher::onProfileApplied(const QString &serial)
 {
+    if (m_radialDevice == serial) cancelRadialMenu();
     auto it = m_state.find(serial);
     if (it != m_state.end()) it->thumbAccum = 0;
 }
 
 void ButtonActionDispatcher::onCurrentDeviceChanged(const IDevice *device)
 {
+    cancelRadialMenu();
     m_currentDevice = device;
 }
 
@@ -43,6 +49,7 @@ void ButtonActionDispatcher::onGestureRaw(int16_t dx, int16_t dy)
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
     auto &state = m_state[session->deviceId()];
+    if (m_radialDevice == session->deviceId()) { m_radialMenu.move(dx, dy); return; }
     if (state.gestureActive) {
         state.gestureAccumX += dx;
         state.gestureAccumY += dy;
@@ -59,6 +66,14 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     if (serial.isEmpty()) return;
     const Profile &hwProfile = m_profileEngine->cachedProfile(
         serial, m_profileEngine->hardwareProfile(serial));
+
+    if (!pressed && m_radialDevice == session->deviceId()
+        && (controlId == 0 || controlId == m_radialControl)) {
+        m_radialMenu.release();
+        m_radialDevice.clear();
+        m_radialControl = 0;
+        return;
+    }
 
     if (!pressed && state.gestureActive
         && (controlId == 0 || controlId == state.gestureControlId)) {
@@ -123,7 +138,13 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
 
     if (ba.type == ButtonAction::Default) return;
 
-    if (ba.type == ButtonAction::SmartShiftToggle) {
+    if (ba.type == ButtonAction::RadialMenu) {
+        if (!m_radialDevice.isEmpty()) return;
+        state.gestureActive = false;
+        m_radialDevice = session->deviceId();
+        m_radialControl = controlId;
+        m_radialMenu.begin(hwProfile.radialMenu);
+    } else if (ba.type == ButtonAction::SmartShiftToggle) {
         bool current = session->smartShiftEnabled();
         session->setSmartShift(!current, session->smartShiftThreshold());
         emit smartShiftChangedByButton(!current, session->smartShiftThreshold());
@@ -153,6 +174,33 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
             return;
         }
         m_actionExecutor->executeAction(*resolved);
+    }
+}
+
+void ButtonActionDispatcher::cancelRadialMenu()
+{
+    m_radialMenu.cancel();
+    m_radialDevice.clear();
+    m_radialControl = 0;
+}
+
+void ButtonActionDispatcher::executeMenuAction(const ButtonAction &action)
+{
+    auto *session = m_selection ? m_selection->activeSession() : nullptr;
+    if (!session || session->deviceId() != m_radialDevice) return;
+    if (action.type == ButtonAction::DpiCycle) {
+        session->cycleDpi();
+        emit dpiChangedByButton(session->currentDPI());
+    } else if (action.type == ButtonAction::SmartShiftToggle) {
+        const bool enabled = !session->smartShiftEnabled();
+        session->setSmartShift(enabled, session->smartShiftThreshold());
+        emit smartShiftChangedByButton(enabled, session->smartShiftThreshold());
+    } else if (action.type == ButtonAction::PresetRef) {
+        if (!m_desktop) return;
+        auto resolved = m_desktop->resolveNamedAction(action.payload);
+        if (resolved) m_actionExecutor->executeAction(*resolved);
+    } else {
+        m_actionExecutor->executeAction(action);
     }
 }
 

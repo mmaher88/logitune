@@ -167,7 +167,7 @@ void ProfileOrchestrator::onUserButtonChanged(int buttonId,
         if (ctrl.buttonIndex == buttonId) {
             if (ctrl.controlId == 0) return;
             bool needsDivert = (actionType != "default");
-            bool needsRawXY = (actionType == "gesture-trigger");
+            bool needsRawXY = (actionType == "gesture-trigger" || actionType == "radial-menu");
             session->divertButton(ctrl.controlId, needsDivert, needsRawXY);
             return;
         }
@@ -270,6 +270,10 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
             aType = QStringLiteral("default");
             aName = ctrl.defaultName;
             break;
+        case ButtonAction::RadialMenu:
+            aType = QStringLiteral("radial-menu");
+            aName = QStringLiteral("Radial menu");
+            break;
         case ButtonAction::GestureTrigger:
             aType = QStringLiteral("gesture-trigger");
             aName = QStringLiteral("Gestures");
@@ -327,6 +331,7 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
         gestureMap[it->first] = GestureEntry{name, it->second};
     }
     m_deviceModel->loadGesturesFromProfile(gestureMap);
+    m_deviceModel->loadRadialMenu(p.radialMenu);
 }
 
 void ProfileOrchestrator::applyProfileToHardware(const Profile &p)
@@ -354,7 +359,7 @@ void ProfileOrchestrator::applyProfileToHardware(const Profile &p)
             ? p.buttons[static_cast<std::size_t>(i)]
             : ButtonAction{ButtonAction::Default, {}};
         bool needsDivert = (ba.type != ButtonAction::Default);
-        bool needsRawXY = (ba.type == ButtonAction::GestureTrigger);
+        bool needsRawXY = (ba.type == ButtonAction::GestureTrigger || ba.type == ButtonAction::RadialMenu);
         if (needsDivert)
             qCDebug(lcApp) << "diverting button" << i << "CID" << Qt::hex << ctrl.controlId;
         session->divertButton(ctrl.controlId, needsDivert, needsRawXY);
@@ -393,6 +398,7 @@ void ProfileOrchestrator::saveCurrentProfile()
             p.gestures.erase(dir);
     }
 
+    p.radialMenu = m_deviceModel->radialMenuConfig();
     m_profileEngine->saveProfileToDisk(serial, name);
 }
 

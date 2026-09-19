@@ -11,6 +11,7 @@ add_library(logitune-app-lib STATIC
     services/ActiveDeviceResolver.cpp
     services/DeviceCommandHandler.cpp
     services/ButtonActionDispatcher.cpp
+    services/RadialMenuController.cpp
     services/ProfileOrchestrator.cpp
     dialogs/GitHubIssueBuilder.cpp
     dialogs/CrashReportDialog.cpp
@@ -24,6 +25,16 @@ target_include_directories(logitune-app-lib PUBLIC
 )
 
 target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widgets)
+
+# Native non-focusing overlay on KDE/wlroots Wayland compositors.
+# Qt 6.5+ supports selecting the shell integration per window.
+if(Qt6_VERSION VERSION_GREATER_EQUAL 6.5)
+    find_package(LayerShellQt 6.0 QUIET)
+    if(TARGET LayerShellQt::Interface)
+        target_link_libraries(logitune-app-lib PUBLIC LayerShellQt::Interface)
+        target_compile_definitions(logitune-app-lib PRIVATE LOGITUNE_LAYER_SHELL)
+    endif()
+endif()
 target_compile_definitions(logitune-app-lib PUBLIC
     PROJECT_VERSION="${PROJECT_VERSION}"
     PROJECT_VERSION_FULL="${LOGITUNE_DISPLAY_VERSION}"
@@ -40,7 +51,7 @@ else()
         SideNav BatteryChip LogituneSlider LogituneToggle InfoCallout
         DetailPanel KeystrokeCapture ButtonCallout ActionsPanel
         DeviceCard DeviceRender AppProfileBar Toast EditorToolbar
-        EditableText ConflictBanner DiffModal HotspotControl)
+        EditableText ConflictBanner DiffModal HotspotControl RadialMenuOverlay RadialMenuEditor RadialMenuRing RadialActionIcon)
         set_source_files_properties(qml/components/${_file}.qml
             PROPERTIES QT_RESOURCE_ALIAS qml/${_file}.qml)
     endforeach()
@@ -70,6 +81,10 @@ qt_add_qml_module(logitune-app-lib
         qml/components/KeystrokeCapture.qml
         qml/components/ButtonCallout.qml
         qml/components/ActionsPanel.qml
+        qml/components/RadialMenuRing.qml
+        qml/components/RadialActionIcon.qml
+        qml/components/RadialMenuOverlay.qml
+        qml/components/RadialMenuEditor.qml
         qml/components/DeviceCard.qml
         qml/components/DeviceRender.qml
         qml/components/AppProfileBar.qml
@@ -84,6 +99,32 @@ qt_add_qml_module(logitune-app-lib
         qml/pages/EasySwitchPage.qml
         qml/pages/SettingsPage.qml
     RESOURCES
+        qml/assets/actions/copy.svg
+        qml/assets/actions/paste.svg
+        qml/assets/actions/cut.svg
+        qml/assets/actions/undo.svg
+        qml/assets/actions/redo.svg
+        qml/assets/actions/play.svg
+        qml/assets/actions/next.svg
+        qml/assets/actions/previous.svg
+        qml/assets/actions/stop.svg
+        qml/assets/actions/volume.svg
+        qml/assets/actions/volume-down.svg
+        qml/assets/actions/mute.svg
+        qml/assets/actions/back.svg
+        qml/assets/actions/forward.svg
+        qml/assets/actions/keyboard.svg
+        qml/assets/actions/launch.svg
+        qml/assets/actions/screenshot.svg
+        qml/assets/actions/desktop.svg
+        qml/assets/actions/windows.svg
+        qml/assets/actions/close.svg
+        qml/assets/actions/brightness.svg
+        qml/assets/actions/calculator.svg
+        qml/assets/actions/dpi.svg
+        qml/assets/actions/wheel.svg
+        qml/assets/actions/none.svg
+        qml/assets/actions/action.svg
         qml/assets/logitune-icon.svg
         qml/assets/logitune-tray.svg
 )

@@ -21,6 +21,7 @@ target_sources(logitune-core PRIVATE
     hidpp/capabilities/SmartShiftCapability.cpp
     hidpp/capabilities/ReprogControlsCapability.cpp
     ProfileEngine.cpp
+    RadialMenuConfig.cpp
     ActionExecutor.cpp
     DeviceRegistry.cpp
     devices/DescriptorWriter.cpp

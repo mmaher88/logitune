@@ -779,6 +779,21 @@ void DeviceModel::setThumbWheelInvert(bool invert)
     emit thumbWheelInvertChangeRequested(invert);
 }
 
+void DeviceModel::loadRadialMenu(const RadialMenuConfig &config)
+{
+    m_radialMenu = config;
+    emit radialMenuChanged();
+}
+
+bool DeviceModel::saveRadialMenu(const QVariantList &items, const QVariantMap &click)
+{
+    RadialMenuConfig config{items, click};
+    if (!config.isValid()) return false;
+    loadRadialMenu(config);
+    emit userRadialMenuChanged();
+    return true;
+}
+
 void DeviceModel::setGestureAction(const QString &direction,
                                    const QString &actionName,
                                    const QString &actionType,

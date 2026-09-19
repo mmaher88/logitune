@@ -153,3 +153,26 @@ C++20 · Qt 6 Quick · CMake · HID++ 2.0 · GTest
 ## 📄 License
 
 [GPL-3.0-only](https://spdx.org/licenses/GPL-3.0-only.html)
+
+### Radial menu
+
+In **Buttons**, assign **Radial menu** to a button supporting HID++ raw movement
+(the thumb/gesture button on MX Master mice). The contextual editor stores one
+menu per device profile, with 2–8 named items ordered clockwise from the top.
+Use existing catalog actions, capture a keyboard shortcut, or enter an executable
+and its arguments. Commands are launched directly; shell expressions require an
+explicit shell command. The editor also supports reordering, removal and a
+separate short-press action.
+
+Hold for 250 ms to open the menu, or move while holding to open it immediately.
+Move toward an item and release to run it. Return to the center before releasing
+to cancel; this never fires the short-press action once the menu has opened.
+Device disconnection, selection changes and hardware-profile application cancel
+the menu. Existing four-direction gestures remain a separate assignment.
+
+On Qt 6.5+, installing the optional **LayerShellQt 6** development package before
+building enables a native, non-focusing Wayland overlay for layer-shell
+compositors such as KDE Plasma. The menu is centered on the active output.
+Other builds use Qt window flags; placement and stacking depend on the window
+manager and require desktop-specific verification. No plugin loader is included;
+menu entries reuse serialized `ButtonAction` types and the shared action catalog.

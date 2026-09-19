@@ -190,6 +190,8 @@ int main(int argc, char *argv[])
         }
     };
     engine.addImageProvider(QStringLiteral("icon"), new IconProvider);
+    engine.rootContext()->setContextProperty("RadialMenu", controller.radialMenu());
+    engine.rootContext()->setContextProperty("RadialActionModel", controller.radialActionFilterModel());
 
     // Qt 6.5+: register into the module. Qt 6.4: module is protected by plugin,
     // use context properties instead (globally available in QML, same effect).

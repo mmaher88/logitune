@@ -60,10 +60,12 @@ public:
 
     friend class test::AppRootFixture;
 
+    RadialMenuController *radialMenu() { return m_buttonDispatcher.radialMenu(); }
     DeviceModel    *deviceModel()    { return &m_deviceModel; }
     ButtonModel    *buttonModel()    { return &m_buttonModel; }
     ActionModel    *actionModel()    { return &m_actionModel; }
     ActionFilterModel *actionFilterModel() { return m_actionFilterModel.get(); }
+    ActionFilterModel *radialActionFilterModel() { return m_radialActionFilterModel.get(); }
     ActionFilterModel *gestureActionFilterModel() { return m_gestureActionFilterModel.get(); }
     ProfileModel   *profileModel()   { return &m_profileModel; }
     SettingsModel  *settingsModel()  { return &m_settingsModel; }
@@ -100,6 +102,7 @@ private:
     ActionModel    m_actionModel;
     std::unique_ptr<ActionFilterModel> m_actionFilterModel;
     std::unique_ptr<ActionFilterModel> m_gestureActionFilterModel;
+    std::unique_ptr<ActionFilterModel> m_radialActionFilterModel;
     ProfileModel   m_profileModel;
     ActiveDeviceResolver m_deviceResolver;
     DeviceCommandHandler  m_deviceCommandHandler;
