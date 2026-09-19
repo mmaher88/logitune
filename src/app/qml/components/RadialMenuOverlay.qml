@@ -14,8 +14,8 @@ Window {
     color: "transparent"
     flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
            | Qt.WindowDoesNotAcceptFocus | Qt.WindowTransparentForInput
-    x: RadialMenu.screenGeometry.x + (RadialMenu.screenGeometry.width - width) / 2
-    y: RadialMenu.screenGeometry.y + (RadialMenu.screenGeometry.height - height) / 2
+    x: RadialMenu.overlayPosition.x
+    y: RadialMenu.overlayPosition.y
 
     RadialMenuRing {
         anchors.fill: parent

@@ -172,7 +172,10 @@ the menu. Existing four-direction gestures remain a separate assignment.
 
 On Qt 6.5+, installing the optional **LayerShellQt 6** development package before
 building enables a native, non-focusing Wayland overlay for layer-shell
-compositors such as KDE Plasma. The menu is centered on the active output.
+compositors such as KDE Plasma. The menu opens around the cursor on KDE/Wayland (queried once through KWin)
+and X11. Near screen edges it shifts inward to keep every item visible.
+The position stays fixed during selection; other Wayland desktops use the
+Qt cursor position as a best-effort fallback.
 Other builds use Qt window flags; placement and stacking depend on the window
 manager and require desktop-specific verification. No plugin loader is included;
 menu entries reuse serialized `ButtonAction` types and the shared action catalog.

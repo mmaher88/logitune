@@ -102,3 +102,40 @@ TEST(RadialMenu, RejectsInvalidBindingsAndItemCounts) {
     EXPECT_FALSE(RadialMenuConfig::validEntry({{"action", "keystroke:Ctrl+NotAKey"}}));
     EXPECT_TRUE(RadialMenuConfig::validEntry({{"action", "keystroke:Ctrl+Shift+C"}}));
 }
+
+TEST(RadialMenu, PlacementUsesRingCenterAndKeepsWindowOnCursorOutput) {
+    const QSize size(380, 380);
+    const QPoint center(190, 165);
+    EXPECT_EQ(RadialMenuController::placement({800, 500}, {0, 0, 1920, 1080}, size, center),
+              QPoint(610, 335));
+    EXPECT_EQ(RadialMenuController::placement({5, 5}, {0, 0, 1920, 1080}, size, center),
+              QPoint(0, 0));
+    EXPECT_EQ(RadialMenuController::placement({1919, 1079}, {0, 0, 1920, 1080}, size, center),
+              QPoint(1540, 700));
+    // A second monitor left of the primary, with a panel reducing usable height.
+    EXPECT_EQ(RadialMenuController::placement({-1000, 400}, {-1920, 30, 1920, 1050}, size, center),
+              QPoint(-1190, 235));
+    EXPECT_EQ(RadialMenuController::placement({-5, 1070}, {-1920, 30, 1920, 1050}, size, center),
+              QPoint(-380, 700));
+    // An output smaller than the menu must not create an invalid clamp interval.
+    EXPECT_EQ(RadialMenuController::placement({30, 30}, {0, 0, 300, 300}, size, center), QPoint(0, 0));
+}
+
+TEST(RadialMenu, PointerMovementDoesNotRepositionOpenMenu) {
+    logitune::test::ensureApp();
+    RadialMenuController menu;
+    menu.begin({});
+    const auto origin = menu.overlayPosition();
+    menu.move(0, -100);
+    menu.move(300, 0);
+    EXPECT_EQ(menu.overlayPosition(), origin);
+}
+
+TEST(RadialMenu, CursorProviderIgnoresRepliesAfterCancellation) {
+    logitune::test::ensureApp();
+    CursorPositionProvider provider;
+    QSignalSpy ready(&provider, &CursorPositionProvider::positionReady);
+    provider.cancel();
+    provider.receivePosition(1, 500, 500);
+    EXPECT_EQ(ready.count(), 0);
+}

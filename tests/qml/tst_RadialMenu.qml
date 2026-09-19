@@ -49,6 +49,16 @@ TestCase {
         TestSupport.hideRadialMenu()
         tryCompare(overlay, "visible", false)
     }
+    function test_cancelPendingCursorQueryAndReopen() {
+        TestSupport.showRadialMenu()
+        TestSupport.hideRadialMenu()
+        wait(300)
+        compare(overlay.visible, false)
+        TestSupport.showRadialMenu()
+        tryCompare(overlay, "visible", true)
+        TestSupport.hideRadialMenu()
+        tryCompare(overlay, "visible", false)
+    }
     function test_invalidDoesNotReplaceConfiguration() {
         var original = DeviceModel.radialItems
         verify(!editor.persist([{label: "One", action: "default"}], DeviceModel.radialClick))

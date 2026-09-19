@@ -12,6 +12,7 @@ add_library(logitune-app-lib STATIC
     services/DeviceCommandHandler.cpp
     services/ButtonActionDispatcher.cpp
     services/RadialMenuController.cpp
+    services/CursorPositionProvider.cpp
     services/ProfileOrchestrator.cpp
     dialogs/GitHubIssueBuilder.cpp
     dialogs/CrashReportDialog.cpp
