@@ -20,6 +20,7 @@
 #include <QDBusVariant>
 
 #include "AppRoot.h"
+#include "AppIconProvider.h"
 #include "models/EditorModel.h"
 #include "logging/LogManager.h"
 #include "logging/CrashHandler.h"
@@ -178,18 +179,7 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
     qCInfo(lcApp) << "QML engine created";
 
-    class IconProvider : public QQuickImageProvider {
-    public:
-        IconProvider() : QQuickImageProvider(QQuickImageProvider::Pixmap) {}
-        QPixmap requestPixmap(const QString &id, QSize *size, const QSize &requestedSize) override {
-            QIcon icon = QIcon::fromTheme(id);
-            QSize s = requestedSize.isValid() ? requestedSize : QSize(22, 22);
-            QPixmap pm = icon.pixmap(s);
-            if (size) *size = pm.size();
-            return pm;
-        }
-    };
-    engine.addImageProvider(QStringLiteral("icon"), new IconProvider);
+    engine.addImageProvider(QStringLiteral("icon"), new logitune::AppIconProvider);
     engine.rootContext()->setContextProperty("RadialMenu", controller.radialMenu());
     engine.rootContext()->setContextProperty("RadialActionModel", controller.radialActionFilterModel());
 

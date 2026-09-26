@@ -1,3 +1,5 @@
+#include "desktop/ApplicationCatalog.h"
+#include <QStandardPaths>
 #include "DeviceModel.h"
 #include "interfaces/IDevice.h"
 #include "devices/JsonDevice.h"
@@ -397,6 +399,16 @@ void DeviceModel::blockGlobalShortcuts(bool block)
 {
     if (m_desktop)
         m_desktop->blockGlobalShortcuts(block);
+}
+
+QVariantList DeviceModel::installedApplications() const
+{
+    return ApplicationCatalog::installedApplications();
+}
+
+bool DeviceModel::applicationLauncherAvailable() const
+{
+    return !QStandardPaths::findExecutable("gio").isEmpty();
 }
 
 QVariantList DeviceModel::runningApplications() const

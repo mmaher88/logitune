@@ -1,6 +1,7 @@
 #include <QtQuickTest>
 #include <QtQml/qqmlextensionplugin.h>
 #include <QObject>
+#include "AppIconProvider.h"
 #include <QQmlEngine>
 #include <QQmlContext>
 #include "models/DeviceModel.h"
@@ -20,7 +21,7 @@ class QmlTestSetup : public QObject
 public:
     QmlTestSetup() = default;
     Q_INVOKABLE bool hasWindowManager() const { return QGuiApplication::platformName() != "offscreen"; }
-    Q_INVOKABLE void showRadialMenu() { m_radialMenu.begin(m_deviceModel.radialMenuConfig()); m_radialMenu.move(0, -100); }
+    Q_INVOKABLE void showRadialMenu() { m_radialMenu.begin(m_deviceModel.radialMenuConfig()); }
     Q_INVOKABLE void hideRadialMenu() { m_radialMenu.cancel(); }
 
 public slots:
@@ -32,6 +33,7 @@ public slots:
     void qmlEngineAvailable(QQmlEngine *engine)
     {
         engine->addImportPath("qrc:/");
+        engine->addImageProvider("icon", new logitune::AppIconProvider);
         engine->rootContext()->setContextProperty("TestSupport", this);
         m_radialActions.setSourceModel(&m_actionModel);
         m_radialActions.setRadialMode(true);

@@ -202,7 +202,8 @@ void UinputInjector::launchApp(const QString &command)
     QStringList arguments = QProcess::splitCommand(command);
     if (arguments.isEmpty()) return;
     const QString program = arguments.takeFirst();
-    QProcess::startDetached(program, arguments);
+    if (!QProcess::startDetached(program, arguments))
+        qCWarning(lcInput) << "Could not launch application:" << program;
 }
 
 // ---------------------------------------------------------------------------

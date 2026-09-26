@@ -289,6 +289,8 @@ TEST_F(ProfileOrchestratorFixture, RadialMenuEditsAreSavedAndIsolatedByProfile) 
     m_orchestrator->onTabSwitched("firefox");
     auto config = m_deviceModel->radialMenuConfig();
     config.items[0] = QVariantMap{{"label", "Browser"}, {"action", "app-launch:firefox --new-window"}};
+    config.items[1] = QVariantMap{{"kind", "folder"}, {"label", "Media"}, {"icon", "folder"},
+        {"children", QVariantList{QVariantMap{{"kind", "adjustment"}, {"label", "Volume"}, {"parameter", "volume"}}}}};
     ASSERT_TRUE(m_deviceModel->saveRadialMenu(config.items, config.click));
     m_buttonModel->setAction(5, "Radial menu", "radial-menu");
     m_orchestrator->saveCurrentProfile();

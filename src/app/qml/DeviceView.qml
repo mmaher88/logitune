@@ -5,6 +5,7 @@ import Logitune
 
 Item {
     id: root
+    signal radialMenuRequested()
 
     RowLayout {
         anchors.fill: parent
@@ -120,7 +121,7 @@ Item {
     // ButtonsPage component (default)
     Component {
         id: buttonsPageComponent
-        ButtonsPage {}
+        ButtonsPage { onRadialMenuRequested: root.radialMenuRequested() }
     }
 
     // Point & Scroll page component

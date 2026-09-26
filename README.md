@@ -154,28 +154,72 @@ C++20 · Qt 6 Quick · CMake · HID++ 2.0 · GTest
 
 [GPL-3.0-only](https://spdx.org/licenses/GPL-3.0-only.html)
 
-### Radial menu
+### Action Ring
 
-In **Buttons**, assign **Radial menu** to a button supporting HID++ raw movement
-(the thumb/gesture button on MX Master mice). The contextual editor stores one
-menu per device profile, with 2–8 named items ordered clockwise from the top.
-Use existing catalog actions, capture a keyboard shortcut, or enter an executable
-and its arguments. Commands are launched directly; shell expressions require an
-explicit shell command. The editor also supports reordering, removal and a
-separate short-press action.
+Assign **Radial menu** to a mouse button in **Buttons**. A single press opens
+Action Ring around the cursor; release the side button and click an icon to run
+its action. Press the side button again or click the center cross to dismiss.
+The overlay accepts pointer input without taking keyboard focus from the target
+application. Existing hold-and-swipe gestures remain a separate assignment.
 
-Hold for 250 ms to open the menu, or move while holding to open it immediately.
-Move toward an item and release to run it. Return to the center before releasing
-to cancel; this never fires the short-press action once the menu has opened.
-Device disconnection, selection changes and hardware-profile application cancel
-the menu. Existing four-direction gestures remain a separate assignment.
+Open **Action Ring** using the ring icon next to Settings on the home screen,
+or **Configure Action Ring** in the button assignment panel. The separate editor
+shows a large ring with external labels, compact application-profile icons above,
+and a categorized action catalog on the right. The search icon opens search;
+the gear opens device selection, ring size and the link to button settings. The ring has eight fixed slots. Drag actions from the
+catalog to assign them, or drag between slots to swap. Select a slot and click an
+action in the catalog as an alternative to dragging. Each action has an editable
+name and an optional icon from the visual palette. Double-click an action or use
+the pencil to edit it; right-click also offers editing and clearing the slot.
 
-On Qt 6.5+, installing the optional **LayerShellQt 6** development package before
-building enables a native, non-focusing Wayland overlay for layer-shell
-compositors such as KDE Plasma. The menu opens around the cursor on KDE/Wayland (queried once through KWin)
-and X11. Near screen edges it shifts inward to keep every item visible.
-The position stays fixed during selection; other Wayland desktops use the
-Qt cursor position as a best-effort fallback.
-Other builds use Qt window flags; placement and stacking depend on the window
-manager and require desktop-specific verification. No plugin loader is included;
-menu entries reuse serialized `ButtonAction` types and the shared action catalog.
+Use **Launch application** to search installed applications and choose a launcher.
+The **Launch** category is expanded by default, with **Launch application** first.
+Other categories group keyboard/editing, media, navigation, system, window, device
+and folder actions. Search looks through all categories, including collapsed ones;
+clear it to return to the expanded category. An empty search result is shown explicitly.
+The application name and icon are filled automatically; click **Save** to assign it
+to the selected slot (including slots inside folders). The picker reads XDG desktop
+entries, including Flatpak and Snap exports, respects hidden entries and user
+overrides, and launches through `gio launch` so desktop-file arguments and field
+codes are handled by GIO. The `gio` command (GLib tools) must be installed.
+**Launch command** remains available for custom executables and arguments.
+
+Folders contain up to nine actions (one folder level). Click a folder to enter it;
+the center arrow returns to its position in the main ring. Dragging an action onto
+a folder adds it to the first free slot; moving an existing ring action clears its
+old slot. Full folders reject the drop without losing either binding. New folders
+open after naming; renaming a folder keeps its children. Replacing or deleting a
+folder asks for confirmation. Clear individual slots without moving other bindings.
+The undo/redo icons restore or reapply the last edit. **Copy ring** / **Paste ring**
+transfer a complete layout, including folders, between application profiles in
+this editor. Copy, paste and presets are in the **…** menu. Applying a preset or
+pasting asks before replacing the current ring.
+Presets include everyday actions, browser shortcuts (Firefox/Chromium), file
+manager shortcuts (Dolphin/Nautilus), and VS Code shortcuts. Select or add the
+application profile first, then apply a preset; shortcuts assume default app
+bindings and can be customized. Existing profile tracking chooses the ring for
+the foreground application.
+
+Volume and brightness adjustment actions stay open. Hover and use the scrollwheel
+or diverted thumbwheel, or drag horizontally; the caption reports relative steps,
+while the desktop's OSD reports the actual level. These actions use the same
+system media keys as the existing button bindings (brightness depends on display
+and desktop support). The thumbwheel requires the device's diverted wheel events.
+Choose Small, Medium or Large under the Action Ring gear; the size is saved globally.
+Both the menu and editor follow the application's light/dark theme. Old short-press
+bindings are preserved in profiles but are not executed by the click-to-open menu.
+
+On Qt 6.5+, the optional **LayerShellQt 6** development package enables native
+Wayland positioning for KDE/wlroots compositors. On KDE/Wayland, the cursor is
+queried once through KWin. At screen edges the menu shifts inward to remain visible.
+X11 uses Qt's global pointer position; other Wayland desktops use Qt as a
+best-effort fallback and need compositor-specific verification.
+
+Commands are launched directly as an executable and arguments; shell expressions
+require an explicit shell command. Third-party plugin loading is a separate future
+feature. Existing action bindings reuse the shared catalog and serialized
+`ButtonAction`; version 2 ring profiles also store folders, empty slots, icon
+choices and adjustment actions. Old 2–8 action profiles are padded with empty
+slots without losing their bindings. Esc and clicks outside the overlay window
+are not captured globally; dismiss using the trigger, center cross or blank area
+inside the overlay.

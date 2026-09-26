@@ -167,7 +167,7 @@ void ProfileOrchestrator::onUserButtonChanged(int buttonId,
         if (ctrl.buttonIndex == buttonId) {
             if (ctrl.controlId == 0) return;
             bool needsDivert = (actionType != "default");
-            bool needsRawXY = (actionType == "gesture-trigger" || actionType == "radial-menu");
+            bool needsRawXY = (actionType == "gesture-trigger");
             session->divertButton(ctrl.controlId, needsDivert, needsRawXY);
             return;
         }
@@ -359,7 +359,7 @@ void ProfileOrchestrator::applyProfileToHardware(const Profile &p)
             ? p.buttons[static_cast<std::size_t>(i)]
             : ButtonAction{ButtonAction::Default, {}};
         bool needsDivert = (ba.type != ButtonAction::Default);
-        bool needsRawXY = (ba.type == ButtonAction::GestureTrigger || ba.type == ButtonAction::RadialMenu);
+        bool needsRawXY = (ba.type == ButtonAction::GestureTrigger);
         if (needsDivert)
             qCDebug(lcApp) << "diverting button" << i << "CID" << Qt::hex << ctrl.controlId;
         session->divertButton(ctrl.controlId, needsDivert, needsRawXY);

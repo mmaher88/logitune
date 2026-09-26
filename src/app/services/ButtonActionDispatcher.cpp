@@ -49,7 +49,6 @@ void ButtonActionDispatcher::onGestureRaw(int16_t dx, int16_t dy)
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
     auto &state = m_state[session->deviceId()];
-    if (m_radialDevice == session->deviceId()) { m_radialMenu.move(dx, dy); return; }
     if (state.gestureActive) {
         state.gestureAccumX += dx;
         state.gestureAccumY += dy;
@@ -67,10 +66,9 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     const Profile &hwProfile = m_profileEngine->cachedProfile(
         serial, m_profileEngine->hardwareProfile(serial));
 
-    if (!pressed && m_radialDevice == session->deviceId()
+    if (!pressed && m_radialControl != 0 && m_radialDevice == session->deviceId()
         && (controlId == 0 || controlId == m_radialControl)) {
-        m_radialMenu.release();
-        m_radialDevice.clear();
+        // Releasing the trigger leaves the menu open for a normal pointer click.
         m_radialControl = 0;
         return;
     }
@@ -139,7 +137,12 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     if (ba.type == ButtonAction::Default) return;
 
     if (ba.type == ButtonAction::RadialMenu) {
-        if (!m_radialDevice.isEmpty()) return;
+        if (m_radialControl == controlId) return; // repeated held-button report
+        m_radialControl = controlId;
+        if (m_radialMenu.isActive()) {
+            m_radialMenu.cancel();
+            return;
+        }
         state.gestureActive = false;
         m_radialDevice = session->deviceId();
         m_radialControl = controlId;
@@ -221,6 +224,11 @@ void ButtonActionDispatcher::onThumbWheelRotation(int delta)
 
     int steps = state.thumbAccum / kThumbThreshold;
     state.thumbAccum %= kThumbThreshold;
+
+    if (m_radialMenu.visible() && m_radialDevice == session->deviceId()) {
+        m_radialMenu.adjust(m_radialMenu.selected(), steps);
+        return; // Never scroll the application underneath an open ring.
+    }
 
     qCDebug(lcInput) << "thumbWheel steps=" << steps << "accum=" << state.thumbAccum;
     for (int i = 0; i < std::abs(steps); ++i) {

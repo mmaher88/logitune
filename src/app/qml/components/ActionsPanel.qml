@@ -15,6 +15,7 @@ Rectangle {
     property string currentActionType: ""
     property bool   isWheel:      false  // true for thumb wheel — shows wheel-specific modes
 
+    signal radialMenuRequested()
     signal closed()
     signal actionSelected(string actionName, string actionType)
     signal wheelModeSelected(string mode)  // "scroll", "zoom", "volume"
@@ -30,7 +31,6 @@ Rectangle {
     // re-bind). Drives the Loader's fillHeight and the action list's height
     // cap so the sub-form has room without the picker pushing it offscreen.
     readonly property bool _hasContextual: currentActionType === "gesture-trigger"
-        || currentActionType === "radial-menu"
         || currentAction === "Keyboard shortcut"
         || isCustomKeystroke
 
@@ -520,7 +520,28 @@ Rectangle {
 
     Component {
         id: radialComponent
-        RadialMenuEditor {}
+        Item {
+            implicitHeight: radialLink.implicitHeight + 32
+            ColumnLayout {
+                id: radialLink
+                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
+                spacing: 12
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("One click opens Action Ring. Configure its actions on a separate screen.")
+                    wrapMode: Text.Wrap
+                    color: Theme.textSecondary
+                    font.pixelSize: 12
+                }
+                RingButton {
+                    objectName: "configureActionRing"
+                    text: qsTr("Configure Action Ring")
+                    Layout.fillWidth: true
+                    primary: true
+                    onClicked: root.radialMenuRequested()
+                }
+            }
+        }
     }
 
     Component {

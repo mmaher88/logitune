@@ -15,10 +15,28 @@ ActionFilterModel::ActionFilterModel(DeviceModel *deviceModel,
     , m_desktop(desktop)
     , m_registry(registry)
 {
+    connect(this, &QAbstractItemModel::rowsInserted, this, &ActionFilterModel::entriesChanged);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, &ActionFilterModel::entriesChanged);
+    connect(this, &QAbstractItemModel::modelReset, this, &ActionFilterModel::entriesChanged);
+    connect(this, &QAbstractItemModel::dataChanged, this, &ActionFilterModel::entriesChanged);
+    connect(this, &QAbstractItemModel::layoutChanged, this, &ActionFilterModel::entriesChanged);
     if (m_deviceModel) {
         connect(m_deviceModel, &DeviceModel::selectedChanged,
                 this, [this]() { invalidateFilter(); });
     }
+}
+
+QVariantList ActionFilterModel::entries() const
+{
+    QVariantList result;
+    for (int row = 0; row < rowCount(); ++row) {
+        const auto item = index(row, 0);
+        result.append(QVariantMap{{"name", data(item, ActionModel::NameRole)},
+            {"description", data(item, ActionModel::DescriptionRole)},
+            {"category", data(item, ActionModel::CategoryRole)},
+            {"action", data(item, ActionModel::SerializedActionRole)}});
+    }
+    return result;
 }
 
 void ActionFilterModel::setRadialMode(bool mode)

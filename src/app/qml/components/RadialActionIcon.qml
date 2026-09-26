@@ -1,13 +1,19 @@
 import QtQuick
 import QtQuick.Window
+import Logitune
 
 Image {
     id: root
+    property bool darkGlyph: !Theme.dark
     property string action: "default"
+    property string applicationIcon: ""
+    property string customIcon: ""
     readonly property string glyph: {
+        if (customIcon.length) return customIcon
         var names = {
             "keystroke:Ctrl+C": "copy", "keystroke:Ctrl+V": "paste",
             "keystroke:Ctrl+X": "cut", "keystroke:Ctrl+Z": "undo",
+            "keystroke:Ctrl+F": "search", "keystroke:Ctrl+S": "save",
             "keystroke:Ctrl+Shift+Z": "redo", "keystroke:Ctrl+Y": "redo",
             "keystroke:Play": "play", "keystroke:Next": "next",
             "keystroke:Previous": "previous", "keystroke:Stop": "stop",
@@ -26,7 +32,7 @@ Image {
         if (key.indexOf("app-launch:") === 0) return "launch"
         return "action"
     }
-    source: "qrc:/Logitune/qml/assets/actions/" + glyph + ".svg"
+    source: applicationIcon.length && !customIcon.length ? "image://icon/" + encodeURIComponent(applicationIcon) : "qrc:/Logitune/qml/assets/actions/" + glyph + (darkGlyph ? "-dark" : "") + ".svg"
     sourceSize.width: width * Screen.devicePixelRatio
     sourceSize.height: height * Screen.devicePixelRatio
     fillMode: Image.PreserveAspectFit

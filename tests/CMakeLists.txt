@@ -2,6 +2,7 @@ find_package(GTest REQUIRED)
 include(GoogleTest)
 
 add_executable(logitune-tests
+    test_application_catalog.cpp
     test_radial_menu.cpp
     test_main.cpp
     test_smoke.cpp

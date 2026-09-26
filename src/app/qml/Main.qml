@@ -267,9 +267,22 @@ ApplicationWindow {
         HomeView {
             onDeviceClicked: mainStack.push(deviceViewComponent)
             onSettingsClicked: mainStack.push(appSettingsComponent)
+            onRadialMenuClicked: mainStack.push(radialMenuSettingsComponent)
         }
     }
-    Component { id: deviceViewComponent; DeviceView {} }
+    Component {
+        id: deviceViewComponent
+        DeviceView { onRadialMenuRequested: mainStack.push(radialMenuSettingsComponent) }
+    }
+    Component {
+        id: radialMenuSettingsComponent
+        RadialMenuSettingsView {
+            onButtonsRequested: {
+                if (mainStack.depth > 2) mainStack.pop()
+                else mainStack.replace(deviceViewComponent)
+            }
+        }
+    }
     Component { id: appSettingsComponent; AppSettingsView {} }
 
     // Permission error overlay

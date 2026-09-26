@@ -108,6 +108,8 @@ public:
     void setDesktopIntegration(IDesktopIntegration *desktop);
     Q_INVOKABLE void blockGlobalShortcuts(bool block);
     Q_INVOKABLE QVariantList runningApplications() const;
+    Q_INVOKABLE QVariantList installedApplications() const;
+    Q_INVOKABLE bool applicationLauncherAvailable() const;
 
     // Selected device getters
     bool deviceConnected() const;
@@ -148,7 +150,7 @@ public:
     Q_INVOKABLE void setScrollConfig(bool hiRes, bool invert);
     Q_INVOKABLE void setThumbWheelMode(const QString &mode);
     Q_INVOKABLE void resetAllProfiles();
-    QVariantList radialItems() const { return m_radialMenu.items; }
+    QVariantList radialItems() const { return RadialMenuConfig::padded(m_radialMenu.items); }
     QVariantMap radialClick() const { return m_radialMenu.click; }
     RadialMenuConfig radialMenuConfig() const { return m_radialMenu; }
     void loadRadialMenu(const RadialMenuConfig &config);

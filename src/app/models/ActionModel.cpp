@@ -8,7 +8,7 @@ ActionModel::ActionModel(QObject *parent)
     //                name                   description                                  actionType         payload                 category
     m_actions = {
         // Device
-        { "Radial menu",           "Hold to choose a custom action",             "radial-menu",       "",                  "Device" },
+        { "Radial menu",           "Click to open your custom actions",           "radial-menu",       "",                  "Device" },
         { "DPI cycle",             "Step through the device's DPI preset list",  "dpi-cycle",         "",                  "Device" },
         { "Gestures",              "Trigger gesture recognition",                "gesture-trigger",   "",                  "Device" },
         { "Shift wheel mode",      "Toggle scroll wheel ratchet/freespin",       "smartshift-toggle", "",                  "Device" },
