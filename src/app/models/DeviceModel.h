@@ -1,5 +1,6 @@
 #pragma once
 #include "ButtonAction.h"
+#include "RadialMenuConfig.h"
 #include "DeviceSession.h"
 #include "PhysicalDevice.h"
 #include "interfaces/IDesktopIntegration.h"
@@ -23,6 +24,8 @@ struct GestureEntry {
 class DeviceModel : public QAbstractListModel {
     Q_OBJECT
 
+    Q_PROPERTY(QVariantList radialItems READ radialItems NOTIFY radialMenuChanged)
+    Q_PROPERTY(QVariantMap radialClick READ radialClick NOTIFY radialMenuChanged)
     // List model metadata
     Q_PROPERTY(int count READ count NOTIFY countChanged)
     Q_PROPERTY(int selectedIndex READ selectedIndex WRITE setSelectedIndex NOTIFY selectedChanged)
@@ -105,6 +108,8 @@ public:
     void setDesktopIntegration(IDesktopIntegration *desktop);
     Q_INVOKABLE void blockGlobalShortcuts(bool block);
     Q_INVOKABLE QVariantList runningApplications() const;
+    Q_INVOKABLE QVariantList installedApplications() const;
+    Q_INVOKABLE bool applicationLauncherAvailable() const;
 
     // Selected device getters
     bool deviceConnected() const;
@@ -145,6 +150,12 @@ public:
     Q_INVOKABLE void setScrollConfig(bool hiRes, bool invert);
     Q_INVOKABLE void setThumbWheelMode(const QString &mode);
     Q_INVOKABLE void resetAllProfiles();
+    QVariantList radialItems() const { return RadialMenuConfig::padded(m_radialMenu.items); }
+    QVariantMap radialClick() const { return m_radialMenu.click; }
+    RadialMenuConfig radialMenuConfig() const { return m_radialMenu; }
+    void loadRadialMenu(const RadialMenuConfig &config);
+    Q_INVOKABLE bool saveRadialMenu(const QVariantList &items, const QVariantMap &click);
+
     Q_INVOKABLE void setGestureAction(const QString &direction,
                                       const QString &actionName,
                                       const QString &actionType,
@@ -195,6 +206,8 @@ signals:
     void settingsReloaded();
     void activeProfileNameChanged();
     void activeWmClassChanged();
+    void radialMenuChanged();
+    void userRadialMenuChanged();
     void gestureChanged();
     void userGestureChanged(const QString &direction,
                             const QString &actionName,
@@ -223,6 +236,7 @@ private:
     int m_selectedIndex = -1;
 
     IDesktopIntegration *m_desktop = nullptr;
+    RadialMenuConfig m_radialMenu;
     QMap<QString, GestureEntry> m_gestures;
     QString m_activeProfileName;
     QString m_activeWmClass;

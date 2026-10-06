@@ -1,5 +1,6 @@
 #pragma once
 #include "ButtonAction.h"
+#include "RadialMenuConfig.h"
 #include <QObject>
 #include <QString>
 #include <QMap>
@@ -21,6 +22,7 @@ struct Profile {
     bool hiResScroll = true;
     std::array<ButtonAction, 16> buttons;  // indexed by ControlDescriptor::buttonIndex
     std::map<QString, ButtonAction> gestures;  // "up","down","left","right","click"
+    RadialMenuConfig radialMenu;
     QString thumbWheelMode = "scroll";  // "scroll", "zoom", "volume", "none"
     bool thumbWheelInvert = false;
 };
@@ -31,6 +33,7 @@ struct ProfileDelta {
     bool scrollChanged = false;
     bool buttonsChanged = false;
     bool gesturesChanged = false;
+    bool radialMenuChanged = false;
 };
 
 struct DeviceProfileContext {

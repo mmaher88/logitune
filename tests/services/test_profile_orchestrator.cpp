@@ -281,3 +281,25 @@ TEST_F(ProfileOrchestratorFixture, ButtonChangeWritesHardwareProfileWhileViewing
     EXPECT_EQ(cached(QStringLiteral("other")).dpi, viewedDpiBefore);  // viewed profile untouched
     EXPECT_EQ(m_deviceModel->currentDPI(), shownDpiBefore);           // UI unchanged
 }
+
+TEST_F(ProfileOrchestratorFixture, RadialMenuEditsAreSavedAndIsolatedByProfile) {
+    attachMockSession();
+    const QString serial = "mock-serial";
+    m_profileEngine->createProfileForApp(serial, "firefox", "firefox");
+    m_orchestrator->onTabSwitched("firefox");
+    auto config = m_deviceModel->radialMenuConfig();
+    config.items[0] = QVariantMap{{"label", "Browser"}, {"action", "app-launch:firefox --new-window"}};
+    config.items[1] = QVariantMap{{"kind", "folder"}, {"label", "Media"}, {"icon", "folder"},
+        {"children", QVariantList{QVariantMap{{"kind", "adjustment"}, {"label", "Volume"}, {"parameter", "volume"}}}}};
+    ASSERT_TRUE(m_deviceModel->saveRadialMenu(config.items, config.click));
+    m_buttonModel->setAction(5, "Radial menu", "radial-menu");
+    m_orchestrator->saveCurrentProfile();
+    const auto saved = ProfileEngine::loadProfile(m_profilesDir + "/firefox.conf");
+    EXPECT_EQ(saved.radialMenu.toJson(), config.toJson());
+    EXPECT_EQ(saved.buttons[5].type, ButtonAction::RadialMenu);
+    m_orchestrator->onTabSwitched("default");
+    EXPECT_NE(m_deviceModel->radialMenuConfig().toJson(), config.toJson());
+    m_orchestrator->onTabSwitched("firefox");
+    EXPECT_EQ(m_deviceModel->radialMenuConfig().toJson(), config.toJson());
+    EXPECT_EQ(m_buttonModel->actionTypeForButton(5), "radial-menu");
+}

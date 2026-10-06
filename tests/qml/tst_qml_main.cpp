@@ -1,9 +1,12 @@
 #include <QtQuickTest>
 #include <QtQml/qqmlextensionplugin.h>
 #include <QObject>
+#include "AppIconProvider.h"
 #include <QQmlEngine>
 #include <QQmlContext>
 #include "models/DeviceModel.h"
+#include "models/ActionFilterModel.h"
+#include "services/RadialMenuController.h"
 #include "models/ButtonModel.h"
 #include "models/ActionModel.h"
 #include "models/ProfileModel.h"
@@ -17,6 +20,9 @@ class QmlTestSetup : public QObject
     Q_OBJECT
 public:
     QmlTestSetup() = default;
+    Q_INVOKABLE bool hasWindowManager() const { return QGuiApplication::platformName() != "offscreen"; }
+    Q_INVOKABLE void showRadialMenu() { m_radialMenu.begin(m_deviceModel.radialMenuConfig()); }
+    Q_INVOKABLE void hideRadialMenu() { m_radialMenu.cancel(); }
 
 public slots:
     void applicationAvailable()
@@ -27,6 +33,12 @@ public slots:
     void qmlEngineAvailable(QQmlEngine *engine)
     {
         engine->addImportPath("qrc:/");
+        engine->addImageProvider("icon", new logitune::AppIconProvider);
+        engine->rootContext()->setContextProperty("TestSupport", this);
+        m_radialActions.setSourceModel(&m_actionModel);
+        m_radialActions.setRadialMode(true);
+        engine->rootContext()->setContextProperty("RadialActionModel", &m_radialActions);
+        engine->rootContext()->setContextProperty("RadialMenu", &m_radialMenu);
 
         engine->rootContext()->setContextProperty("DeviceModel",  &m_deviceModel);
         engine->rootContext()->setContextProperty("ButtonModel",  &m_buttonModel);
@@ -43,6 +55,8 @@ private:
     logitune::ActionModel  m_actionModel;
     logitune::ProfileModel  m_profileModel;
     logitune::SettingsModel m_settingsModel;
+    logitune::ActionFilterModel m_radialActions{&m_deviceModel};
+    logitune::RadialMenuController m_radialMenu;
 };
 
 QUICK_TEST_MAIN_WITH_SETUP(logitune_qml, QmlTestSetup)

@@ -67,6 +67,10 @@ AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject
         &m_deviceModel, m_desktop, &m_presetRegistry, this);
     m_gestureActionFilterModel->setSourceModel(&m_actionModel);
     m_gestureActionFilterModel->setGestureMode(true);
+    m_radialActionFilterModel = std::make_unique<ActionFilterModel>(
+        &m_deviceModel, m_desktop, &m_presetRegistry, this);
+    m_radialActionFilterModel->setSourceModel(&m_actionModel);
+    m_radialActionFilterModel->setRadialMode(true);
 
     if (auto *kde = dynamic_cast<KDeDesktop *>(m_desktop))
         kde->setPresetRegistry(&m_presetRegistry);
@@ -156,6 +160,8 @@ void AppRoot::wireSignals()
     connect(&m_deviceModel, &DeviceModel::selectedChanged,
             &m_deviceResolver, &ActiveDeviceResolver::onSelectionIndexChanged);
     connect(&m_deviceResolver, &ActiveDeviceResolver::selectionChanged,
+            &m_buttonDispatcher, &ButtonActionDispatcher::cancelRadialMenu);
+    connect(&m_deviceResolver, &ActiveDeviceResolver::selectionChanged,
             this, &AppRoot::onSelectionChanged);
 
     // Physical device lifecycle — one per unique serial, survives transport
@@ -165,6 +171,9 @@ void AppRoot::wireSignals()
             this, &AppRoot::onPhysicalDeviceAdded);
     connect(&m_deviceManager, &DeviceManager::physicalDeviceRemoved,
             this, &AppRoot::onPhysicalDeviceRemoved);
+
+    connect(&m_deviceModel, &DeviceModel::userRadialMenuChanged,
+            &m_profileOrchestrator, &ProfileOrchestrator::saveCurrentProfile);
 
     // Gesture keystroke edits in the UI. saveCurrentProfile re-serializes
     // the displayed profile; the orchestrator's own userChangedSomething
@@ -274,11 +283,20 @@ void AppRoot::onPhysicalDeviceAdded(PhysicalDevice *device)
     // all its underlying transports, so we connect once here regardless of
     // how many hidraws back it.
     connect(device, &PhysicalDevice::gestureRawXY,
-            &m_buttonDispatcher, &ButtonActionDispatcher::onGestureRaw);
+            &m_buttonDispatcher, [this, device](int16_t dx, int16_t dy) {
+                if (m_deviceResolver.activeDevice() == device) m_buttonDispatcher.onGestureRaw(dx, dy);
+            });
     connect(device, &PhysicalDevice::divertedButtonPressed,
-            &m_buttonDispatcher, &ButtonActionDispatcher::onDivertedButtonPressed);
+            &m_buttonDispatcher, [this, device](uint16_t cid, bool pressed) {
+                if (m_deviceResolver.activeDevice() == device) m_buttonDispatcher.onDivertedButtonPressed(cid, pressed);
+            });
     connect(device, &PhysicalDevice::thumbWheelRotation,
             &m_buttonDispatcher, &ButtonActionDispatcher::onThumbWheelRotation);
+
+    connect(device, &PhysicalDevice::stateChanged, &m_buttonDispatcher, [this, device]() {
+        if (m_deviceResolver.activeDevice() == device && !device->isConnected())
+            m_buttonDispatcher.cancelRadialMenu();
+    });
 
     // Re-apply profile whenever any transport finishes (re-)enumeration.
     // PhysicalDevice emits this from its setupComplete fan-in, which

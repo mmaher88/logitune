@@ -11,6 +11,7 @@ import Logitune
 // ─────────────────────────────────────────────────────────────────────────────
 Item {
     id: root
+    signal radialMenuRequested()
 
     // Currently selected button (-1 = none)
     property int selectedButton: -1
@@ -18,6 +19,7 @@ Item {
     // Close side panel when profile tab changes
     Connections {
         target: DeviceModel
+        function onSelectedChanged() { root.selectedButton = -1 }
         function onActiveProfileNameChanged() {
             root.selectedButton = -1
         }
@@ -208,6 +210,7 @@ Item {
             NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
         }
 
+        onRadialMenuRequested: root.radialMenuRequested()
         onClosed: root.selectedButton = -1
 
         onActionSelected: function(actionName, actionType) {

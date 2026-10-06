@@ -8,6 +8,7 @@ ActionModel::ActionModel(QObject *parent)
     //                name                   description                                  actionType         payload                 category
     m_actions = {
         // Device
+        { "Radial menu",           "Click to open your custom actions",           "radial-menu",       "",                  "Device" },
         { "DPI cycle",             "Step through the device's DPI preset list",  "dpi-cycle",         "",                  "Device" },
         { "Gestures",              "Trigger gesture recognition",                "gesture-trigger",   "",                  "Device" },
         { "Shift wheel mode",      "Toggle scroll wheel ratchet/freespin",       "smartshift-toggle", "",                  "Device" },
@@ -73,6 +74,7 @@ QVariant ActionModel::data(const QModelIndex &index, int role) const
     case ActionTypeRole:  return entry.actionType;
     case PayloadRole:     return entry.payload;
     case CategoryRole:    return entry.category;
+    case SerializedActionRole: return buttonEntryToAction(entry.actionType, entry.name).serialize();
     default:              return {};
     }
 }
@@ -85,6 +87,7 @@ QHash<int, QByteArray> ActionModel::roleNames() const
         { ActionTypeRole,  "actionType"  },
         { PayloadRole,     "payload"     },
         { CategoryRole,    "category"    },
+        { SerializedActionRole, "serializedAction" },
     };
 }
 
@@ -121,6 +124,7 @@ QString ActionModel::payloadForName(const QString &name) const
 
 QString ActionModel::buttonActionToName(const ButtonAction &ba) const
 {
+    if (ba.type == ButtonAction::RadialMenu) return QStringLiteral("Radial menu");
     if (ba.type == ButtonAction::Default)
         return QString();
     if (ba.type == ButtonAction::GestureTrigger)
@@ -144,6 +148,7 @@ QString ActionModel::buttonActionToName(const ButtonAction &ba) const
 
 ButtonAction ActionModel::buttonEntryToAction(const QString &actionType, const QString &actionName) const
 {
+    if (actionType == QStringLiteral("radial-menu")) return {ButtonAction::RadialMenu, {}};
     if (actionType == QStringLiteral("default"))
         return {ButtonAction::Default, {}};
     if (actionType == QStringLiteral("gesture-trigger"))

@@ -6,6 +6,8 @@ import Logitune
 ApplicationWindow {
     id: root
 
+    RadialMenuOverlay {}
+
     // ── Window geometry ─────────────────────────────────────────────────
     // Design minimum keeps the Buttons page sane: the right action
     // panel needs ~360px wide plus the main area needs ~560px for the
@@ -265,9 +267,22 @@ ApplicationWindow {
         HomeView {
             onDeviceClicked: mainStack.push(deviceViewComponent)
             onSettingsClicked: mainStack.push(appSettingsComponent)
+            onRadialMenuClicked: mainStack.push(radialMenuSettingsComponent)
         }
     }
-    Component { id: deviceViewComponent; DeviceView {} }
+    Component {
+        id: deviceViewComponent
+        DeviceView { onRadialMenuRequested: mainStack.push(radialMenuSettingsComponent) }
+    }
+    Component {
+        id: radialMenuSettingsComponent
+        RadialMenuSettingsView {
+            onButtonsRequested: {
+                if (mainStack.depth > 2) mainStack.pop()
+                else mainStack.replace(deviceViewComponent)
+            }
+        }
+    }
     Component { id: appSettingsComponent; AppSettingsView {} }
 
     // Permission error overlay

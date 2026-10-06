@@ -7,6 +7,7 @@ Item {
     id: root
     signal deviceClicked()
     signal settingsClicked()
+    signal radialMenuClicked()
 
     RowLayout {
         id: topBar
@@ -35,6 +36,29 @@ Item {
         }
 
         Item { Layout.fillWidth: true }
+
+        RingButton {
+            objectName: "openActionRing"
+            implicitWidth: 44
+            implicitHeight: 44
+            Accessible.name: qsTr("Action Ring")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Configure Action Ring")
+            onClicked: root.radialMenuClicked()
+            contentItem: Item {
+                implicitWidth: 24; implicitHeight: 24
+                Repeater {
+                    model: 8
+                    Rectangle {
+                        required property int index
+                        width: 4; height: 4; radius: 2
+                        x: parent.width / 2 + Math.cos(index * Math.PI / 4) * 9 - 2
+                        y: parent.height / 2 + Math.sin(index * Math.PI / 4) * 9 - 2
+                        color: Theme.text
+                    }
+                }
+            }
+        }
 
         Text {
             id: settingsGear

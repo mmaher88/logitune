@@ -20,21 +20,27 @@ ButtonActionDispatcher::ButtonActionDispatcher(ProfileEngine *profileEngine,
     , m_actionExecutor(actionExecutor)
     , m_selection(selection)
     , m_desktop(desktop)
-{}
+{
+    connect(&m_radialMenu, &RadialMenuController::triggered,
+            this, &ButtonActionDispatcher::executeMenuAction);
+}
 
 void ButtonActionDispatcher::onDeviceRemoved(const QString &serial)
 {
+    if (m_radialDevice == serial) cancelRadialMenu();
     m_state.remove(serial);
 }
 
 void ButtonActionDispatcher::onProfileApplied(const QString &serial)
 {
+    if (m_radialDevice == serial) cancelRadialMenu();
     auto it = m_state.find(serial);
     if (it != m_state.end()) it->thumbAccum = 0;
 }
 
 void ButtonActionDispatcher::onCurrentDeviceChanged(const IDevice *device)
 {
+    cancelRadialMenu();
     m_currentDevice = device;
 }
 
@@ -59,6 +65,13 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     if (serial.isEmpty()) return;
     const Profile &hwProfile = m_profileEngine->cachedProfile(
         serial, m_profileEngine->hardwareProfile(serial));
+
+    if (!pressed && m_radialControl != 0 && m_radialDevice == session->deviceId()
+        && (controlId == 0 || controlId == m_radialControl)) {
+        // Releasing the trigger leaves the menu open for a normal pointer click.
+        m_radialControl = 0;
+        return;
+    }
 
     if (!pressed && state.gestureActive
         && (controlId == 0 || controlId == state.gestureControlId)) {
@@ -123,7 +136,18 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
 
     if (ba.type == ButtonAction::Default) return;
 
-    if (ba.type == ButtonAction::SmartShiftToggle) {
+    if (ba.type == ButtonAction::RadialMenu) {
+        if (m_radialControl == controlId) return; // repeated held-button report
+        m_radialControl = controlId;
+        if (m_radialMenu.isActive()) {
+            m_radialMenu.cancel();
+            return;
+        }
+        state.gestureActive = false;
+        m_radialDevice = session->deviceId();
+        m_radialControl = controlId;
+        m_radialMenu.begin(hwProfile.radialMenu);
+    } else if (ba.type == ButtonAction::SmartShiftToggle) {
         bool current = session->smartShiftEnabled();
         session->setSmartShift(!current, session->smartShiftThreshold());
         emit smartShiftChangedByButton(!current, session->smartShiftThreshold());
@@ -156,6 +180,33 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     }
 }
 
+void ButtonActionDispatcher::cancelRadialMenu()
+{
+    m_radialMenu.cancel();
+    m_radialDevice.clear();
+    m_radialControl = 0;
+}
+
+void ButtonActionDispatcher::executeMenuAction(const ButtonAction &action)
+{
+    auto *session = m_selection ? m_selection->activeSession() : nullptr;
+    if (!session || session->deviceId() != m_radialDevice) return;
+    if (action.type == ButtonAction::DpiCycle) {
+        session->cycleDpi();
+        emit dpiChangedByButton(session->currentDPI());
+    } else if (action.type == ButtonAction::SmartShiftToggle) {
+        const bool enabled = !session->smartShiftEnabled();
+        session->setSmartShift(enabled, session->smartShiftThreshold());
+        emit smartShiftChangedByButton(enabled, session->smartShiftThreshold());
+    } else if (action.type == ButtonAction::PresetRef) {
+        if (!m_desktop) return;
+        auto resolved = m_desktop->resolveNamedAction(action.payload);
+        if (resolved) m_actionExecutor->executeAction(*resolved);
+    } else {
+        m_actionExecutor->executeAction(action);
+    }
+}
+
 void ButtonActionDispatcher::onThumbWheelRotation(int delta)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
@@ -173,6 +224,11 @@ void ButtonActionDispatcher::onThumbWheelRotation(int delta)
 
     int steps = state.thumbAccum / kThumbThreshold;
     state.thumbAccum %= kThumbThreshold;
+
+    if (m_radialMenu.visible() && m_radialDevice == session->deviceId()) {
+        m_radialMenu.adjust(m_radialMenu.selected(), steps);
+        return; // Never scroll the application underneath an open ring.
+    }
 
     qCDebug(lcInput) << "thumbWheel steps=" << steps << "accum=" << state.thumbAccum;
     for (int i = 0; i < std::abs(steps); ++i) {

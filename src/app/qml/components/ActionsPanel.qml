@@ -15,6 +15,7 @@ Rectangle {
     property string currentActionType: ""
     property bool   isWheel:      false  // true for thumb wheel — shows wheel-specific modes
 
+    signal radialMenuRequested()
     signal closed()
     signal actionSelected(string actionName, string actionType)
     signal wheelModeSelected(string mode)  // "scroll", "zoom", "volume"
@@ -504,6 +505,8 @@ Rectangle {
             visible: item !== null
 
             sourceComponent: {
+                if (root.currentActionType === "radial-menu")
+                    return radialComponent
                 if (root.currentActionType === "gesture-trigger")
                     return gestureComponent
                 if (root.currentAction === "Keyboard shortcut" || root.isCustomKeystroke)
@@ -514,6 +517,32 @@ Rectangle {
     }
 
     // ── Contextual component definitions ───────────────────────────────────
+
+    Component {
+        id: radialComponent
+        Item {
+            implicitHeight: radialLink.implicitHeight + 32
+            ColumnLayout {
+                id: radialLink
+                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
+                spacing: 12
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("One click opens Action Ring. Configure its actions on a separate screen.")
+                    wrapMode: Text.Wrap
+                    color: Theme.textSecondary
+                    font.pixelSize: 12
+                }
+                RingButton {
+                    objectName: "configureActionRing"
+                    text: qsTr("Configure Action Ring")
+                    Layout.fillWidth: true
+                    primary: true
+                    onClicked: root.radialMenuRequested()
+                }
+            }
+        }
+    }
 
     Component {
         id: keystrokeComponent

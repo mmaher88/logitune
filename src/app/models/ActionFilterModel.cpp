@@ -15,10 +15,35 @@ ActionFilterModel::ActionFilterModel(DeviceModel *deviceModel,
     , m_desktop(desktop)
     , m_registry(registry)
 {
+    connect(this, &QAbstractItemModel::rowsInserted, this, &ActionFilterModel::entriesChanged);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, &ActionFilterModel::entriesChanged);
+    connect(this, &QAbstractItemModel::modelReset, this, &ActionFilterModel::entriesChanged);
+    connect(this, &QAbstractItemModel::dataChanged, this, &ActionFilterModel::entriesChanged);
+    connect(this, &QAbstractItemModel::layoutChanged, this, &ActionFilterModel::entriesChanged);
     if (m_deviceModel) {
         connect(m_deviceModel, &DeviceModel::selectedChanged,
                 this, [this]() { invalidateFilter(); });
     }
+}
+
+QVariantList ActionFilterModel::entries() const
+{
+    QVariantList result;
+    for (int row = 0; row < rowCount(); ++row) {
+        const auto item = index(row, 0);
+        result.append(QVariantMap{{"name", data(item, ActionModel::NameRole)},
+            {"description", data(item, ActionModel::DescriptionRole)},
+            {"category", data(item, ActionModel::CategoryRole)},
+            {"action", data(item, ActionModel::SerializedActionRole)}});
+    }
+    return result;
+}
+
+void ActionFilterModel::setRadialMode(bool mode)
+{
+    if (m_radialMode == mode) return;
+    m_radialMode = mode;
+    invalidateFilter();
 }
 
 void ActionFilterModel::setGestureMode(bool mode)
@@ -41,8 +66,9 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
     // device-only actions (DPI cycle, Shift wheel mode, Middle click)
     // stay in the list; the dispatcher currently no-ops on them and
     // can be extended later to handle them as gesture actions.
-    if (m_gestureMode) {
-        if (type == QLatin1String("gesture-trigger")) return false;
+    if (m_radialMode && type == QLatin1String("default")) return false;
+    if (m_gestureMode || m_radialMode) {
+        if (type == QLatin1String("gesture-trigger") || type == QLatin1String("radial-menu")) return false;
         if (type == QLatin1String("none")) return false;
     }
 
@@ -68,7 +94,7 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
         return m_deviceModel->adjustableDpiSupported();
     if (type == QLatin1String("smartshift-toggle"))
         return m_deviceModel->smartShiftSupported();
-    if (type == QLatin1String("gesture-trigger"))
+    if (type == QLatin1String("gesture-trigger") || type == QLatin1String("radial-menu"))
         return m_deviceModel->reprogControlsSupported();
     if (type == QLatin1String("wheel-mode"))
         return m_deviceModel->thumbWheelSupported();

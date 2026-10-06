@@ -7,6 +7,7 @@ Item {
     id: profileBar
     implicitHeight: 48
 
+    property bool compact: false
     property var _allApps: []
 
     // Whether chips overflow the visible area
@@ -47,19 +48,38 @@ Item {
                     model: ProfileModel
 
                     delegate: Rectangle {
-                        width: chipLabel.implicitWidth + (model.icon ? 46 : 24)
-                        height: 32
+                        width: profileBar.compact ? 44 : chipLabel.implicitWidth + (model.icon ? 46 : 24)
+                        height: profileBar.compact ? 44 : 32
                         radius: 6
-                        color: model.isActive ? Theme.accent
+                        color: profileBar.compact ? (chipHover.hovered ? Theme.hoverBg : "transparent") : model.isActive ? Theme.accent
                              : chipHover.hovered ? Theme.hoverBg : Theme.surface
                         border.color: model.isActive ? "transparent" : Theme.border
-                        border.width: 1
+                        border.width: profileBar.compact ? 0 : 1
 
                         Behavior on color { ColorAnimation { duration: 150 } }
 
                         HoverHandler { id: chipHover }
+                        ToolTip.visible: profileBar.compact && chipHover.hovered
+                        ToolTip.delay: 500
+                        ToolTip.text: model.wmClass === "default" ? qsTr("All applications") : model.name
+                        Accessible.role: Accessible.Button
+                        Accessible.name: model.wmClass === "default" ? qsTr("All applications") : model.name
+                        Accessible.onPressAction: ProfileModel.selectTab(model.index)
+                        RadialActionIcon {
+                            visible: profileBar.compact
+                            anchors.centerIn: parent
+                            width: 26; height: 26
+                            customIcon: model.wmClass === "default" ? "grid" : ""
+                            applicationIcon: model.wmClass !== "default" ? (model.icon || "application-x-executable") : ""
+                        }
+                        Rectangle {
+                            visible: profileBar.compact && model.isActive
+                            anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+                            width: 32; height: 2; radius: 1; color: Theme.accent
+                        }
 
                         Row {
+                            visible: !profileBar.compact
                             anchors.centerIn: parent
                             spacing: 6
 
@@ -168,23 +188,33 @@ Item {
         Rectangle {
             id: addBtn
             Layout.alignment: Qt.AlignVCenter
-            width: addLabel.implicitWidth + 24
-            height: 32
+            width: profileBar.compact ? 40 : addLabel.implicitWidth + 24
+            height: profileBar.compact ? 40 : 32
             radius: 6
             color: addHover.hovered ? Theme.hoverBg : "transparent"
             border.color: Theme.border
-            border.width: 1
+            border.width: profileBar.compact ? 0 : 1
 
             Behavior on color { ColorAnimation { duration: 150 } }
 
             Text {
                 id: addLabel
+                visible: !profileBar.compact
                 anchors.centerIn: parent
                 text: "+ Add application"
                 font.pixelSize: 12
                 color: Theme.textSecondary
             }
 
+            RadialActionIcon {
+                visible: profileBar.compact
+                anchors.centerIn: parent; width: 24; height: 24; customIcon: "plus"
+            }
+            ToolTip.visible: profileBar.compact && addHover.hovered
+            ToolTip.delay: 500
+            ToolTip.text: qsTr("Add application")
+            Accessible.role: Accessible.Button
+            Accessible.name: qsTr("Add application")
             HoverHandler { id: addHover }
 
             MouseArea {

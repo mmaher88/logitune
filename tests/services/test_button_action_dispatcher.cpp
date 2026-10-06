@@ -417,3 +417,68 @@ TEST_F(ButtonActionDispatcherFixture, GesturePresetUnresolvedFiresNothing) {
     EXPECT_FALSE(m_injector->hasCalled("sendDBusCall"));
     EXPECT_FALSE(m_injector->hasCalled("launchApp"));
 }
+
+TEST_F(ButtonActionDispatcherFixture, RadialMenuClickStaysOpenAndToggles) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5, {ButtonAction::RadialMenu, {}});
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    EXPECT_TRUE(m_dispatcher->radialMenu()->visible());
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true); // repeat while held
+    EXPECT_TRUE(m_dispatcher->radialMenu()->visible());
+    m_dispatcher->onDivertedButtonPressed(0, false);
+    EXPECT_TRUE(m_dispatcher->radialMenu()->visible());
+    EXPECT_TRUE(m_injector->calls().isEmpty());
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    EXPECT_FALSE(m_dispatcher->radialMenu()->visible());
+    m_dispatcher->onDivertedButtonPressed(0, false);
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onDivertedButtonPressed(0, false);
+    m_dispatcher->radialMenu()->activate(0);
+    EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Ctrl+C");
+    EXPECT_FALSE(m_dispatcher->radialMenu()->visible());
+}
+
+TEST_F(ButtonActionDispatcherFixture, RadialMenuCancelsOnProfileChangeOrDeviceRemoval) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5, {ButtonAction::RadialMenu, {}});
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onDivertedButtonPressed(0, false);
+    m_dispatcher->onProfileApplied("mock-serial");
+    m_dispatcher->radialMenu()->activate(0);
+    EXPECT_FALSE(m_dispatcher->radialMenu()->visible());
+    EXPECT_TRUE(m_injector->calls().isEmpty());
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onDeviceRemoved("mock-serial");
+    m_dispatcher->radialMenu()->activate(0);
+    EXPECT_FALSE(m_dispatcher->radialMenu()->visible());
+    EXPECT_TRUE(m_injector->calls().isEmpty());
+}
+
+TEST_F(ButtonActionDispatcherFixture, GesturesStillReleaseAfterRadialMenuWasClosed) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5, {ButtonAction::RadialMenu, {}});
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onDivertedButtonPressed(0, false);
+    m_dispatcher->radialMenu()->cancel();
+    setProfileButton(hwProfile(), 5, {ButtonAction::GestureTrigger, {}});
+    hwProfile().gestures["up"] = {ButtonAction::Keystroke, "Ctrl+Z"};
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(0, -100);
+    m_dispatcher->onDivertedButtonPressed(0, false);
+    EXPECT_EQ(m_injector->lastArg("injectKeystroke"), "Ctrl+Z");
+}
+
+TEST_F(ButtonActionDispatcherFixture, RingThumbwheelAdjustsSelectedParameterOnly) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5, {ButtonAction::RadialMenu, {}});
+    hwProfile().radialMenu.items[0] = QVariantMap{{"kind", "adjustment"}, {"label", "Brightness"}, {"parameter", "brightness"}};
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onDivertedButtonPressed(0, false);
+    m_dispatcher->radialMenu()->select(0);
+    m_dispatcher->onThumbWheelRotation(120);
+    EXPECT_TRUE(m_injector->hasCalled("injectKeystroke"));
+    EXPECT_TRUE(m_injector->lastArg("injectKeystroke") == "BrightnessUp"
+                || m_injector->lastArg("injectKeystroke") == "BrightnessDown");
+    EXPECT_FALSE(m_injector->hasCalled("injectHorizontalScroll"));
+    EXPECT_TRUE(m_dispatcher->radialMenu()->visible());
+}

@@ -26,6 +26,7 @@ public:
         ActionTypeRole,
         PayloadRole,
         CategoryRole,
+        SerializedActionRole,
     };
 
     explicit ActionModel(QObject *parent = nullptr);

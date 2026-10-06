@@ -17,6 +17,8 @@ ButtonAction ButtonAction::parse(const QString &str)
     if (str.isEmpty() || str == "default")
         return {Default, {}};
 
+    if (str == "radial-menu") return {RadialMenu, {}};
+
     if (str == "gesture-trigger")
         return {GestureTrigger, {}};
 
@@ -51,6 +53,7 @@ QString ButtonAction::serialize() const
 {
     switch (type) {
     case Default:       return "default";
+    case RadialMenu:    return "radial-menu";
     case GestureTrigger:  return "gesture-trigger";
     case SmartShiftToggle: return "smartshift-toggle";
     case DpiCycle:      return "dpi-cycle";
@@ -105,6 +108,7 @@ Profile ProfileEngine::loadProfile(const QString &path)
         p.gestures[key] = ButtonAction::parse(s.value(key).toString());
     s.endGroup();
 
+    p.radialMenu = RadialMenuConfig::fromJson(s.value("RadialMenu/config").toByteArray());
     return p;
 }
 
@@ -113,6 +117,7 @@ void ProfileEngine::saveProfile(const QString &path, const Profile &profile)
     QSettings s(path, QSettings::IniFormat);
     s.clear();  // wipe all keys before writing — prevents duplicate sections
 
+    s.setValue("RadialMenu/config", profile.radialMenu.toJson());
     s.setValue("General/version", profile.version);
     s.setValue("General/name",    profile.name);
     s.setValue("General/icon",    profile.icon);
@@ -186,6 +191,7 @@ ProfileDelta ProfileEngine::diff(const Profile &a, const Profile &b)
 
     delta.buttonsChanged  = (a.buttons  != b.buttons);
     delta.gesturesChanged = (a.gestures != b.gestures);
+    delta.radialMenuChanged = (a.radialMenu.toJson() != b.radialMenu.toJson());
 
     return delta;
 }
