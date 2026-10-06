@@ -2,8 +2,6 @@ find_package(GTest REQUIRED)
 include(GoogleTest)
 
 add_executable(logitune-tests
-    test_application_catalog.cpp
-    test_radial_menu.cpp
     test_main.cpp
     test_smoke.cpp
     test_transport.cpp
@@ -17,6 +15,10 @@ add_executable(logitune-tests
     test_action_executor.cpp
     test_action_filter_model.cpp
     test_device_registry.cpp
+    # These tests initialize QCoreApplication in QStandardPaths test mode.
+    # Keep them after DeviceRegistry's XDG_DATA_HOME isolation test.
+    test_application_catalog.cpp
+    test_radial_menu.cpp
     test_descriptor_writer.cpp
     test_editor_model.cpp
     test_smoke_mocks.cpp
