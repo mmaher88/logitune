@@ -158,6 +158,21 @@ static const DeviceSpec kDevices[] = {
         .gestureDownPayload = nullptr,
         .gestureUpType = ButtonAction::Default,
     },
+    {
+        .pid = 0xb031,
+        .name = "Lift",
+        .minDpi = 400, .maxDpi = 4000, .dpiStep = 100,
+        .buttonHotspots = 4, .scrollHotspots = 2,
+        .minControls = 6,
+        .control0Cid = 0x0050, .control5Cid = 0x00FD,
+        .control5ActionType = "default",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = true, .smartShift = false,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
+        .gestureUpType = ButtonAction::Default,
+    },
 };
 
 class DeviceRegistryTest : public testing::TestWithParam<DeviceSpec> {
@@ -323,6 +338,23 @@ TEST(DeviceRegistry, MxVerticalDpiButtonIsNotConfigurable) {
         EXPECT_EQ(dev->controls()[5].controlId, 0x00C3) << slug;
         EXPECT_FALSE(dev->controls()[5].configurable) << slug;
     }
+}
+
+// Over a Bolt receiver the session only sees the receiver PID (0xc548), so
+// the Lift is matched by the name it reports via DeviceName (0x0005). Its DPI
+// button (CID 0x00FD) is divertable on this firmware, unlike MX Vertical's,
+// so it stays configurable and keeps the native firmware action by default.
+TEST(DeviceRegistry, LiftMatchesHidppNameOverBolt) {
+    logitune::DeviceRegistry reg;
+    const auto *dev = reg.findByName(QStringLiteral("LIFT VERTICAL ERGONOMIC MOUSE"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("Lift"));
+    ASSERT_EQ(dev->controls().size(), 6u);
+    EXPECT_EQ(dev->controls()[5].controlId, 0x00FD);
+    EXPECT_TRUE(dev->controls()[5].configurable);
+    EXPECT_FALSE(dev->features().smoothScroll);
+    EXPECT_FALSE(dev->features().hiResWheel);
+    EXPECT_TRUE(dev->dpiCycleRing().empty());
 }
 
 TEST(DeviceRegistry, MxMaster3sHasNoDpiCycleRing) {
