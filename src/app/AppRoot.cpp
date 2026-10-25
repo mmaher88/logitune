@@ -259,6 +259,12 @@ void AppRoot::wireSignals()
                 [&](Profile &p) { p.thumbWheelInvert = invert; },
                 [&]{ m_deviceCommandHandler.requestThumbWheelInvert(invert); });
         });
+    connect(&m_deviceModel, &DeviceModel::workspaceSnapPercentChangeRequested, this,
+        [this](int percent) {
+            m_profileOrchestrator.applyDisplayedChange(
+                [&](Profile &p) { p.workspaceSnapPercent = qBound(percent, 10, 90); },
+                []{});
+        });
 }
 
 // Physical device lifecycle -------------------------------------------------
@@ -279,6 +285,8 @@ void AppRoot::onPhysicalDeviceAdded(PhysicalDevice *device)
             &m_buttonDispatcher, &ButtonActionDispatcher::onDivertedButtonPressed);
     connect(device, &PhysicalDevice::thumbWheelRotation,
             &m_buttonDispatcher, &ButtonActionDispatcher::onThumbWheelRotation);
+    connect(device, &PhysicalDevice::thumbWheelReleased,
+            &m_buttonDispatcher, &ButtonActionDispatcher::onThumbWheelReleased);
 
     // Re-apply profile whenever any transport finishes (re-)enumeration.
     // PhysicalDevice emits this from its setupComplete fan-in, which

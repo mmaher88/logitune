@@ -27,6 +27,11 @@ public:
     QString variantKey() const override;
     std::optional<ButtonAction> resolveNamedAction(const QString &id) const override;
 
+    bool supportsInteractiveWorkspaceSwitch() const override;
+    void beginInteractiveWorkspaceSwitch() override;
+    void updateInteractiveWorkspaceSwitch(int delta) override;
+    void endInteractiveWorkspaceSwitch(int snapPercent = 50) override;
+
     AppIndicatorState appIndicatorStatus() const { return m_appIndicatorStatus; }
 
     /// Test seam: point to a registry the resolver should query.
@@ -45,11 +50,18 @@ public slots:
 
 private:
     bool ensureExtensionInstalled();
+    bool ensureWorkspaceExtensionInstalled();
+    bool enableShellExtension(const QString &uuid);
     int detectShellMajorVersion();
     void detectAppIndicatorStatus();
+    void callWorkspaceGesture(const QString &method, const QVariantList &args = {});
+    QString findExtensionSourceDir(const QString &uuid) const;
+    bool syncExtensionToUserDir(const QString &uuid, const QString &sourceDir,
+                                const QString &variant);
 
     QString m_lastAppId;
     bool m_available = false;
+    bool m_workspaceGestureAvailable = false;
     AppIndicatorState m_appIndicatorStatus = AppIndicatorUnknown;
     const ActionPresetRegistry *m_registry = nullptr;
     GsettingsReader m_reader;

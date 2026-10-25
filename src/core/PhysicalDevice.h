@@ -87,6 +87,7 @@ signals:
     void gestureRawXY(int16_t dx, int16_t dy);
     void divertedButtonPressed(uint16_t controlId, bool pressed);
     void thumbWheelRotation(int delta);
+    void thumbWheelReleased();
 
     // Per-property relay signals. Mirror DeviceSession's per-field change
     // signals so QML bindings on specific Q_PROPERTYs can refresh without

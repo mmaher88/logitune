@@ -125,6 +125,8 @@ void PhysicalDevice::connectSessionSignals(DeviceSession *session)
             this, &PhysicalDevice::divertedButtonPressed);
     connect(session, &DeviceSession::thumbWheelRotation,
             this, &PhysicalDevice::thumbWheelRotation);
+    connect(session, &DeviceSession::thumbWheelReleased,
+            this, &PhysicalDevice::thumbWheelReleased);
 }
 
 void PhysicalDevice::disconnectSessionSignals(DeviceSession *session)

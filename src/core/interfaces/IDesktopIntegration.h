@@ -37,6 +37,19 @@ public:
     /// Each entry is a QVariantMap with keys "wmClass" and "title".
     virtual QVariantList runningApplications() const = 0;
 
+    /// True when this DE can drive an interactive workspace scrub
+    /// (live animation while the thumb wheel moves, snap on release).
+    virtual bool supportsInteractiveWorkspaceSwitch() const { return false; }
+
+    /// Begin an interactive workspace scrub gesture.
+    virtual void beginInteractiveWorkspaceSwitch() {}
+
+    /// Update scrub progress by a signed thumb-wheel delta.
+    virtual void updateInteractiveWorkspaceSwitch(int /*delta*/) {}
+
+    /// End the scrub; snap using \a snapPercent (10–90) of travel toward a neighbor.
+    virtual void endInteractiveWorkspaceSwitch(int /*snapPercent*/ = 50) {}
+
 signals:
     void activeWindowChanged(const QString &wmClass, const QString &title);
 };

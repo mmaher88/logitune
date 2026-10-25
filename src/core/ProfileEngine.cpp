@@ -88,6 +88,7 @@ Profile ProfileEngine::loadProfile(const QString &path)
 
     p.thumbWheelMode      = s.value("ThumbWheel/mode", "scroll").toString();
     p.thumbWheelInvert    = s.value("ThumbWheel/invert", false).toBool();
+    p.workspaceSnapPercent = qBound(s.value("ThumbWheel/snapPercent", 50).toInt(), 10, 90);
 
     s.beginGroup("Buttons");
     const QStringList buttonKeys = s.childKeys();
@@ -128,6 +129,8 @@ void ProfileEngine::saveProfile(const QString &path, const Profile &profile)
 
     s.setValue("ThumbWheel/mode",  profile.thumbWheelMode);
     s.setValue("ThumbWheel/invert", profile.thumbWheelInvert);
+    s.setValue("ThumbWheel/snapPercent",
+               qBound(profile.workspaceSnapPercent, 10, 90));
 
     s.beginGroup("Buttons");
     for (std::size_t i = 0; i < profile.buttons.size(); ++i)
@@ -182,7 +185,8 @@ ProfileDelta ProfileEngine::diff(const Profile &a, const Profile &b)
                            a.scrollDirection  != b.scrollDirection  ||
                            a.hiResScroll      != b.hiResScroll      ||
                            a.thumbWheelMode   != b.thumbWheelMode ||
-                           a.thumbWheelInvert != b.thumbWheelInvert);
+                           a.thumbWheelInvert != b.thumbWheelInvert ||
+                           a.workspaceSnapPercent != b.workspaceSnapPercent);
 
     delta.buttonsChanged  = (a.buttons  != b.buttons);
     delta.gesturesChanged = (a.gestures != b.gestures);

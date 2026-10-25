@@ -1,4 +1,6 @@
 #include "services/ButtonActionDispatcherFixture.h"
+#include <QCoreApplication>
+#include <QTest>
 
 using namespace logitune;
 using namespace logitune::test;
@@ -134,6 +136,93 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseMissingDirectionDoesNotInjec
 
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
+
+namespace {
+
+int countKeystrokes(const MockInjector &injector, const QString &payload) {
+    int n = 0;
+    for (const auto &c : injector.calls()) {
+        if (c.method == QLatin1String("injectKeystroke") && c.arg == payload)
+            ++n;
+    }
+    return n;
+}
+
+} // namespace
+
+// --- Workspace thumb wheel (interactive + fallback) ------------------------
+
+TEST_F(ButtonActionDispatcherFixture, WorkspaceInteractiveHoldsUntilRelease) {
+    attachMockSession();
+    m_desktop->setSupportsInteractiveWorkspace(true);
+    m_session->setThumbWheelMode(QStringLiteral("workspace"), false);
+    m_desktop->resetWorkspaceCounts();
+
+    m_dispatcher->onThumbWheelRotation(20);
+    EXPECT_EQ(m_desktop->workspaceBeginCount(), 1);
+    EXPECT_EQ(m_desktop->workspaceUpdateCount(), 1);
+    EXPECT_EQ(m_desktop->workspaceDeltaSum(), 20);
+    EXPECT_EQ(m_desktop->workspaceEndCount(), 0);
+
+    m_dispatcher->onThumbWheelRotation(10);
+    EXPECT_EQ(m_desktop->workspaceBeginCount(), 1);
+    EXPECT_EQ(m_desktop->workspaceUpdateCount(), 2);
+    EXPECT_EQ(m_desktop->workspaceDeltaSum(), 30);
+    EXPECT_TRUE(m_desktop->workspaceGestureActive());
+
+    // Safety fallback is multi-second — pause must not use the old 150ms idle End.
+    EXPECT_EQ(workspaceSafetyIntervalMs(QStringLiteral("mock-serial")), 5000);
+
+    hwProfile().workspaceSnapPercent = 25;
+    // Finish ease runs synchronously in tests.
+    setWorkspaceFinishDurationMs(0);
+    // 20+10 = 30 units ≈ 0.2 workspaces — under 25% → ease back toward origin.
+    m_dispatcher->onThumbWheelReleased();
+    QCoreApplication::processEvents();
+    EXPECT_EQ(m_desktop->workspaceEndCount(), 1);
+    EXPECT_EQ(m_desktop->lastWorkspaceSnapPercent(), 25);
+    EXPECT_FALSE(m_desktop->workspaceGestureActive());
+}
+
+TEST_F(ButtonActionDispatcherFixture, WorkspaceSnapTargetThreshold) {
+    EXPECT_EQ(ButtonActionDispatcher::workspaceSnapTarget(0.0, 50), 0);
+    EXPECT_EQ(ButtonActionDispatcher::workspaceSnapTarget(0.2, 50), 0);
+    EXPECT_EQ(ButtonActionDispatcher::workspaceSnapTarget(0.5, 50), 1);
+    EXPECT_EQ(ButtonActionDispatcher::workspaceSnapTarget(0.2, 20), 1);
+    EXPECT_EQ(ButtonActionDispatcher::workspaceSnapTarget(-0.3, 25), -1);
+    EXPECT_EQ(ButtonActionDispatcher::workspaceSnapTarget(-0.1, 25), 0);
+}
+
+TEST_F(ButtonActionDispatcherFixture, WorkspaceReleaseWithoutGestureIsNoOp) {
+    attachMockSession();
+    m_desktop->setSupportsInteractiveWorkspace(true);
+    m_session->setThumbWheelMode(QStringLiteral("workspace"), false);
+    m_desktop->resetWorkspaceCounts();
+
+    m_dispatcher->onThumbWheelReleased();
+    EXPECT_EQ(m_desktop->workspaceEndCount(), 0);
+}
+
+TEST_F(ButtonActionDispatcherFixture, WorkspaceFallbackFiresDesktopPresets) {
+    attachMockSession();
+    m_desktop->setSupportsInteractiveWorkspace(false);
+    m_desktop->scriptResolve("switch-desktop-right",
+                             ButtonAction{ButtonAction::Keystroke,
+                                          QStringLiteral("Ctrl+Super+Right")});
+    m_desktop->scriptResolve("switch-desktop-left",
+                             ButtonAction{ButtonAction::Keystroke,
+                                          QStringLiteral("Ctrl+Super+Left")});
+    m_session->setThumbWheelMode(QStringLiteral("workspace"), false);
+    m_injector->clear();
+
+    m_dispatcher->onThumbWheelRotation(15);
+    EXPECT_EQ(countKeystrokes(*m_injector, QStringLiteral("Ctrl+Super+Right")), 1);
+
+    m_dispatcher->onThumbWheelRotation(-30);
+    EXPECT_EQ(countKeystrokes(*m_injector, QStringLiteral("Ctrl+Super+Left")), 2);
+}
+
+
 
 // --- Thumb wheel accumulator -----------------------------------------------
 

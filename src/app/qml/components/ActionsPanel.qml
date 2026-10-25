@@ -44,10 +44,11 @@ Rectangle {
 
     // Wheel mode options
     readonly property var wheelModes: [
-        { name: "Horizontal scroll", mode: "scroll",  desc: "Native horizontal scrolling" },
-        { name: "Zoom in/out",       mode: "zoom",    desc: "Ctrl + scroll for zoom" },
-        { name: "Volume control",    mode: "volume",  desc: "Adjust system volume" },
-        { name: "No action",         mode: "none",    desc: "Disable thumb wheel" },
+        { name: "Horizontal scroll", mode: "scroll",    desc: "Native horizontal scrolling" },
+        { name: "Zoom in/out",       mode: "zoom",      desc: "Ctrl + scroll for zoom" },
+        { name: "Volume control",    mode: "volume",    desc: "Adjust system volume" },
+        { name: "Switch desktops",   mode: "workspace", desc: "Scrub workspaces like a trackpad swipe" },
+        { name: "No action",         mode: "none",      desc: "Disable thumb wheel" },
     ]
 
     // ── Geometry — percentage-based width ──────────────────────────────────
@@ -150,7 +151,8 @@ Rectangle {
         ListView {
             id: wheelList
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillHeight: !workspaceWheelOptions.visible
+            Layout.preferredHeight: workspaceWheelOptions.visible ? 220 : -1
             Layout.topMargin: 12
             visible: root.isWheel
             clip: true
@@ -209,6 +211,118 @@ Rectangle {
                         }
                     }
                 }
+            }
+        }
+
+        // Workspace scrub options (direction + commit threshold)
+        ColumnLayout {
+            id: workspaceWheelOptions
+            Layout.fillWidth: true
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
+            Layout.topMargin: 8
+            Layout.bottomMargin: 16
+            spacing: 14
+            visible: root.isWheel && DeviceModel.thumbWheelMode === "workspace"
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Theme.border
+            }
+
+            Text {
+                text: "Direction"
+                font.pixelSize: 13
+                font.bold: true
+                color: Theme.text
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Repeater {
+                    model: [
+                        { label: "Normal", inverted: false },
+                        { label: "Inverted", inverted: true }
+                    ]
+
+                    delegate: Rectangle {
+                        Layout.fillWidth: true
+                        height: 36
+                        radius: 4
+                        readonly property bool selected: DeviceModel.thumbWheelInvert === modelData.inverted
+                        color: selected ? Theme.accent : (dirHover.hovered ? Theme.hoverBg : Theme.inputBg)
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: modelData.label
+                            font.pixelSize: 13
+                            font.bold: parent.selected
+                            color: parent.selected ? Theme.activeTabText : Theme.text
+                        }
+
+                        HoverHandler { id: dirHover }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: DeviceModel.setThumbWheelInvert(modelData.inverted)
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                Text {
+                    text: "Switch after"
+                    font.pixelSize: 13
+                    font.bold: true
+                    color: Theme.text
+                    Layout.fillWidth: true
+                }
+
+                Text {
+                    text: Math.round(snapSlider.value) + "%"
+                    font.pixelSize: 13
+                    color: Theme.text
+                }
+            }
+
+            LogituneSlider {
+                id: snapSlider
+                Layout.fillWidth: true
+                from: 10
+                to: 90
+                stepSize: 5
+                value: DeviceModel.workspaceSnapPercent
+
+                Connections {
+                    target: snapSlider
+                    function onPressedChanged() {
+                        if (!snapSlider.pressed)
+                            DeviceModel.setWorkspaceSnapPercent(Math.round(snapSlider.value))
+                    }
+                }
+                Connections {
+                    target: DeviceModel
+                    function onWorkspaceSnapPercentChanged() {
+                        if (!snapSlider.pressed)
+                            snapSlider.value = DeviceModel.workspaceSnapPercent
+                    }
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: "Lower values switch with less thumb travel. 50% matches classic midpoint snap."
+                font.pixelSize: 12
+                color: Theme.text
+                opacity: 0.65
             }
         }
 

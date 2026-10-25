@@ -21,8 +21,10 @@ struct Profile {
     bool hiResScroll = true;
     std::array<ButtonAction, 16> buttons;  // indexed by ControlDescriptor::buttonIndex
     std::map<QString, ButtonAction> gestures;  // "up","down","left","right","click"
-    QString thumbWheelMode = "scroll";  // "scroll", "zoom", "volume", "none"
+    QString thumbWheelMode = "scroll";  // "scroll", "zoom", "volume", "workspace", "none"
     bool thumbWheelInvert = false;
+    /// Commit workspace switch after this fraction of travel (10–90). Default 50.
+    int workspaceSnapPercent = 50;
 };
 
 struct ProfileDelta {

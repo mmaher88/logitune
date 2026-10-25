@@ -666,13 +666,15 @@ void DeviceSession::handleNotification(const hidpp::Report &report)
         }
     }
 
-    // ThumbWheel notification
+    // ThumbWheel notification (0x2150 diverted thumbwheelEvent)
     if (m_features && m_features->hasFeature(hidpp::FeatureId::ThumbWheel)) {
         auto idx = m_features->featureIndex(hidpp::FeatureId::ThumbWheel);
         if (idx.has_value() && report.featureIndex == *idx) {
-            int16_t rotation = static_cast<int16_t>(
-                (static_cast<uint16_t>(report.params[0]) << 8) | report.params[1]);
-            emit thumbWheelRotation(rotation);
+            const auto evt = hidpp::features::ThumbWheel::parseEvent(report);
+            if (evt.rotation != 0)
+                emit thumbWheelRotation(evt.rotation);
+            if (evt.rotationStatus == hidpp::features::ThumbWheelRotationStatus::Stop)
+                emit thumbWheelReleased();
             return;
         }
     }
@@ -861,16 +863,19 @@ void DeviceSession::setThumbWheelMode(const QString &mode, bool invert)
         return;
 
     bool divert = (mode != "scroll");
+    // Workspace scrub applies invert in software so the UI toggle is the
+    // single source of truth (avoids fighting a hard-coded extension flip).
+    const bool hwInvert = (mode == QLatin1String("workspace")) ? false : invert;
 
     std::array<uint8_t, 2> twParams = {
         static_cast<uint8_t>(divert ? 0x01 : 0x00),
-        static_cast<uint8_t>(invert ? 0x01 : 0x00)
+        static_cast<uint8_t>(hwInvert ? 0x01 : 0x00)
     };
     m_commandProcessor->enqueue(hidpp::FeatureId::ThumbWheel, 0x02,
                             std::span<const uint8_t>(twParams),
-                            [divert, invert](const hidpp::Report &) {
+                            [divert, hwInvert](const hidpp::Report &) {
                                 qCDebug(lcDevice) << "thumb wheel setReporting confirmed:"
-                                                   << "divert=" << divert << "invert=" << invert;
+                                                   << "divert=" << divert << "invert=" << hwInvert;
                             });
 }
 

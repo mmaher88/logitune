@@ -204,7 +204,8 @@ void ProfileOrchestrator::onDisplayProfileChanged(const QString &serial, const P
     m_deviceModel->setDisplayValues(
         profile.dpi, profile.smartShiftEnabled, profile.smartShiftThreshold,
         profile.hiResScroll, profile.scrollDirection == "natural",
-        profile.thumbWheelMode, profile.thumbWheelInvert);
+        profile.thumbWheelMode, profile.thumbWheelInvert,
+        profile.workspaceSnapPercent);
 
     restoreButtonModelFromProfile(profile);
 }
@@ -253,7 +254,8 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
         if (ctrl.controlId == 0) {
             static const QMap<QString, QString> kWheelNames = {
                 {"scroll", "Horizontal scroll"}, {"zoom", "Zoom in/out"},
-                {"volume", "Volume control"}, {"none", "No action"}
+                {"volume", "Volume control"}, {"workspace", "Switch desktops"},
+                {"none", "No action"}
             };
             QString wheelName = kWheelNames.value(p.thumbWheelMode, p.thumbWheelMode);
             QString wheelType = (p.thumbWheelMode == "scroll") ? "default" : "wheel-mode";
@@ -401,7 +403,7 @@ void ProfileOrchestrator::pushDisplayValues(const Profile &p)
     m_deviceModel->setDisplayValues(
         p.dpi, p.smartShiftEnabled, p.smartShiftThreshold,
         p.hiResScroll, p.scrollDirection == "natural", p.thumbWheelMode,
-        p.thumbWheelInvert);
+        p.thumbWheelInvert, p.workspaceSnapPercent);
 }
 
 } // namespace logitune

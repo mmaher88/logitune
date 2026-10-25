@@ -708,7 +708,7 @@ void DeviceModel::refreshFromActiveDevice()
 
 void DeviceModel::setDisplayValues(int dpi, bool smartShiftEnabled, int smartShiftThreshold,
                                     bool scrollHiRes, bool scrollInvert, const QString &thumbWheelMode,
-                                    bool thumbWheelInvert)
+                                    bool thumbWheelInvert, int workspaceSnapPercent)
 {
     m_displayDpi = dpi;
     m_displaySmartShiftEnabled = smartShiftEnabled;
@@ -717,12 +717,14 @@ void DeviceModel::setDisplayValues(int dpi, bool smartShiftEnabled, int smartShi
     m_displayScrollInvert = scrollInvert;
     m_displayThumbWheelMode = thumbWheelMode;
     m_displayThumbWheelInvert = thumbWheelInvert;
+    m_displayWorkspaceSnapPercent = qBound(workspaceSnapPercent, 10, 90);
     m_hasDisplayValues = true;
     emit currentDPIChanged();
     emit smartShiftEnabledChanged();
     emit smartShiftThresholdChanged();
     emit scrollConfigChanged();
     emit thumbWheelModeChanged();
+    emit workspaceSnapPercentChanged();
     emit settingsReloaded();
 }
 
@@ -777,6 +779,18 @@ void DeviceModel::setThumbWheelMode(const QString &mode)
 void DeviceModel::setThumbWheelInvert(bool invert)
 {
     emit thumbWheelInvertChangeRequested(invert);
+}
+
+int DeviceModel::workspaceSnapPercent() const
+{
+    if (m_hasDisplayValues)
+        return m_displayWorkspaceSnapPercent;
+    return 50;
+}
+
+void DeviceModel::setWorkspaceSnapPercent(int percent)
+{
+    emit workspaceSnapPercentChangeRequested(qBound(percent, 10, 90));
 }
 
 void DeviceModel::setGestureAction(const QString &direction,
