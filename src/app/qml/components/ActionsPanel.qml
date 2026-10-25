@@ -660,7 +660,7 @@ Rectangle {
                             radius: 4
 
                             readonly property bool isCurrent:
-                                DeviceModel.gestureActionName(gestureCol.expandedDirection).length === 0
+                                DeviceModel.gestureActionName(root.buttonId, gestureCol.expandedDirection).length === 0
 
                             color: isCurrent
                                 ? Theme.accent
@@ -680,6 +680,7 @@ Rectangle {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     DeviceModel.setGestureAction(
+                                        root.buttonId,
                                         gestureCol.expandedDirection, "", "none", "")
                                     gestureCol.expandedDirection = ""
                                 }
@@ -730,7 +731,7 @@ Rectangle {
 
                                     readonly property bool isCurrent: {
                                         if (gestureRoot._gestureRefresh < 0) return false
-                                        var bound = DeviceModel.gestureActionName(gestureCol.expandedDirection)
+                                        var bound = DeviceModel.gestureActionName(root.buttonId, gestureCol.expandedDirection)
                                         if (bound.length === 0) return false
                                         if (name === bound) return true
                                         // Highlight "Keyboard shortcut" when the bound name is a
@@ -763,6 +764,7 @@ Rectangle {
                                                 pickerRoot.subFlow = "keystroke"
                                             } else {
                                                 DeviceModel.setGestureAction(
+                                                    root.buttonId,
                                                     gestureCol.expandedDirection,
                                                     name, actionType, payload)
                                                 gestureCol.expandedDirection = ""
@@ -794,6 +796,7 @@ Rectangle {
                             onKeystrokeCaptured: function(ks) {
                                 if (ks.length > 0) {
                                     DeviceModel.setGestureAction(
+                                        root.buttonId,
                                         gestureCol.expandedDirection,
                                         ks, "keystroke", ks)
                                     gestureCol.expandedDirection = ""
@@ -915,7 +918,7 @@ Rectangle {
                                         for (var i = 0; i < dirs.length; i++) {
                                             var d = dirs[i]
                                             var preset = modelData[d]
-                                            DeviceModel.setGestureAction(d, preset.name, preset.type, preset.payload)
+                                            DeviceModel.setGestureAction(root.buttonId, d, preset.name, preset.type, preset.payload)
                                         }
                                     }
                                 }
@@ -956,7 +959,7 @@ Rectangle {
                                 border.color: gestureRowHover.hovered ? Theme.accentHover : Theme.border
                                 border.width: 1
 
-                                readonly property string actionName: gestureRoot._gestureRefresh >= 0 ? DeviceModel.gestureActionName(modelData.key) : ""
+                                readonly property string actionName: gestureRoot._gestureRefresh >= 0 ? DeviceModel.gestureActionName(root.buttonId, modelData.key) : ""
 
                                 RowLayout {
                                     anchors { fill: parent; leftMargin: 10; rightMargin: 10 }

@@ -153,11 +153,13 @@ protected:
 
     void setProfileGesture(const QString &profileName,
                            const QString &direction,
-                           const QString &keystroke)
+                           const QString &keystroke,
+                           int buttonIndex = 5)
     {
         const QString kSerial = QStringLiteral("mock-serial");
         Profile &p = m_ctrl->m_profileEngine.cachedProfile(kSerial, profileName);
-        p.gestures[direction] = ButtonAction{ButtonAction::Keystroke, keystroke};
+        p.buttonGestures[buttonIndex][direction] =
+            ButtonAction{ButtonAction::Keystroke, keystroke};
         m_ctrl->m_profileEngine.saveProfileToDisk(kSerial, profileName);
     }
 

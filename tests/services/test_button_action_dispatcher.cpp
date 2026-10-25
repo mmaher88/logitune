@@ -53,7 +53,7 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseBelowThresholdDispatchesClic
     attachMockSession();
     setProfileButton(hwProfile(), 5,
         ButtonAction{ButtonAction::GestureTrigger, {}});
-    hwProfile().gestures["click"] = ButtonAction{ButtonAction::Keystroke,
+    hwProfile().buttonGestures[5]["click"] = ButtonAction{ButtonAction::Keystroke,
                                                  QStringLiteral("Super+W")};
 
     m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
@@ -68,7 +68,7 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseRightDispatchesRightKeystrok
     attachMockSession();
     setProfileButton(hwProfile(), 5,
         ButtonAction{ButtonAction::GestureTrigger, {}});
-    hwProfile().gestures["right"] = ButtonAction{ButtonAction::Keystroke,
+    hwProfile().buttonGestures[5]["right"] = ButtonAction{ButtonAction::Keystroke,
                                                  QStringLiteral("Ctrl+Super+Right")};
 
     m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
@@ -83,7 +83,7 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseLeftDispatchesLeftKeystroke)
     attachMockSession();
     setProfileButton(hwProfile(), 5,
         ButtonAction{ButtonAction::GestureTrigger, {}});
-    hwProfile().gestures["left"] = ButtonAction{ButtonAction::Keystroke,
+    hwProfile().buttonGestures[5]["left"] = ButtonAction{ButtonAction::Keystroke,
                                                 QStringLiteral("Ctrl+Super+Left")};
 
     m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
@@ -98,7 +98,7 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseDownDispatchesDownKeystroke)
     attachMockSession();
     setProfileButton(hwProfile(), 5,
         ButtonAction{ButtonAction::GestureTrigger, {}});
-    hwProfile().gestures["down"] = ButtonAction{ButtonAction::Keystroke,
+    hwProfile().buttonGestures[5]["down"] = ButtonAction{ButtonAction::Keystroke,
                                                 QStringLiteral("Super+D")};
 
     m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
@@ -112,7 +112,7 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseUpDispatchesUpKeystroke) {
     attachMockSession();
     setProfileButton(hwProfile(), 5,
         ButtonAction{ButtonAction::GestureTrigger, {}});
-    hwProfile().gestures["up"] = ButtonAction{ButtonAction::Keystroke,
+    hwProfile().buttonGestures[5]["up"] = ButtonAction{ButtonAction::Keystroke,
                                               QStringLiteral("Super+Up")};
 
     m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
@@ -366,7 +366,7 @@ TEST_F(ButtonActionDispatcherFixture, GesturePresetResolvesViaDesktopAndFiresKey
         ButtonAction{ButtonAction::GestureTrigger, {}});
     m_desktop->scriptResolve("show-desktop",
                              ButtonAction{ButtonAction::Keystroke, "Super+D"});
-    hwProfile().gestures["down"] =
+    hwProfile().buttonGestures[5]["down"] =
         ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")};
 
     // Trigger a gesture-down release: press the gesture button, accumulate
@@ -388,7 +388,7 @@ TEST_F(ButtonActionDispatcherFixture, GesturePresetResolvedToDBusFiresDBus) {
     m_desktop->scriptResolve("show-desktop",
                              ButtonAction{ButtonAction::DBus,
                                           "org.x,/path,org.x.Iface,method"});
-    hwProfile().gestures["down"] =
+    hwProfile().buttonGestures[5]["down"] =
         ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")};
 
     m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
@@ -405,7 +405,7 @@ TEST_F(ButtonActionDispatcherFixture, GesturePresetUnresolvedFiresNothing) {
     setProfileButton(hwProfile(), 5,
         ButtonAction{ButtonAction::GestureTrigger, {}});
     // No scriptResolve -> nullopt
-    hwProfile().gestures["down"] =
+    hwProfile().buttonGestures[5]["down"] =
         ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")};
 
     m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
@@ -416,4 +416,27 @@ TEST_F(ButtonActionDispatcherFixture, GesturePresetUnresolvedFiresNothing) {
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
     EXPECT_FALSE(m_injector->hasCalled("sendDBusCall"));
     EXPECT_FALSE(m_injector->hasCalled("launchApp"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, PerButtonGesturesAreIndependent) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    setProfileButton(hwProfile(), 3,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    hwProfile().buttonGestures[5]["down"] =
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Super+D")};
+    hwProfile().buttonGestures[3]["down"] =
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+Z")};
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(0, 80);
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Super+D"));
+
+    m_injector->clear();
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    m_dispatcher->onGestureRaw(0, 80);
+    m_dispatcher->onDivertedButtonPressed(kBackCid, false);
+    EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Ctrl+Z"));
 }

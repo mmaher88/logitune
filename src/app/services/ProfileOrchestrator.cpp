@@ -101,10 +101,21 @@ void ProfileOrchestrator::setupProfileForDevice(PhysicalDevice *device)
                 else if (ctrl.defaultActionType == "dpi-cycle")
                     seed.buttons[i] = {ButtonAction::DpiCycle, {}};
             }
+            // Independent copy of device defaults per GestureTrigger button.
             const auto defaultGestures = m_currentDevice->defaultGestures();
+            GestureMap defaultsMap;
             for (auto it = defaultGestures.begin();
                  it != defaultGestures.end(); ++it) {
-                seed.gestures[it.key()] = it.value();
+                defaultsMap[it.key()] = it.value();
+            }
+            for (int i = 0;
+                 i < static_cast<int>(controls.size()) &&
+                 i < static_cast<int>(seed.buttons.size()); ++i) {
+                if (seed.buttons[static_cast<std::size_t>(i)].type
+                        != ButtonAction::GestureTrigger)
+                    continue;
+                const int btnIdx = controls[i].buttonIndex;
+                seed.buttonGestures[btnIdx] = defaultsMap;
             }
         }
         ProfileEngine::saveProfile(defaultConf, seed);
@@ -150,6 +161,21 @@ void ProfileOrchestrator::onUserButtonChanged(int buttonId,
                                               const QString &actionType)
 {
     Q_UNUSED(actionName)
+
+    // First time a button is assigned Gestures: seed its own direction map
+    // from device defaults (Options+-style independent bindings).
+    if (actionType == QLatin1String("gesture-trigger")
+            && m_currentDevice && m_deviceModel && m_actionModel) {
+        QMap<QString, GestureEntry> entries;
+        const auto defaults = m_currentDevice->defaultGestures();
+        for (auto it = defaults.begin(); it != defaults.end(); ++it) {
+            if (it.value().type == ButtonAction::Default)
+                continue;
+            entries[it.key()] = GestureEntry{
+                m_actionModel->buttonActionToName(it.value()), it.value()};
+        }
+        m_deviceModel->seedGesturesForButton(buttonId, entries);
+    }
 
     saveCurrentProfile();
 
@@ -314,19 +340,20 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
 
     m_buttonModel->loadFromProfile(assignments);
 
-    // Translate the profile's per-direction ButtonAction map into the
-    // GestureEntry map the DeviceModel exposes to QML. The display name is
-    // resolved via ActionModel::buttonActionToName so it works for both
-    // PresetRef ("show-desktop" -> "Show desktop") and Keystroke
-    // ("Super+D" -> "Show desktop") payloads.
-    QMap<QString, GestureEntry> gestureMap;
-    for (auto it = p.gestures.begin(); it != p.gestures.end(); ++it) {
-        if (it->second.type == ButtonAction::Default)
-            continue;
-        QString name = m_actionModel->buttonActionToName(it->second);
-        gestureMap[it->first] = GestureEntry{name, it->second};
+    // Translate per-button gesture maps into DeviceModel's QML-facing form.
+    // Display names resolve via ActionModel for PresetRef and Keystroke.
+    QMap<int, QMap<QString, GestureEntry>> gestureMaps;
+    for (const auto &[btnIdx, gestureMap] : p.buttonGestures) {
+        QMap<QString, GestureEntry> entries;
+        for (const auto &[dir, ba] : gestureMap) {
+            if (ba.type == ButtonAction::Default)
+                continue;
+            entries[dir] = GestureEntry{m_actionModel->buttonActionToName(ba), ba};
+        }
+        if (!entries.isEmpty())
+            gestureMaps[btnIdx] = entries;
     }
-    m_deviceModel->loadGesturesFromProfile(gestureMap);
+    m_deviceModel->loadGesturesFromProfile(gestureMaps);
 }
 
 void ProfileOrchestrator::applyProfileToHardware(const Profile &p)
@@ -385,12 +412,28 @@ void ProfileOrchestrator::saveCurrentProfile()
         }
     }
 
-    for (const auto &dir : {"up", "down", "left", "right", "click"}) {
-        const auto ba = m_deviceModel->gestureAction(dir);
-        if (ba.type != ButtonAction::Default)
-            p.gestures[dir] = ba;
-        else
-            p.gestures.erase(dir);
+    // Persist only gesture maps for buttons still assigned Gestures.
+    p.buttonGestures.clear();
+    if (m_currentDevice) {
+        static const char *kDirs[] = {"up", "down", "left", "right", "click"};
+        const auto controls = m_currentDevice->controls();
+        for (const auto &ctrl : controls) {
+            if (ctrl.controlId == 0)
+                continue;
+            const int btnIdx = ctrl.buttonIndex;
+            if (m_buttonModel->actionTypeForButton(btnIdx)
+                    != QLatin1String("gesture-trigger"))
+                continue;
+            GestureMap &gmap = p.buttonGestures[btnIdx];
+            for (const char *dir : kDirs) {
+                const auto ba = m_deviceModel->gestureAction(
+                    btnIdx, QString::fromLatin1(dir));
+                if (ba.type != ButtonAction::Default)
+                    gmap[QString::fromLatin1(dir)] = ba;
+            }
+            if (gmap.empty())
+                p.buttonGestures.erase(btnIdx);
+        }
     }
 
     m_profileEngine->saveProfileToDisk(serial, name);

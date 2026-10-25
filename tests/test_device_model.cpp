@@ -96,21 +96,22 @@ TEST_F(DeviceModelTest, SetThumbWheelModeEmitsRequest) {
 
 TEST_F(DeviceModelTest, SetGestureActionEmitsUserGestureChanged) {
     QSignalSpy spy(&model, &DeviceModel::userGestureChanged);
-    model.setGestureAction(QStringLiteral("left"),
+    model.setGestureAction(5, QStringLiteral("left"),
                            QStringLiteral("Undo"),
                            QStringLiteral("keystroke"),
                            QStringLiteral("Ctrl+Z"));
     ASSERT_EQ(spy.count(), 1);
     QList<QVariant> args = spy.takeFirst();
-    EXPECT_EQ(args.at(0).toString(), QStringLiteral("left"));
-    EXPECT_EQ(args.at(1).toString(), QStringLiteral("Undo"));
-    EXPECT_EQ(args.at(2).toString(), QStringLiteral("keystroke"));
-    EXPECT_EQ(args.at(3).toString(), QStringLiteral("Ctrl+Z"));
+    EXPECT_EQ(args.at(0).toInt(), 5);
+    EXPECT_EQ(args.at(1).toString(), QStringLiteral("left"));
+    EXPECT_EQ(args.at(2).toString(), QStringLiteral("Undo"));
+    EXPECT_EQ(args.at(3).toString(), QStringLiteral("keystroke"));
+    EXPECT_EQ(args.at(4).toString(), QStringLiteral("Ctrl+Z"));
 }
 
 TEST_F(DeviceModelTest, SetGestureActionEmitsGestureChanged) {
     QSignalSpy spy(&model, &DeviceModel::gestureChanged);
-    model.setGestureAction(QStringLiteral("right"),
+    model.setGestureAction(5, QStringLiteral("right"),
                            QString(),
                            QStringLiteral("none"),
                            QString());
@@ -118,19 +119,19 @@ TEST_F(DeviceModelTest, SetGestureActionEmitsGestureChanged) {
 }
 
 TEST_F(DeviceModelTest, SetGestureActionPresetRoundTrips) {
-    model.setGestureAction(QStringLiteral("down"),
+    model.setGestureAction(5, QStringLiteral("down"),
                            QStringLiteral("Show desktop"),
                            QStringLiteral("preset"),
                            QStringLiteral("show-desktop"));
 
-    EXPECT_EQ(model.gestureActionName(QStringLiteral("down")),
+    EXPECT_EQ(model.gestureActionName(5, QStringLiteral("down")),
               QStringLiteral("Show desktop"));
-    EXPECT_EQ(model.gestureActionType(QStringLiteral("down")),
+    EXPECT_EQ(model.gestureActionType(5, QStringLiteral("down")),
               QStringLiteral("preset"));
-    EXPECT_EQ(model.gestureActionPayload(QStringLiteral("down")),
+    EXPECT_EQ(model.gestureActionPayload(5, QStringLiteral("down")),
               QStringLiteral("show-desktop"));
 
-    const auto ba = model.gestureAction(QStringLiteral("down"));
+    const auto ba = model.gestureAction(5, QStringLiteral("down"));
     EXPECT_EQ(ba.type, ButtonAction::PresetRef);
     EXPECT_EQ(ba.payload, QStringLiteral("show-desktop"));
 }
@@ -138,18 +139,34 @@ TEST_F(DeviceModelTest, SetGestureActionPresetRoundTrips) {
 TEST_F(DeviceModelTest, SetGestureActionNoneClearsBinding) {
     // Seed a binding, then clear it via the "none" sentinel and verify the
     // accessors all report it as cleared.
-    model.setGestureAction(QStringLiteral("up"),
+    model.setGestureAction(5, QStringLiteral("up"),
                            QStringLiteral("Undo"),
                            QStringLiteral("keystroke"),
                            QStringLiteral("Ctrl+Z"));
-    model.setGestureAction(QStringLiteral("up"),
+    model.setGestureAction(5, QStringLiteral("up"),
                            QString(),
                            QStringLiteral("none"),
                            QString());
-    EXPECT_TRUE(model.gestureActionName(QStringLiteral("up")).isEmpty());
-    EXPECT_TRUE(model.gestureActionType(QStringLiteral("up")).isEmpty());
-    EXPECT_TRUE(model.gestureActionPayload(QStringLiteral("up")).isEmpty());
-    EXPECT_EQ(model.gestureAction(QStringLiteral("up")).type, ButtonAction::Default);
+    EXPECT_TRUE(model.gestureActionName(5, QStringLiteral("up")).isEmpty());
+    EXPECT_TRUE(model.gestureActionType(5, QStringLiteral("up")).isEmpty());
+    EXPECT_TRUE(model.gestureActionPayload(5, QStringLiteral("up")).isEmpty());
+    EXPECT_EQ(model.gestureAction(5, QStringLiteral("up")).type, ButtonAction::Default);
+}
+
+TEST_F(DeviceModelTest, GestureActionsAreIndependentPerButton) {
+    model.setGestureAction(5, QStringLiteral("down"),
+                           QStringLiteral("Show desktop"),
+                           QStringLiteral("keystroke"),
+                           QStringLiteral("Super+D"));
+    model.setGestureAction(3, QStringLiteral("down"),
+                           QStringLiteral("Undo"),
+                           QStringLiteral("keystroke"),
+                           QStringLiteral("Ctrl+Z"));
+
+    EXPECT_EQ(model.gestureActionPayload(5, QStringLiteral("down")),
+              QStringLiteral("Super+D"));
+    EXPECT_EQ(model.gestureActionPayload(3, QStringLiteral("down")),
+              QStringLiteral("Ctrl+Z"));
 }
 
 // ---------------------------------------------------------------------------
@@ -158,10 +175,10 @@ TEST_F(DeviceModelTest, SetGestureActionNoneClearsBinding) {
 
 TEST_F(DeviceModelTest, LoadGesturesEmitsGestureChanged) {
     QSignalSpy spy(&model, &DeviceModel::gestureChanged);
-    QMap<QString, GestureEntry> gestures;
-    gestures[QStringLiteral("up")]   = {QStringLiteral("Copy"),
+    QMap<int, QMap<QString, GestureEntry>> gestures;
+    gestures[5][QStringLiteral("up")]   = {QStringLiteral("Copy"),
         ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+C")}};
-    gestures[QStringLiteral("down")] = {QString(),
+    gestures[5][QStringLiteral("down")] = {QString(),
         ButtonAction{ButtonAction::Default, {}}};
     model.loadGesturesFromProfile(gestures);
     ASSERT_EQ(spy.count(), 1);
@@ -169,11 +186,24 @@ TEST_F(DeviceModelTest, LoadGesturesEmitsGestureChanged) {
 
 TEST_F(DeviceModelTest, LoadGesturesDoesNotEmitUserGestureChanged) {
     QSignalSpy spy(&model, &DeviceModel::userGestureChanged);
-    QMap<QString, GestureEntry> gestures;
-    gestures[QStringLiteral("up")] = {QStringLiteral("Paste"),
+    QMap<int, QMap<QString, GestureEntry>> gestures;
+    gestures[5][QStringLiteral("up")] = {QStringLiteral("Paste"),
         ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+V")}};
     model.loadGesturesFromProfile(gestures);
     EXPECT_EQ(spy.count(), 0);
+}
+
+TEST_F(DeviceModelTest, SeedGesturesForButtonDoesNotOverwrite) {
+    model.setGestureAction(5, QStringLiteral("up"),
+                           QStringLiteral("Undo"),
+                           QStringLiteral("keystroke"),
+                           QStringLiteral("Ctrl+Z"));
+    QMap<QString, GestureEntry> defaults;
+    defaults[QStringLiteral("up")] = {QStringLiteral("Copy"),
+        ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+C")}};
+    model.seedGesturesForButton(5, defaults);
+    EXPECT_EQ(model.gestureActionPayload(5, QStringLiteral("up")),
+              QStringLiteral("Ctrl+Z"));
 }
 
 // ---------------------------------------------------------------------------
@@ -181,20 +211,20 @@ TEST_F(DeviceModelTest, LoadGesturesDoesNotEmitUserGestureChanged) {
 // ---------------------------------------------------------------------------
 
 TEST_F(DeviceModelTest, GestureLookup) {
-    QMap<QString, GestureEntry> gestures;
-    gestures[QStringLiteral("left")] = {QStringLiteral("Back"),
+    QMap<int, QMap<QString, GestureEntry>> gestures;
+    gestures[5][QStringLiteral("left")] = {QStringLiteral("Back"),
         ButtonAction{ButtonAction::Keystroke, QStringLiteral("Alt+Left")}};
     model.loadGesturesFromProfile(gestures);
 
-    EXPECT_EQ(model.gestureActionName(QStringLiteral("left")), QStringLiteral("Back"));
-    EXPECT_EQ(model.gestureActionType(QStringLiteral("left")), QStringLiteral("keystroke"));
-    EXPECT_EQ(model.gestureActionPayload(QStringLiteral("left")), QStringLiteral("Alt+Left"));
+    EXPECT_EQ(model.gestureActionName(5, QStringLiteral("left")), QStringLiteral("Back"));
+    EXPECT_EQ(model.gestureActionType(5, QStringLiteral("left")), QStringLiteral("keystroke"));
+    EXPECT_EQ(model.gestureActionPayload(5, QStringLiteral("left")), QStringLiteral("Alt+Left"));
 }
 
 TEST_F(DeviceModelTest, GestureLookupMissReturnsEmpty) {
-    EXPECT_TRUE(model.gestureActionName(QStringLiteral("unknown")).isEmpty());
-    EXPECT_TRUE(model.gestureActionPayload(QStringLiteral("unknown")).isEmpty());
-    EXPECT_TRUE(model.gestureActionType(QStringLiteral("unknown")).isEmpty());
+    EXPECT_TRUE(model.gestureActionName(5, QStringLiteral("unknown")).isEmpty());
+    EXPECT_TRUE(model.gestureActionPayload(5, QStringLiteral("unknown")).isEmpty());
+    EXPECT_TRUE(model.gestureActionType(5, QStringLiteral("unknown")).isEmpty());
 }
 
 // ---------------------------------------------------------------------------

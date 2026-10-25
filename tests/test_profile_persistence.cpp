@@ -19,8 +19,8 @@ TEST_F(ProfilePersistenceTest, SaveAndReloadPreservesAllFields) {
     p.buttons[3] = {ButtonAction::Keystroke, "Alt+Left"};
     p.buttons[5] = {ButtonAction::GestureTrigger, {}};
     p.buttons[6] = {ButtonAction::SmartShiftToggle, {}};
-    p.gestures["up"] = {ButtonAction::Keystroke, "Super+Up"};
-    p.gestures["down"] = {ButtonAction::Keystroke, "Super+D"};
+    p.buttonGestures[5]["up"] = {ButtonAction::Keystroke, "Super+Up"};
+    p.buttonGestures[5]["down"] = {ButtonAction::Keystroke, "Super+D"};
 
     QString path = tmpPath() + "/test.conf";
     ProfileEngine::saveProfile(path, p);
@@ -36,8 +36,8 @@ TEST_F(ProfilePersistenceTest, SaveAndReloadPreservesAllFields) {
     EXPECT_EQ(loaded.buttons[3].payload, "Alt+Left");
     EXPECT_EQ(loaded.buttons[5].type, ButtonAction::GestureTrigger);
     EXPECT_EQ(loaded.buttons[6].type, ButtonAction::SmartShiftToggle);
-    EXPECT_EQ(loaded.gestures.at("up").payload, "Super+Up");
-    EXPECT_EQ(loaded.gestures.at("down").payload, "Super+D");
+    EXPECT_EQ(loaded.buttonGestures.at(5).at("up").payload, "Super+Up");
+    EXPECT_EQ(loaded.buttonGestures.at(5).at("down").payload, "Super+D");
 }
 
 TEST_F(ProfilePersistenceTest, AllButtonActionTypesSurviveRoundTrip) {

@@ -87,15 +87,20 @@ void AppRoot::init()
         qCWarning(lcApp) << "UinputInjector: uinput init failed (no /dev/uinput access?). Keystrokes will not be injected.";
     }
 
-    QMap<QString, GestureEntry> defaultGestures;
-    defaultGestures["down"]  = {QStringLiteral("Show desktop"),
+    // Bootstrap gesture defaults for the common gesture button (index 5)
+    // until a device profile is pushed. Per-button maps are loaded from the
+    // profile once a device connects.
+    QMap<QString, GestureEntry> defaultDirs;
+    defaultDirs[QStringLiteral("down")]  = {QStringLiteral("Show desktop"),
         ButtonAction{ButtonAction::Keystroke, QStringLiteral("Super+D")}};
-    defaultGestures["left"]  = {QStringLiteral("Switch desktop left"),
+    defaultDirs[QStringLiteral("left")]  = {QStringLiteral("Switch desktop left"),
         ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+Super+Left")}};
-    defaultGestures["right"] = {QStringLiteral("Switch desktop right"),
+    defaultDirs[QStringLiteral("right")] = {QStringLiteral("Switch desktop right"),
         ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+Super+Right")}};
-    defaultGestures["click"] = {QStringLiteral("Task switcher"),
+    defaultDirs[QStringLiteral("click")] = {QStringLiteral("Task switcher"),
         ButtonAction{ButtonAction::Keystroke, QStringLiteral("Super+W")}};
+    QMap<int, QMap<QString, GestureEntry>> defaultGestures;
+    defaultGestures[5] = defaultDirs;
     m_deviceModel.loadGesturesFromProfile(defaultGestures);
 
     wireSignals();
@@ -171,7 +176,7 @@ void AppRoot::wireSignals()
     // subscription covers point/scroll tweaks from DeviceCommandHandler.
     connect(&m_deviceModel, &DeviceModel::userGestureChanged,
             &m_profileOrchestrator,
-            [this](const QString &, const QString &, const QString &, const QString &) {
+            [this](int, const QString &, const QString &, const QString &, const QString &) {
                 m_profileOrchestrator.saveCurrentProfile();
             });
 
