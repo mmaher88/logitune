@@ -201,3 +201,55 @@ TEST(ThumbWheel, ConstantValues)
     EXPECT_EQ(ThumbWheel::kFnGetConfig, 0x00);
     EXPECT_EQ(ThumbWheel::kFnSetConfig, 0x01);
 }
+
+TEST(ThumbWheel, ParseEventActiveRotation)
+{
+    Report r;
+    r.params[0] = 0x00; // rotation hi
+    r.params[1] = 0x14; // rotation lo = 20
+    r.params[2] = 0x00;
+    r.params[3] = 0x00;
+    r.params[4] = 0x02; // Active
+    r.params[5] = 0x02; // touch
+    r.paramLength = 6;
+
+    auto evt = ThumbWheel::parseEvent(r);
+    EXPECT_EQ(evt.rotation, 20);
+    EXPECT_EQ(evt.rotationStatus, ThumbWheelRotationStatus::Active);
+    EXPECT_TRUE(evt.touch);
+    EXPECT_FALSE(evt.proxy);
+    EXPECT_FALSE(evt.singleTap);
+}
+
+TEST(ThumbWheel, ParseEventStopRelease)
+{
+    Report r;
+    r.params[0] = 0x00;
+    r.params[1] = 0x00;
+    r.params[2] = 0x00;
+    r.params[3] = 0x00;
+    r.params[4] = 0x03; // Stop
+    r.params[5] = 0x00; // touch clear
+    r.paramLength = 6;
+
+    auto evt = ThumbWheel::parseEvent(r);
+    EXPECT_EQ(evt.rotation, 0);
+    EXPECT_EQ(evt.rotationStatus, ThumbWheelRotationStatus::Stop);
+    EXPECT_FALSE(evt.touch);
+}
+
+TEST(ThumbWheel, ParseEventNegativeRotationStart)
+{
+    Report r;
+    r.params[0] = 0xFF; // -1 hi
+    r.params[1] = 0xFF; // -1 lo
+    r.params[4] = 0x01; // Start
+    r.params[5] = 0x06; // touch | proxy
+    r.paramLength = 6;
+
+    auto evt = ThumbWheel::parseEvent(r);
+    EXPECT_EQ(evt.rotation, -1);
+    EXPECT_EQ(evt.rotationStatus, ThumbWheelRotationStatus::Start);
+    EXPECT_TRUE(evt.touch);
+    EXPECT_TRUE(evt.proxy);
+}

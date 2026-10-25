@@ -1,0 +1,7 @@
+{
+  "uuid": "logitune-workspace@logitune.com",
+  "name": "Logitune Workspace Gestures",
+  "description": "Drives interactive GNOME workspace scrubbing for the Logitune thumb wheel (Options+-style switch desktops).",
+  "shell-version": ["42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52"],
+  "version": 4
+}

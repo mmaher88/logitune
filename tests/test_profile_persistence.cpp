@@ -16,6 +16,8 @@ TEST_F(ProfilePersistenceTest, SaveAndReloadPreservesAllFields) {
     p.hiResScroll = false;
     p.scrollDirection = "natural";
     p.thumbWheelMode = "zoom";
+    p.thumbWheelInvert = true;
+    p.workspaceSnapPercent = 25;
     p.buttons[3] = {ButtonAction::Keystroke, "Alt+Left"};
     p.buttons[5] = {ButtonAction::GestureTrigger, {}};
     p.buttons[6] = {ButtonAction::SmartShiftToggle, {}};
@@ -32,6 +34,8 @@ TEST_F(ProfilePersistenceTest, SaveAndReloadPreservesAllFields) {
     EXPECT_FALSE(loaded.hiResScroll);
     EXPECT_EQ(loaded.scrollDirection, "natural");
     EXPECT_EQ(loaded.thumbWheelMode, "zoom");
+    EXPECT_TRUE(loaded.thumbWheelInvert);
+    EXPECT_EQ(loaded.workspaceSnapPercent, 25);
     EXPECT_EQ(loaded.buttons[3].type, ButtonAction::Keystroke);
     EXPECT_EQ(loaded.buttons[3].payload, "Alt+Left");
     EXPECT_EQ(loaded.buttons[5].type, ButtonAction::GestureTrigger);

@@ -6,7 +6,10 @@
 #include "interfaces/IDesktopIntegration.h"
 #include "interfaces/IDevice.h"
 #include "logging/LogManager.h"
+#include <QEasingCurve>
+#include <cmath>
 #include <cstdlib>
+#include <memory>
 
 namespace logitune {
 
@@ -24,7 +27,182 @@ ButtonActionDispatcher::ButtonActionDispatcher(ProfileEngine *profileEngine,
 
 void ButtonActionDispatcher::onDeviceRemoved(const QString &serial)
 {
+    cancelWorkspaceFinish(serial);
+    if (auto *timer = m_workspaceSafetyTimers.take(serial)) {
+        timer->stop();
+        timer->deleteLater();
+    }
+    auto it = m_state.find(serial);
+    if (it != m_state.end() && it->workspaceGestureActive) {
+        it->workspaceGestureActive = false;
+        if (m_desktop)
+            m_desktop->endInteractiveWorkspaceSwitch(50);
+    }
     m_state.remove(serial);
+}
+
+void ButtonActionDispatcher::cancelWorkspaceFinish(const QString &serial)
+{
+    if (auto anim = m_workspaceFinishAnims.take(serial)) {
+        anim->stop();
+        anim->deleteLater();
+    }
+}
+
+QTimer *ButtonActionDispatcher::workspaceSafetyTimer(const QString &serial)
+{
+    auto it = m_workspaceSafetyTimers.find(serial);
+    if (it != m_workspaceSafetyTimers.end())
+        return *it;
+
+    auto *timer = new QTimer(this);
+    timer->setSingleShot(true);
+    timer->setInterval(kWorkspaceSafetyMs);
+    QObject::connect(timer, &QTimer::timeout, this, [this, serial]() {
+        endWorkspaceGesture(serial);
+    });
+    m_workspaceSafetyTimers.insert(serial, timer);
+    return timer;
+}
+
+int ButtonActionDispatcher::workspaceSnapTarget(double progress, int snapPercent)
+{
+    const double thresh = qBound(snapPercent, 10, 90) / 100.0;
+    if (std::abs(progress) < 1e-9)
+        return 0;
+    const int dir = progress > 0.0 ? 1 : -1;
+    const double crossed = std::abs(progress);
+    const double whole = std::floor(crossed);
+    const double frac = crossed - whole;
+    if (whole < 1.0) {
+        // Still within the first workspace of travel from origin.
+        return (crossed >= thresh) ? dir : 0;
+    }
+    const int steps = static_cast<int>(whole) + (frac >= thresh ? 1 : 0);
+    return dir * steps;
+}
+
+void ButtonActionDispatcher::finishWorkspaceGesture(const QString &serial,
+                                                    int snapPercent)
+{
+    auto it = m_state.find(serial);
+    if (it == m_state.end())
+        return;
+    it->workspaceGestureActive = false;
+    it->workspaceProgress = 0.0;
+    m_workspaceFinishAnims.remove(serial);
+    if (m_desktop)
+        m_desktop->endInteractiveWorkspaceSwitch(snapPercent);
+}
+
+void ButtonActionDispatcher::endWorkspaceGesture(const QString &serial)
+{
+    auto it = m_state.find(serial);
+    if (it == m_state.end() || !it->workspaceGestureActive)
+        return;
+    if (m_workspaceFinishAnims.contains(serial))
+        return; // already easing to the snap target
+
+    if (auto *timer = m_workspaceSafetyTimers.value(serial, nullptr))
+        timer->stop();
+    if (!m_desktop) {
+        it->workspaceGestureActive = false;
+        it->workspaceProgress = 0.0;
+        return;
+    }
+
+    int snapPercent = 50;
+    if (m_profileEngine && m_profileEngine->hasDevice(serial)) {
+        const QString hw = m_profileEngine->hardwareProfile(serial);
+        snapPercent = qBound(
+            m_profileEngine->cachedProfile(serial, hw).workspaceSnapPercent, 10, 90);
+    }
+
+    const double from = it->workspaceProgress;
+    const double to = static_cast<double>(workspaceSnapTarget(from, snapPercent));
+    const double distance = std::abs(to - from);
+
+    // Already on the snap point — just close the Shell gesture.
+    if (distance < 0.001) {
+        finishWorkspaceGesture(serial, snapPercent);
+        return;
+    }
+
+    // Ease Updates toward the threshold target, then End — so release
+    // animates instead of jumping (Shell End only closest-snaps).
+    auto *anim = new QVariantAnimation(this);
+    anim->setStartValue(from);
+    anim->setEndValue(to);
+    anim->setDuration(std::max(0, m_workspaceFinishDurationMs));
+    anim->setEasingCurve(QEasingCurve::OutCubic);
+
+    auto last = std::make_shared<double>(from);
+    QObject::connect(anim, &QVariantAnimation::valueChanged, this,
+                     [this, serial, last](const QVariant &value) {
+                         if (!m_desktop)
+                             return;
+                         const double now = value.toDouble();
+                         const int delta = static_cast<int>(std::lround(
+                             (now - *last) * kWorkspaceUnitsPerWorkspace));
+                         *last = now;
+                         if (delta == 0)
+                             return;
+                         auto st = m_state.find(serial);
+                         if (st != m_state.end())
+                             st->workspaceProgress = now;
+                         m_desktop->updateInteractiveWorkspaceSwitch(delta);
+                     });
+    QObject::connect(anim, &QVariantAnimation::finished, this,
+                     [this, serial, snapPercent, anim]() {
+                         anim->deleteLater();
+                         finishWorkspaceGesture(serial, snapPercent);
+                     });
+
+    m_workspaceFinishAnims.insert(serial, anim);
+    anim->start();
+}
+
+void ButtonActionDispatcher::handleWorkspaceThumbWheel(const QString &serial,
+                                                       PerDeviceState &state,
+                                                       int normalized)
+{
+    if (m_desktop && m_desktop->supportsInteractiveWorkspaceSwitch()) {
+        // Ignore wheel input while the release ease is running.
+        if (m_workspaceFinishAnims.contains(serial))
+            return;
+        if (!state.workspaceGestureActive) {
+            m_desktop->beginInteractiveWorkspaceSwitch();
+            state.workspaceGestureActive = true;
+            state.workspaceProgress = 0.0;
+        }
+        state.workspaceProgress +=
+            static_cast<double>(normalized) / kWorkspaceUnitsPerWorkspace;
+        m_desktop->updateInteractiveWorkspaceSwitch(normalized);
+        // Hold scrub while thumb is down; only Stop (or safety timeout) ends.
+        workspaceSafetyTimer(serial)->start();
+        return;
+    }
+
+    // Fallback: one-shot switch-desktop presets per thumb threshold.
+    state.thumbAccum += normalized;
+    if (std::abs(state.thumbAccum) < kThumbThreshold)
+        return;
+    int steps = state.thumbAccum / kThumbThreshold;
+    state.thumbAccum %= kThumbThreshold;
+    if (!m_desktop)
+        return;
+    for (int i = 0; i < std::abs(steps); ++i) {
+        const QString presetId = steps > 0
+            ? QStringLiteral("switch-desktop-right")
+            : QStringLiteral("switch-desktop-left");
+        auto resolved = m_desktop->resolveNamedAction(presetId);
+        if (!resolved.has_value()) {
+            qCWarning(lcApp) << "workspace thumb wheel preset" << presetId
+                             << "not resolvable on" << m_desktop->variantKey();
+            continue;
+        }
+        m_actionExecutor->executeAction(*resolved);
+    }
 }
 
 void ButtonActionDispatcher::onProfileApplied(const QString &serial)
@@ -156,16 +334,37 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     }
 }
 
+void ButtonActionDispatcher::onThumbWheelReleased()
+{
+    auto *session = m_selection ? m_selection->activeSession() : nullptr;
+    if (!session)
+        return;
+    if (session->thumbWheelMode() != QLatin1String("workspace"))
+        return;
+    endWorkspaceGesture(session->deviceId());
+}
+
 void ButtonActionDispatcher::onThumbWheelRotation(int delta)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
-    auto &state = m_state[session->deviceId()];
+    const QString serial = session->deviceId();
+    auto &state = m_state[serial];
 
     const QString &mode = session->thumbWheelMode();
+    // Invert is applied by the device when diverted (setReporting) for
+    // volume/zoom/scroll; workspace applies invert in software instead.
     int normalized = delta * session->thumbWheelDefaultDirection();
+    if (mode == QLatin1String("workspace") && session->thumbWheelInvert())
+        normalized = -normalized;
     qCDebug(lcInput) << "thumbWheel raw=" << delta << "normalized=" << normalized
                       << "mode=" << mode << "invert=" << session->thumbWheelInvert();
+
+    if (mode == QLatin1String("workspace")) {
+        handleWorkspaceThumbWheel(serial, state, normalized);
+        return;
+    }
+
     state.thumbAccum += normalized;
 
     if (std::abs(state.thumbAccum) < kThumbThreshold)

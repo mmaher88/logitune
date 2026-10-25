@@ -119,6 +119,8 @@ signals:
     void divertedButtonPressed(uint16_t controlId, bool pressed);
     void gestureRawXY(int16_t dx, int16_t dy);
     void thumbWheelRotation(int delta);
+    /// Thumb left the wheel (0x2150 rotation_status Stop). Ends hold-to-scrub.
+    void thumbWheelReleased();
     void deviceWoke();
     void unknownDeviceDetected(uint16_t pid);
 

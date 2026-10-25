@@ -219,7 +219,13 @@ Item {
         onWheelModeSelected: function(mode) {
             DeviceModel.setThumbWheelMode(mode)
             // Update callout label
-            var modeNames = {"scroll": "Horizontal scroll", "zoom": "Zoom in/out", "volume": "Volume control", "none": "No action"}
+            var modeNames = {
+                "scroll": "Horizontal scroll",
+                "zoom": "Zoom in/out",
+                "volume": "Volume control",
+                "workspace": "Switch desktops",
+                "none": "No action"
+            }
             ButtonModel.setAction(7, modeNames[mode] || mode, mode === "scroll" ? "default" : "wheel-mode")
         }
     }

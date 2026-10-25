@@ -64,6 +64,7 @@ class DeviceModel : public QAbstractListModel {
     Q_PROPERTY(QString deviceStatus READ deviceStatus NOTIFY selectedChanged)
     Q_PROPERTY(QString thumbWheelMode READ thumbWheelMode NOTIFY thumbWheelModeChanged)
     Q_PROPERTY(bool thumbWheelInvert READ thumbWheelInvert NOTIFY thumbWheelModeChanged)
+    Q_PROPERTY(int workspaceSnapPercent READ workspaceSnapPercent NOTIFY workspaceSnapPercentChanged)
 
 public:
     enum Roles {
@@ -161,6 +162,8 @@ public:
     QString thumbWheelMode() const;
     bool thumbWheelInvert() const;
     Q_INVOKABLE void setThumbWheelInvert(bool invert);
+    int workspaceSnapPercent() const;
+    Q_INVOKABLE void setWorkspaceSnapPercent(int percent);
     Q_INVOKABLE QString gnomeTrayStatus() const;
     Q_INVOKABLE QString appIndicatorInstallCommand() const;
 
@@ -169,7 +172,7 @@ public:
     void setActiveWmClass(const QString &wmClass);
     void setDisplayValues(int dpi, bool smartShiftEnabled, int smartShiftThreshold,
                           bool scrollHiRes, bool scrollInvert, const QString &thumbWheelMode,
-                          bool thumbWheelInvert = false);
+                          bool thumbWheelInvert = false, int workspaceSnapPercent = 50);
 
 public slots:
     // Re-emit selectedChanged so QML bindings that read from the active
@@ -192,6 +195,7 @@ signals:
     void smartShiftThresholdChanged();
     void scrollConfigChanged();
     void thumbWheelModeChanged();
+    void workspaceSnapPercentChanged();
     void settingsReloaded();
     void activeProfileNameChanged();
     void activeWmClassChanged();
@@ -205,6 +209,7 @@ signals:
     void scrollConfigChangeRequested(bool hiRes, bool invert);
     void thumbWheelModeChangeRequested(const QString &mode);
     void thumbWheelInvertChangeRequested(bool invert);
+    void workspaceSnapPercentChangeRequested(int percent);
 
 private:
     PhysicalDevice *selectedDevice() const;
@@ -234,6 +239,7 @@ private:
     bool m_displayScrollInvert = false;
     QString m_displayThumbWheelMode;
     bool m_displayThumbWheelInvert = false;
+    int m_displayWorkspaceSnapPercent = 50;
     bool m_hasDisplayValues = false;
 };
 

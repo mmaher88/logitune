@@ -112,6 +112,13 @@ protected:
     bool hasStateFor(const QString &serial) const {
         return m_dispatcher->m_state.contains(serial);
     }
+    int workspaceSafetyIntervalMs(const QString &serial) const {
+        auto *timer = m_dispatcher->m_workspaceSafetyTimers.value(serial, nullptr);
+        return timer ? timer->interval() : -1;
+    }
+    void setWorkspaceFinishDurationMs(int ms) {
+        m_dispatcher->m_workspaceFinishDurationMs = ms;
+    }
 
     std::unique_ptr<DeviceModel>             m_deviceModel;
     std::unique_ptr<ActiveDeviceResolver>         m_selection;

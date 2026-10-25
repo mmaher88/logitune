@@ -2,6 +2,7 @@
 #include "actions/ActionPresetRegistry.h"
 #include "logging/LogManager.h"
 #include <optional>
+#include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
@@ -18,6 +19,7 @@
 namespace logitune {
 
 static constexpr auto kExtUuid = "logitune-focus@logitune.com";
+static constexpr auto kWorkspaceExtUuid = "logitune-workspace@logitune.com";
 
 GnomeDesktop::GnomeDesktop(QObject *parent)
     : LinuxDesktopBase(parent)
@@ -55,11 +57,17 @@ void GnomeDesktop::start()
     // banner to reflect reality on the user's first launch.
     detectAppIndicatorStatus();
 
-    // Install and enable the extension
+    // Install and enable the focus-watcher extension
     if (!ensureExtensionInstalled()) {
         qCWarning(lcFocus) << "GNOME: failed to install/enable extension";
         m_available = false;
         return;
+    }
+
+    // User-only workspace scrub extension (avoids colliding with a packaged
+    // logitune-focus that Shell prefers from /usr/share).
+    if (!ensureWorkspaceExtensionInstalled()) {
+        qCWarning(lcFocus) << "GNOME: workspace extension install failed";
     }
 
     // Register our D-Bus service so the extension can call us
@@ -68,8 +76,29 @@ void GnomeDesktop::start()
         QStringLiteral("/FocusWatcher"), this,
         QDBusConnection::ExportAllSlots);
 
+    // Probe workspace-gesture D-Bus exported by logitune-workspace.
+    QDBusMessage probe = QDBusMessage::createMethodCall(
+        QStringLiteral("org.gnome.Shell"),
+        QStringLiteral("/com/logitune/WorkspaceGesture"),
+        QStringLiteral("org.freedesktop.DBus.Introspectable"),
+        QStringLiteral("Introspect"));
+    QDBusMessage probeReply =
+        QDBusConnection::sessionBus().call(probe, QDBus::Block, 1000);
+    m_workspaceGestureAvailable = false;
+    if (probeReply.type() == QDBusMessage::ReplyMessage) {
+        const QString xml = probeReply.arguments().value(0).toString();
+        m_workspaceGestureAvailable =
+            xml.contains(QStringLiteral("com.logitune.WorkspaceGesture"));
+    }
+    if (!m_workspaceGestureAvailable) {
+        qCWarning(lcFocus) << "GNOME: workspace gesture D-Bus not available yet "
+                              "(enable logitune-workspace@logitune.com, or log "
+                              "out/in after first install)";
+    }
+
     m_available = true;
-    qCInfo(lcFocus) << "GNOME desktop integration started";
+    qCInfo(lcFocus) << "GNOME desktop integration started"
+                    << "workspaceGesture=" << m_workspaceGestureAvailable;
 }
 
 void GnomeDesktop::detectAppIndicatorStatus()
@@ -132,6 +161,103 @@ void GnomeDesktop::detectAppIndicatorStatus()
                        << "Install: gnome-shell-extension-appindicator";
 }
 
+QString GnomeDesktop::findExtensionSourceDir(const QString &uuid) const
+{
+    QStringList sourceRoots;
+    const QString appDir = QCoreApplication::applicationDirPath();
+    sourceRoots << (appDir + QStringLiteral("/../share/gnome-shell/extensions/") + uuid);
+    sourceRoots << (QStringLiteral("/usr/local/share/gnome-shell/extensions/") + uuid);
+    sourceRoots << (QStringLiteral("/usr/share/gnome-shell/extensions/") + uuid);
+    // Dev tree fallback when running an uninstalled build binary.
+    sourceRoots << (appDir + QStringLiteral("/../../data/gnome-workspace-extension"));
+    sourceRoots << (appDir + QStringLiteral("/../../data/gnome-extension"));
+    sourceRoots << (QDir::homePath()
+                    + QStringLiteral("/.local/share/logitune/gnome-workspace-extension"));
+
+    // ~/.local/bin/logitune resolves ../share/... to the *user* extension install
+    // dir. Never treat that as a source — syncing from it deletes then fails.
+    const QString userInstallDir = QDir(QDir::homePath()
+                                        + QStringLiteral("/.local/share/gnome-shell/extensions/")
+                                        + uuid)
+                                       .canonicalPath();
+
+    for (const QString &root : sourceRoots) {
+        const QString canonical = QDir(root).canonicalPath();
+        if (canonical.isEmpty())
+            continue;
+        if (!userInstallDir.isEmpty() && canonical == userInstallDir)
+            continue;
+        if (QFile::exists(canonical + QStringLiteral("/metadata.json")))
+            return canonical;
+    }
+    return {};
+}
+
+bool GnomeDesktop::syncExtensionToUserDir(const QString &uuid, const QString &sourceDir,
+                                          const QString &variant)
+{
+    const QString userDir = QDir::homePath()
+                            + QStringLiteral("/.local/share/gnome-shell/extensions/")
+                            + uuid;
+    QDir().mkpath(userDir);
+    const QString variantJs = sourceDir + QStringLiteral("/") + variant
+                              + QStringLiteral("/extension.js");
+    const QString rootJs = sourceDir + QStringLiteral("/extension.js");
+    const QString srcJs = QFile::exists(variantJs) ? variantJs : rootJs;
+    if (!QFile::exists(sourceDir + QStringLiteral("/metadata.json"))
+        || !QFile::exists(srcJs)) {
+        qCWarning(lcFocus) << "Incomplete extension source for" << uuid << "in" << sourceDir;
+        return false;
+    }
+    // Stage into temps first so a failed copy never leaves the user dir empty
+    // (which previously broke the session-facing extension until reinstall).
+    const QString tmpMeta = userDir + QStringLiteral("/.metadata.json.new");
+    const QString tmpJs = userDir + QStringLiteral("/.extension.js.new");
+    QFile::remove(tmpMeta);
+    QFile::remove(tmpJs);
+    if (!QFile::copy(sourceDir + QStringLiteral("/metadata.json"), tmpMeta)
+        || !QFile::copy(srcJs, tmpJs)) {
+        qCWarning(lcFocus) << "Failed to stage extension files for" << uuid;
+        QFile::remove(tmpMeta);
+        QFile::remove(tmpJs);
+        return false;
+    }
+    QFile::remove(userDir + QStringLiteral("/metadata.json"));
+    QFile::remove(userDir + QStringLiteral("/extension.js"));
+    if (!QFile::rename(tmpMeta, userDir + QStringLiteral("/metadata.json"))
+        || !QFile::rename(tmpJs, userDir + QStringLiteral("/extension.js"))) {
+        qCWarning(lcFocus) << "Failed to install staged extension files for" << uuid;
+        return false;
+    }
+    qCInfo(lcFocus) << "Synced" << uuid << variant << "from" << sourceDir << "to" << userDir;
+    return true;
+}
+
+bool GnomeDesktop::enableShellExtension(const QString &uuid)
+{
+    QDBusMessage enableMsg = QDBusMessage::createMethodCall(
+        QStringLiteral("org.gnome.Shell.Extensions"),
+        QStringLiteral("/org/gnome/Shell/Extensions"),
+        QStringLiteral("org.gnome.Shell.Extensions"),
+        QStringLiteral("EnableExtension"));
+    enableMsg << uuid;
+    QDBusReply<bool> enableReply =
+        QDBusConnection::sessionBus().call(enableMsg, QDBus::Block, 2000);
+    if (enableReply.isValid() && enableReply.value()) {
+        qCInfo(lcFocus) << "GNOME extension enabled:" << uuid;
+        return true;
+    }
+    QProcess proc;
+    proc.start(QStringLiteral("gnome-extensions"), {QStringLiteral("enable"), uuid});
+    proc.waitForFinished(3000);
+    if (proc.exitCode() != 0) {
+        qCWarning(lcFocus) << "Failed to enable" << uuid << ":" << proc.readAllStandardError();
+        return false;
+    }
+    qCInfo(lcFocus) << "GNOME extension enabled via CLI:" << uuid;
+    return true;
+}
+
 bool GnomeDesktop::ensureExtensionInstalled()
 {
     int major = detectShellMajorVersion();
@@ -140,63 +266,74 @@ bool GnomeDesktop::ensureExtensionInstalled()
         return false;
     }
 
-    QString variant = (major >= 45) ? QStringLiteral("v45") : QStringLiteral("v42");
+    const QString variant = (major >= 45) ? QStringLiteral("v45") : QStringLiteral("v42");
+    const QString systemDir = QStringLiteral("/usr/share/gnome-shell/extensions/")
+                              + QLatin1String(kExtUuid);
+    const bool systemComplete =
+        QFile::exists(systemDir + QStringLiteral("/extension.js"))
+        && QFile::exists(systemDir + QStringLiteral("/metadata.json"));
 
-    // Check system-wide install first
-    QString systemDir = QStringLiteral("/usr/share/gnome-shell/extensions/")
-                        + QLatin1String(kExtUuid);
-    QString userDir = QDir::homePath()
-                      + QStringLiteral("/.local/share/gnome-shell/extensions/")
-                      + QLatin1String(kExtUuid);
+    // Packaged focus extension is fine for focus tracking; don't fight it.
+    if (systemComplete)
+        return enableShellExtension(QString::fromLatin1(kExtUuid));
 
-    bool systemComplete = QFile::exists(systemDir + QStringLiteral("/extension.js"))
-                       && QFile::exists(systemDir + QStringLiteral("/metadata.json"));
-
-    if (systemComplete) {
-        // System install has root extension.js — Shell loads from there.
-        // Remove any stale user-dir copy that might override with wrong interface name.
-        if (QFile::exists(userDir + QStringLiteral("/extension.js"))) {
-            QFile::remove(userDir + QStringLiteral("/extension.js"));
-            QFile::remove(userDir + QStringLiteral("/metadata.json"));
-            qCInfo(lcFocus) << "Removed stale user extension dir (system install is complete)";
-        }
-    } else if (QFile::exists(systemDir + QStringLiteral("/metadata.json"))) {
-        // System install exists but no root extension.js — copy correct variant to user dir
-        QDir().mkpath(userDir);
-        QFile::copy(systemDir + QStringLiteral("/metadata.json"),
-                    userDir + QStringLiteral("/metadata.json"));
-        QFile::copy(systemDir + "/" + variant + QStringLiteral("/extension.js"),
-                    userDir + QStringLiteral("/extension.js"));
-        qCInfo(lcFocus) << "Copied" << variant << "extension.js to" << userDir;
-    } else {
-        qCWarning(lcFocus) << "Extension not found at" << systemDir;
+    const QString sourceDir = findExtensionSourceDir(QString::fromLatin1(kExtUuid));
+    if (sourceDir.isEmpty()) {
+        qCWarning(lcFocus) << "Focus extension not found";
         return false;
     }
+    if (!syncExtensionToUserDir(QString::fromLatin1(kExtUuid), sourceDir, variant))
+        return false;
+    return enableShellExtension(QString::fromLatin1(kExtUuid));
+}
 
-    // Enable via D-Bus (GNOME 3.36+)
-    QDBusMessage enableMsg = QDBusMessage::createMethodCall(
-        QStringLiteral("org.gnome.Shell.Extensions"),
-        QStringLiteral("/org/gnome/Shell/Extensions"),
-        QStringLiteral("org.gnome.Shell.Extensions"),
-        QStringLiteral("EnableExtension"));
-    enableMsg << QString::fromLatin1(kExtUuid);
-    QDBusReply<bool> enableReply = QDBusConnection::sessionBus().call(enableMsg, QDBus::Block, 2000);
-    if (enableReply.isValid() && enableReply.value()) {
-        qCInfo(lcFocus) << "GNOME extension enabled";
-    } else {
-        // Try CLI fallback
-        QProcess proc;
-        proc.start(QStringLiteral("gnome-extensions"),
-                   {QStringLiteral("enable"), QString::fromLatin1(kExtUuid)});
-        proc.waitForFinished(3000);
-        if (proc.exitCode() != 0) {
-            qCWarning(lcFocus) << "Failed to enable extension:" << proc.readAllStandardError();
-            return false;
+bool GnomeDesktop::ensureWorkspaceExtensionInstalled()
+{
+    int major = detectShellMajorVersion();
+    if (major < 42)
+        return false;
+
+    const QString variant = (major >= 45) ? QStringLiteral("v45") : QStringLiteral("v42");
+    const QString userDir = QDir::homePath()
+                            + QStringLiteral("/.local/share/gnome-shell/extensions/")
+                            + QLatin1String(kWorkspaceExtUuid);
+    const bool userInstalled =
+        QFile::exists(userDir + QStringLiteral("/metadata.json"))
+        && QFile::exists(userDir + QStringLiteral("/extension.js"));
+
+    QString sourceDir =
+        findExtensionSourceDir(QString::fromLatin1(kWorkspaceExtUuid));
+    // Uninstalled / local builds: data/gnome-workspace-extension next to the repo
+    // (binary lives in build/src/app). Also accept a user share copy used when
+    // the binary is installed to ~/.local/bin (no repo-relative path).
+    if (sourceDir.isEmpty()) {
+        const QString appDir = QCoreApplication::applicationDirPath();
+        const QStringList candidates = {
+            QDir::homePath()
+                + QStringLiteral("/.local/share/logitune/gnome-workspace-extension"),
+            appDir + QStringLiteral("/../../../data/gnome-workspace-extension"),
+            appDir + QStringLiteral("/../../data/gnome-workspace-extension"),
+        };
+        for (const QString &c : candidates) {
+            const QString canonical = QDir(c).canonicalPath();
+            if (QFile::exists(canonical + QStringLiteral("/metadata.json"))) {
+                sourceDir = canonical;
+                break;
+            }
         }
-        qCInfo(lcFocus) << "GNOME extension enabled via CLI";
     }
 
-    return true;
+    // Already present in the user extension dir (e.g. prior manual install) —
+    // just ensure it is enabled. Prefer this over syncing when source is missing.
+    if (sourceDir.isEmpty()) {
+        if (userInstalled)
+            return enableShellExtension(QString::fromLatin1(kWorkspaceExtUuid));
+        qCWarning(lcFocus) << "Workspace extension source not found";
+        return false;
+    }
+    if (!syncExtensionToUserDir(QString::fromLatin1(kWorkspaceExtUuid), sourceDir, variant))
+        return false;
+    return enableShellExtension(QString::fromLatin1(kWorkspaceExtUuid));
 }
 
 int GnomeDesktop::detectShellMajorVersion()
@@ -266,6 +403,41 @@ void GnomeDesktop::blockGlobalShortcuts(bool block)
 QString GnomeDesktop::variantKey() const
 {
     return QStringLiteral("gnome");
+}
+
+bool GnomeDesktop::supportsInteractiveWorkspaceSwitch() const
+{
+    return m_available && m_workspaceGestureAvailable;
+}
+
+void GnomeDesktop::callWorkspaceGesture(const QString &method, const QVariantList &args)
+{
+    if (!supportsInteractiveWorkspaceSwitch())
+        return;
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        QStringLiteral("org.gnome.Shell"),
+        QStringLiteral("/com/logitune/WorkspaceGesture"),
+        QStringLiteral("com.logitune.WorkspaceGesture"),
+        method);
+    msg.setArguments(args);
+    QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
+}
+
+void GnomeDesktop::beginInteractiveWorkspaceSwitch()
+{
+    callWorkspaceGesture(QStringLiteral("BeginWorkspaceGesture"));
+}
+
+void GnomeDesktop::updateInteractiveWorkspaceSwitch(int delta)
+{
+    callWorkspaceGesture(QStringLiteral("UpdateWorkspaceGesture"), {delta});
+}
+
+void GnomeDesktop::endInteractiveWorkspaceSwitch(int /*snapPercent*/)
+{
+    // snapPercent is applied by ButtonActionDispatcher (progress padding)
+    // before this call — End stays arg-less for live Shell module compat.
+    callWorkspaceGesture(QStringLiteral("EndWorkspaceGesture"));
 }
 
 // ---------------------------------------------------------------------------
