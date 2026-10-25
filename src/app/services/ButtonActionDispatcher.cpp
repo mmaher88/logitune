@@ -10,6 +10,17 @@
 
 namespace logitune {
 
+namespace {
+
+QString directionForAxis(int lockedAxis, int signedAccum)
+{
+    if (lockedAxis == 1)
+        return signedAccum > 0 ? QStringLiteral("right") : QStringLiteral("left");
+    return signedAccum > 0 ? QStringLiteral("down") : QStringLiteral("up");
+}
+
+} // namespace
+
 ButtonActionDispatcher::ButtonActionDispatcher(ProfileEngine *profileEngine,
                                                ActionExecutor *actionExecutor,
                                                ActiveDeviceResolver *selection,
@@ -21,6 +32,36 @@ ButtonActionDispatcher::ButtonActionDispatcher(ProfileEngine *profileEngine,
     , m_selection(selection)
     , m_desktop(desktop)
 {}
+
+bool ButtonActionDispatcher::isContinuousGestureAction(const ButtonAction &action)
+{
+    if (action.type != ButtonAction::Keystroke && action.type != ButtonAction::Media)
+        return false;
+    return action.payload == QLatin1String("VolumeUp")
+        || action.payload == QLatin1String("VolumeDown")
+        || action.payload == QLatin1String("BrightnessUp")
+        || action.payload == QLatin1String("BrightnessDown");
+}
+
+void ButtonActionDispatcher::fireGestureAction(const ButtonAction &action)
+{
+    ButtonAction toFire = action;
+    if (toFire.type == ButtonAction::PresetRef) {
+        if (!m_desktop) {
+            qCWarning(lcApp) << "gesture preset" << toFire.payload
+                             << "requested but desktop integration is null";
+            return;
+        }
+        auto resolved = m_desktop->resolveNamedAction(toFire.payload);
+        if (!resolved.has_value()) {
+            qCWarning(lcApp) << "gesture preset" << toFire.payload
+                             << "not resolvable on" << m_desktop->variantKey();
+            return;
+        }
+        toFire = *resolved;
+    }
+    m_actionExecutor->executeAction(toFire);
+}
 
 void ButtonActionDispatcher::onDeviceRemoved(const QString &serial)
 {
@@ -43,9 +84,59 @@ void ButtonActionDispatcher::onGestureRaw(int16_t dx, int16_t dy)
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
     if (!session) return;
     auto &state = m_state[session->deviceId()];
-    if (state.gestureActive) {
-        state.gestureAccumX += dx;
-        state.gestureAccumY += dy;
+    if (!state.gestureActive) return;
+
+    state.gestureAccumX += dx;
+    state.gestureAccumY += dy;
+
+    const QString serial = m_selection->activeSerial();
+    if (serial.isEmpty()) return;
+    const Profile &hwProfile = m_profileEngine->cachedProfile(
+        serial, m_profileEngine->hardwareProfile(serial));
+
+    if (state.gestureLockedAxis == 0) {
+        if (std::abs(state.gestureAccumX) < kGestureStepThreshold
+            && std::abs(state.gestureAccumY) < kGestureStepThreshold)
+            return;
+        state.gestureLockedAxis =
+            std::abs(state.gestureAccumX) >= std::abs(state.gestureAccumY) ? 1 : 2;
+        state.gestureStepAccum =
+            state.gestureLockedAxis == 1 ? state.gestureAccumX : state.gestureAccumY;
+    } else {
+        state.gestureStepAccum += state.gestureLockedAxis == 1 ? dx : dy;
+    }
+
+    if (state.gestureStepAccum == 0) return;
+
+    const QString probeDir =
+        directionForAxis(state.gestureLockedAxis, state.gestureStepAccum);
+    auto it = hwProfile.gestures.find(probeDir);
+    if (it == hwProfile.gestures.end() || it->second.type == ButtonAction::Default)
+        return;
+
+    ButtonAction probe = it->second;
+    if (probe.type == ButtonAction::PresetRef) {
+        if (!m_desktop) return;
+        auto resolved = m_desktop->resolveNamedAction(probe.payload);
+        if (!resolved.has_value()) return;
+        probe = *resolved;
+    }
+    if (!isContinuousGestureAction(probe)) return;
+
+    if (std::abs(state.gestureStepAccum) < kGestureStepThreshold) return;
+
+    int steps = state.gestureStepAccum / kGestureStepThreshold;
+    state.gestureStepAccum %= kGestureStepThreshold;
+
+    for (int i = 0; i < std::abs(steps); ++i) {
+        const QString stepDir =
+            directionForAxis(state.gestureLockedAxis, steps);
+        auto sit = hwProfile.gestures.find(stepDir);
+        if (sit == hwProfile.gestures.end()
+            || sit->second.type == ButtonAction::Default)
+            continue;
+        fireGestureAction(sit->second);
+        state.gestureFiredContinuous = true;
     }
 }
 
@@ -62,7 +153,14 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
 
     if (!pressed && state.gestureActive
         && (controlId == 0 || controlId == state.gestureControlId)) {
+        const bool alreadyFired = state.gestureFiredContinuous;
         state.gestureActive = false;
+        state.gestureFiredContinuous = false;
+        state.gestureLockedAxis = 0;
+        state.gestureStepAccum = 0;
+
+        if (alreadyFired) return;
+
         int dx = state.gestureAccumX;
         int dy = state.gestureAccumY;
 
@@ -80,26 +178,7 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
         if (it == hwProfile.gestures.end() || it->second.type == ButtonAction::Default)
             return;
 
-        // Mirrors the PresetRef branch in the press path below: if the action
-        // is a PresetRef, resolve via the desktop integration to a concrete
-        // ButtonAction, then fire it via the executor. Otherwise fire the
-        // stored action directly.
-        ButtonAction toFire = it->second;
-        if (toFire.type == ButtonAction::PresetRef) {
-            if (!m_desktop) {
-                qCWarning(lcApp) << "gesture preset" << toFire.payload
-                                 << "requested but desktop integration is null";
-                return;
-            }
-            auto resolved = m_desktop->resolveNamedAction(toFire.payload);
-            if (!resolved.has_value()) {
-                qCWarning(lcApp) << "gesture preset" << toFire.payload
-                                 << "not resolvable on" << m_desktop->variantKey();
-                return;
-            }
-            toFire = *resolved;
-        }
-        m_actionExecutor->executeAction(toFire);
+        fireGestureAction(it->second);
         return;
     }
 
@@ -136,6 +215,9 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     } else if (ba.type == ButtonAction::GestureTrigger) {
         state.gestureAccumX = 0;
         state.gestureAccumY = 0;
+        state.gestureStepAccum = 0;
+        state.gestureFiredContinuous = false;
+        state.gestureLockedAxis = 0;
         state.gestureActive = true;
         state.gestureControlId = controlId;
     } else if (ba.type == ButtonAction::AppLaunch && !ba.payload.isEmpty()) {

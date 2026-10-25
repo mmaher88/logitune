@@ -4,6 +4,8 @@
 #include <QString>
 #include <cstdint>
 
+#include "ButtonAction.h"
+
 namespace logitune::test {
 class AppRootFixture;
 class ButtonActionDispatcherFixture;
@@ -56,12 +58,20 @@ private:
     struct PerDeviceState {
         int gestureAccumX = 0;
         int gestureAccumY = 0;
+        int gestureStepAccum = 0;
         int thumbAccum = 0;
         bool gestureActive = false;
+        bool gestureFiredContinuous = false;
+        /// 0 = unlocked, 1 = X (left/right), 2 = Y (up/down)
+        int gestureLockedAxis = 0;
         uint16_t gestureControlId = 0;
     };
     static constexpr int kGestureThreshold = 50;
+    static constexpr int kGestureStepThreshold = 50;
     static constexpr int kThumbThreshold = 15;
+
+    static bool isContinuousGestureAction(const ButtonAction &action);
+    void fireGestureAction(const ButtonAction &action);
 
     ProfileEngine   *m_profileEngine;
     ActionExecutor  *m_actionExecutor;
