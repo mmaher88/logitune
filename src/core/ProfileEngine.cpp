@@ -100,9 +100,41 @@ Profile ProfileEngine::loadProfile(const QString &path)
     s.endGroup();
 
     s.beginGroup("Gestures");
-    const QStringList gestureKeys = s.childKeys();
-    for (const QString &key : gestureKeys)
-        p.gestures[key] = ButtonAction::parse(s.value(key).toString());
+    // New format: nested groups per buttonIndex (Gestures/5/up=...).
+    const QStringList gestureGroups = s.childGroups();
+    for (const QString &group : gestureGroups) {
+        bool ok = false;
+        const int idx = group.toInt(&ok);
+        if (!ok || idx < 0)
+            continue;
+        s.beginGroup(group);
+        for (const QString &key : s.childKeys())
+            p.buttonGestures[idx][key] = ButtonAction::parse(s.value(key).toString());
+        s.endGroup();
+    }
+
+    // Legacy flat keys (Gestures/up=...) — copy onto every GestureTrigger button
+    // so existing multi-button profiles keep working until edited independently.
+    if (p.buttonGestures.empty()) {
+        static const QStringList kDirs = {
+            QStringLiteral("up"), QStringLiteral("down"),
+            QStringLiteral("left"), QStringLiteral("right"),
+            QStringLiteral("click")
+        };
+        GestureMap legacy;
+        for (const QString &dir : kDirs) {
+            if (!s.contains(dir))
+                continue;
+            legacy[dir] = ButtonAction::parse(s.value(dir).toString());
+        }
+        if (!legacy.empty()) {
+            for (std::size_t i = 0; i < p.buttons.size(); ++i) {
+                if (p.buttons[i].type != ButtonAction::GestureTrigger)
+                    continue;
+                p.buttonGestures[static_cast<int>(i)] = legacy;
+            }
+        }
+    }
     s.endGroup();
 
     return p;
@@ -135,8 +167,12 @@ void ProfileEngine::saveProfile(const QString &path, const Profile &profile)
     s.endGroup();
 
     s.beginGroup("Gestures");
-    for (const auto &[key, action] : profile.gestures)
-        s.setValue(key, action.serialize());
+    for (const auto &[btnIdx, gestureMap] : profile.buttonGestures) {
+        s.beginGroup(QString::number(btnIdx));
+        for (const auto &[dir, action] : gestureMap)
+            s.setValue(dir, action.serialize());
+        s.endGroup();
+    }
     s.endGroup();
 
     s.sync();
@@ -185,7 +221,7 @@ ProfileDelta ProfileEngine::diff(const Profile &a, const Profile &b)
                            a.thumbWheelInvert != b.thumbWheelInvert);
 
     delta.buttonsChanged  = (a.buttons  != b.buttons);
-    delta.gesturesChanged = (a.gestures != b.gestures);
+    delta.gesturesChanged = (a.buttonGestures != b.buttonGestures);
 
     return delta;
 }

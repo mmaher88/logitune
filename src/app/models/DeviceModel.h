@@ -145,17 +145,18 @@ public:
     Q_INVOKABLE void setScrollConfig(bool hiRes, bool invert);
     Q_INVOKABLE void setThumbWheelMode(const QString &mode);
     Q_INVOKABLE void resetAllProfiles();
-    Q_INVOKABLE void setGestureAction(const QString &direction,
+    Q_INVOKABLE void setGestureAction(int buttonId,
+                                      const QString &direction,
                                       const QString &actionName,
                                       const QString &actionType,
                                       const QString &payload);
-    Q_INVOKABLE QString gestureActionName(const QString &direction) const;
-    Q_INVOKABLE QString gestureActionType(const QString &direction) const;
-    Q_INVOKABLE QString gestureActionPayload(const QString &direction) const;
+    Q_INVOKABLE QString gestureActionName(int buttonId, const QString &direction) const;
+    Q_INVOKABLE QString gestureActionType(int buttonId, const QString &direction) const;
+    Q_INVOKABLE QString gestureActionPayload(int buttonId, const QString &direction) const;
     /// Non-Q_INVOKABLE accessor used by ProfileOrchestrator on save: returns
-    /// the full ButtonAction for the given direction, or {Default, {}} if
-    /// none is bound.
-    ButtonAction gestureAction(const QString &direction) const;
+    /// the full ButtonAction for the given button/direction, or {Default, {}}
+    /// if none is bound.
+    ButtonAction gestureAction(int buttonId, const QString &direction) const;
     bool scrollHiRes() const;
     bool scrollInvert() const;
     QString thumbWheelMode() const;
@@ -164,7 +165,11 @@ public:
     Q_INVOKABLE QString gnomeTrayStatus() const;
     Q_INVOKABLE QString appIndicatorInstallCommand() const;
 
-    void loadGesturesFromProfile(const QMap<QString, GestureEntry> &gestures);
+    /// Replace all per-button gesture maps (keyed by buttonIndex).
+    void loadGesturesFromProfile(const QMap<int, QMap<QString, GestureEntry>> &gestures);
+    /// Seed defaults for a button that just became Gestures, without emitting
+    /// userGestureChanged (so ProfileOrchestrator can save once).
+    void seedGesturesForButton(int buttonId, const QMap<QString, GestureEntry> &entries);
     void setActiveProfileName(const QString &name);
     void setActiveWmClass(const QString &wmClass);
     void setDisplayValues(int dpi, bool smartShiftEnabled, int smartShiftThreshold,
@@ -196,7 +201,8 @@ signals:
     void activeProfileNameChanged();
     void activeWmClassChanged();
     void gestureChanged();
-    void userGestureChanged(const QString &direction,
+    void userGestureChanged(int buttonId,
+                            const QString &direction,
                             const QString &actionName,
                             const QString &actionType,
                             const QString &payload);
@@ -223,7 +229,8 @@ private:
     int m_selectedIndex = -1;
 
     IDesktopIntegration *m_desktop = nullptr;
-    QMap<QString, GestureEntry> m_gestures;
+    /// Per-button gesture maps keyed by buttonIndex.
+    QMap<int, QMap<QString, GestureEntry>> m_gestures;
     QString m_activeProfileName;
     QString m_activeWmClass;
 

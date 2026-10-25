@@ -76,8 +76,25 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
             dir = "click";
         }
 
-        auto it = hwProfile.gestures.find(dir);
-        if (it == hwProfile.gestures.end() || it->second.type == ButtonAction::Default)
+        // Resolve which button started the gesture so each Gestures button
+        // uses its own independent direction map.
+        int gestureBtnIdx = -1;
+        if (m_currentDevice) {
+            for (const auto &ctrl : m_currentDevice->controls()) {
+                if (ctrl.controlId == state.gestureControlId) {
+                    gestureBtnIdx = ctrl.buttonIndex;
+                    break;
+                }
+            }
+        }
+        if (gestureBtnIdx < 0)
+            return;
+
+        const auto btnIt = hwProfile.buttonGestures.find(gestureBtnIdx);
+        if (btnIt == hwProfile.buttonGestures.end())
+            return;
+        const auto it = btnIt->second.find(dir);
+        if (it == btnIt->second.end() || it->second.type == ButtonAction::Default)
             return;
 
         // Mirrors the PresetRef branch in the press path below: if the action

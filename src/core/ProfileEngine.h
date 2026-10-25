@@ -9,6 +9,9 @@
 
 namespace logitune {
 
+/// Per-direction gesture bindings ("up","down","left","right","click").
+using GestureMap = std::map<QString, ButtonAction>;
+
 struct Profile {
     int version = 1;
     QString name;
@@ -20,7 +23,8 @@ struct Profile {
     QString scrollDirection = "standard";  // "standard" or "natural"
     bool hiResScroll = true;
     std::array<ButtonAction, 16> buttons;  // indexed by ControlDescriptor::buttonIndex
-    std::map<QString, ButtonAction> gestures;  // "up","down","left","right","click"
+    /// Per-button gesture maps keyed by buttonIndex (Options+-style).
+    std::map<int, GestureMap> buttonGestures;
     QString thumbWheelMode = "scroll";  // "scroll", "zoom", "volume", "none"
     bool thumbWheelInvert = false;
 };

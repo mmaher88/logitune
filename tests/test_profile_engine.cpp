@@ -85,6 +85,8 @@ TEST(ProfileEngine, LoadProfile) {
     s.setValue("SmartShift/enabled", true);
     s.setValue("SmartShift/threshold", 50);
     s.setValue("Buttons/3", "keystroke:Back");
+    s.setValue("Buttons/5", "gesture-trigger");
+    // Legacy flat gesture keys — migrated onto GestureTrigger buttons.
     s.setValue("Gestures/up", "keystroke:Ctrl+Up");
     s.sync();
 
@@ -95,7 +97,7 @@ TEST(ProfileEngine, LoadProfile) {
     EXPECT_EQ(p.smartShiftThreshold, 50);
     EXPECT_EQ(p.buttons[3].type, ButtonAction::Keystroke);
     EXPECT_EQ(p.buttons[3].payload, "Back");
-    EXPECT_EQ(p.gestures["up"].type, ButtonAction::Keystroke);
+    EXPECT_EQ(p.buttonGestures.at(5).at("up").type, ButtonAction::Keystroke);
 }
 
 TEST(ProfileEngine, LoadProfileDefaults) {
@@ -148,13 +150,38 @@ TEST(ProfileEngine, SaveAndLoadGestures) {
     QTemporaryDir tmpDir;
     QString path = tmpDir.path() + "/gestures.conf";
     Profile p;
-    p.gestures["up"]    = ButtonAction{ButtonAction::Keystroke, "Ctrl+Alt+Up"};
-    p.gestures["click"] = ButtonAction{ButtonAction::DBus, "org.foo,/bar,baz,qux"};
+    p.buttons[5] = ButtonAction{ButtonAction::GestureTrigger, {}};
+    p.buttonGestures[5]["up"] =
+        ButtonAction{ButtonAction::Keystroke, "Ctrl+Alt+Up"};
+    p.buttonGestures[5]["click"] =
+        ButtonAction{ButtonAction::DBus, "org.foo,/bar,baz,qux"};
+    p.buttonGestures[3]["down"] =
+        ButtonAction{ButtonAction::Keystroke, "Super+D"};
     ProfileEngine::saveProfile(path, p);
     Profile loaded = ProfileEngine::loadProfile(path);
-    EXPECT_EQ(loaded.gestures["up"].type, ButtonAction::Keystroke);
-    EXPECT_EQ(loaded.gestures["up"].payload, "Ctrl+Alt+Up");
-    EXPECT_EQ(loaded.gestures["click"].type, ButtonAction::DBus);
+    EXPECT_EQ(loaded.buttonGestures.at(5).at("up").type, ButtonAction::Keystroke);
+    EXPECT_EQ(loaded.buttonGestures.at(5).at("up").payload, "Ctrl+Alt+Up");
+    EXPECT_EQ(loaded.buttonGestures.at(5).at("click").type, ButtonAction::DBus);
+    EXPECT_EQ(loaded.buttonGestures.at(3).at("down").payload, "Super+D");
+}
+
+TEST(ProfileEngine, LoadLegacyGesturesOntoAllGestureButtons) {
+    QTemporaryDir tmpDir;
+    QString path = tmpDir.path() + "/legacy-gestures.conf";
+    QSettings s(path, QSettings::IniFormat);
+    s.setValue("Buttons/3", "gesture-trigger");
+    s.setValue("Buttons/5", "gesture-trigger");
+    s.setValue("Gestures/up", "keystroke:Ctrl+Up");
+    s.setValue("Gestures/down", "keystroke:Super+D");
+    s.sync();
+
+    Profile p = ProfileEngine::loadProfile(path);
+    ASSERT_EQ(p.buttonGestures.count(3), 1u);
+    ASSERT_EQ(p.buttonGestures.count(5), 1u);
+    EXPECT_EQ(p.buttonGestures.at(3).at("up").payload, "Ctrl+Up");
+    EXPECT_EQ(p.buttonGestures.at(5).at("up").payload, "Ctrl+Up");
+    EXPECT_EQ(p.buttonGestures.at(3).at("down").payload, "Super+D");
+    EXPECT_EQ(p.buttonGestures.at(5).at("down").payload, "Super+D");
 }
 
 TEST(ProfileEngine, SaveAndLoadScrollSmooth) {
@@ -240,7 +267,7 @@ TEST(ProfileEngine, DeltaButtons) {
 
 TEST(ProfileEngine, DeltaGestures) {
     Profile a, b;
-    b.gestures["up"] = ButtonAction{ButtonAction::Keystroke, "Ctrl+Up"};
+    b.buttonGestures[5]["up"] = ButtonAction{ButtonAction::Keystroke, "Ctrl+Up"};
     auto delta = ProfileEngine::diff(a, b);
     EXPECT_TRUE(delta.gesturesChanged);
     EXPECT_FALSE(delta.buttonsChanged);
@@ -250,7 +277,7 @@ TEST(ProfileEngine, DeltaNoDiff) {
     Profile a;
     a.dpi = 800;
     a.buttons[0] = ButtonAction{ButtonAction::Media, "VolumeUp"};
-    a.gestures["left"] = ButtonAction{ButtonAction::Keystroke, "Alt+Left"};
+    a.buttonGestures[5]["left"] = ButtonAction{ButtonAction::Keystroke, "Alt+Left"};
     Profile b = a;
     auto delta = ProfileEngine::diff(a, b);
     EXPECT_FALSE(delta.dpiChanged);

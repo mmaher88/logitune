@@ -779,11 +779,15 @@ void DeviceModel::setThumbWheelInvert(bool invert)
     emit thumbWheelInvertChangeRequested(invert);
 }
 
-void DeviceModel::setGestureAction(const QString &direction,
+void DeviceModel::setGestureAction(int buttonId,
+                                   const QString &direction,
                                    const QString &actionName,
                                    const QString &actionType,
                                    const QString &payload)
 {
+    if (buttonId < 0)
+        return;
+
     ButtonAction ba;
     if (actionType == QLatin1String("preset"))
         ba = {ButtonAction::PresetRef, payload};
@@ -791,46 +795,71 @@ void DeviceModel::setGestureAction(const QString &direction,
         ba = {ButtonAction::Keystroke, payload};
     else
         ba = {ButtonAction::Default, {}};
-    m_gestures[direction] = GestureEntry{actionName, ba};
+    m_gestures[buttonId][direction] = GestureEntry{actionName, ba};
     emit gestureChanged();
-    emit userGestureChanged(direction, actionName, actionType, payload);
+    emit userGestureChanged(buttonId, direction, actionName, actionType, payload);
 }
 
-void DeviceModel::loadGesturesFromProfile(const QMap<QString, GestureEntry> &gestures)
+void DeviceModel::loadGesturesFromProfile(
+    const QMap<int, QMap<QString, GestureEntry>> &gestures)
 {
     m_gestures = gestures;
     emit gestureChanged();
 }
 
-QString DeviceModel::gestureActionName(const QString &direction) const
+void DeviceModel::seedGesturesForButton(int buttonId,
+                                        const QMap<QString, GestureEntry> &entries)
 {
-    auto it = m_gestures.find(direction);
-    return it != m_gestures.end() ? it.value().name : QString();
+    if (buttonId < 0)
+        return;
+    const auto it = m_gestures.constFind(buttonId);
+    if (it != m_gestures.cend() && !it->isEmpty())
+        return;
+    m_gestures[buttonId] = entries;
+    emit gestureChanged();
 }
 
-QString DeviceModel::gestureActionType(const QString &direction) const
+QString DeviceModel::gestureActionName(int buttonId, const QString &direction) const
 {
-    auto it = m_gestures.find(direction);
-    if (it == m_gestures.end())
+    const auto btnIt = m_gestures.constFind(buttonId);
+    if (btnIt == m_gestures.cend())
         return QString();
-    switch (it.value().action.type) {
+    const auto it = btnIt->constFind(direction);
+    return it != btnIt->cend() ? it->name : QString();
+}
+
+QString DeviceModel::gestureActionType(int buttonId, const QString &direction) const
+{
+    const auto btnIt = m_gestures.constFind(buttonId);
+    if (btnIt == m_gestures.cend())
+        return QString();
+    const auto it = btnIt->constFind(direction);
+    if (it == btnIt->cend())
+        return QString();
+    switch (it->action.type) {
     case ButtonAction::PresetRef: return QStringLiteral("preset");
     case ButtonAction::Keystroke: return QStringLiteral("keystroke");
     default:                      return QString();
     }
 }
 
-QString DeviceModel::gestureActionPayload(const QString &direction) const
+QString DeviceModel::gestureActionPayload(int buttonId, const QString &direction) const
 {
-    auto it = m_gestures.find(direction);
-    return it != m_gestures.end() ? it.value().action.payload : QString();
+    const auto btnIt = m_gestures.constFind(buttonId);
+    if (btnIt == m_gestures.cend())
+        return QString();
+    const auto it = btnIt->constFind(direction);
+    return it != btnIt->cend() ? it->action.payload : QString();
 }
 
-ButtonAction DeviceModel::gestureAction(const QString &direction) const
+ButtonAction DeviceModel::gestureAction(int buttonId, const QString &direction) const
 {
-    auto it = m_gestures.find(direction);
-    return it != m_gestures.end() ? it.value().action
-                                  : ButtonAction{ButtonAction::Default, {}};
+    const auto btnIt = m_gestures.constFind(buttonId);
+    if (btnIt == m_gestures.cend())
+        return ButtonAction{ButtonAction::Default, {}};
+    const auto it = btnIt->constFind(direction);
+    return it != btnIt->cend() ? it->action
+                               : ButtonAction{ButtonAction::Default, {}};
 }
 
 void DeviceModel::resetAllProfiles()
