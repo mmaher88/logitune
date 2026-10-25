@@ -135,6 +135,113 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseMissingDirectionDoesNotInjec
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
 
+namespace {
+
+int countKeystrokes(const MockInjector &injector, const QString &payload) {
+    int n = 0;
+    for (const auto &c : injector.calls()) {
+        if (c.method == QLatin1String("injectKeystroke") && c.arg == payload)
+            ++n;
+    }
+    return n;
+}
+
+} // namespace
+
+// --- Continuous gesture stepping (Options+ style volume/brightness) --------
+
+TEST_F(ButtonActionDispatcherFixture, ContinuousVolumeFiresWhileDragging) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    hwProfile().gestures["up"] = ButtonAction{ButtonAction::Keystroke,
+                                              QStringLiteral("VolumeUp")};
+    hwProfile().gestures["down"] = ButtonAction{ButtonAction::Keystroke,
+                                                QStringLiteral("VolumeDown")};
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    // 150 units up → 3 VolumeUp steps at kGestureStepThreshold (50)
+    m_dispatcher->onGestureRaw(0, -50);
+    m_dispatcher->onGestureRaw(0, -50);
+    m_dispatcher->onGestureRaw(0, -50);
+    EXPECT_EQ(countKeystrokes(*m_injector, QStringLiteral("VolumeUp")), 3);
+
+    m_injector->clear();
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, ContinuousVolumeReversesToVolumeDown) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    hwProfile().gestures["up"] = ButtonAction{ButtonAction::Keystroke,
+                                              QStringLiteral("VolumeUp")};
+    hwProfile().gestures["down"] = ButtonAction{ButtonAction::Keystroke,
+                                                QStringLiteral("VolumeDown")};
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(0, -100); // 2x VolumeUp
+    EXPECT_EQ(countKeystrokes(*m_injector, QStringLiteral("VolumeUp")), 2);
+
+    m_dispatcher->onGestureRaw(0, 100); // reverse → 2x VolumeDown
+    EXPECT_EQ(countKeystrokes(*m_injector, QStringLiteral("VolumeDown")), 2);
+
+    m_injector->clear();
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, ContinuousBrightnessFiresWhileDragging) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    hwProfile().gestures["right"] = ButtonAction{ButtonAction::Keystroke,
+                                                 QStringLiteral("BrightnessUp")};
+    hwProfile().gestures["left"] = ButtonAction{ButtonAction::Keystroke,
+                                                QStringLiteral("BrightnessDown")};
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(50, 0);
+    m_dispatcher->onGestureRaw(50, 0);
+    EXPECT_EQ(countKeystrokes(*m_injector, QStringLiteral("BrightnessUp")), 2);
+
+    m_injector->clear();
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
+}
+
+TEST_F(ButtonActionDispatcherFixture, OneShotGestureStillFiresOnceOnRelease) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    hwProfile().gestures["left"] = ButtonAction{ButtonAction::Keystroke,
+                                                QStringLiteral("Ctrl+Super+Left")};
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(-80, 3);
+    EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    EXPECT_EQ(countKeystrokes(*m_injector, QStringLiteral("Ctrl+Super+Left")), 1);
+}
+
+TEST_F(ButtonActionDispatcherFixture, ContinuousDoesNotFireBelowStepThreshold) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 5,
+        ButtonAction{ButtonAction::GestureTrigger, {}});
+    hwProfile().gestures["up"] = ButtonAction{ButtonAction::Keystroke,
+                                              QStringLiteral("VolumeUp")};
+
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onGestureRaw(0, -40); // under kGestureStepThreshold
+    EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
+
+    // Release resolves as click (under direction threshold too) — no up binding
+    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
+}
+
 // --- Thumb wheel accumulator -----------------------------------------------
 
 TEST_F(ButtonActionDispatcherFixture, ThumbWheelAccumulatesBelowThreshold) {
