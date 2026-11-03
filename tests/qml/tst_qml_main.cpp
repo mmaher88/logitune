@@ -18,6 +18,11 @@ class QmlTestSetup : public QObject
 public:
     QmlTestSetup() = default;
 
+    Q_INVOKABLE void setTrayAvailable(bool available)
+    {
+        m_engine->rootContext()->setContextProperty("systemTrayAvailable", available);
+    }
+
 public slots:
     void applicationAvailable()
     {
@@ -26,6 +31,9 @@ public slots:
 
     void qmlEngineAvailable(QQmlEngine *engine)
     {
+        m_engine = engine;
+        engine->rootContext()->setContextProperty("TestSetup", this);
+        setTrayAvailable(false);
         engine->addImportPath("qrc:/");
 
         engine->rootContext()->setContextProperty("DeviceModel",  &m_deviceModel);
@@ -38,6 +46,7 @@ public slots:
     }
 
 private:
+    QQmlEngine *m_engine = nullptr;
     logitune::DeviceModel  m_deviceModel;
     logitune::ButtonModel  m_buttonModel;
     logitune::ActionModel  m_actionModel;

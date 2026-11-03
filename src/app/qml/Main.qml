@@ -75,8 +75,10 @@ ApplicationWindow {
     flags: Qt.FramelessWindowHint | Qt.Window
 
     onClosing: function(close) {
-        close.accepted = false
-        hide()
+        if (systemTrayAvailable) {
+            close.accepted = false
+            hide()
+        }
     }
 
     // ── Custom title bar ────────────────────────────────────────────────

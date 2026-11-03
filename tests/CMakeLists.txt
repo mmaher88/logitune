@@ -4,6 +4,7 @@ include(GoogleTest)
 add_executable(logitune-tests
     test_main.cpp
     test_smoke.cpp
+    test_single_instance.cpp
     test_transport.cpp
     test_feature_dispatcher.cpp
     test_capability_dispatch.cpp

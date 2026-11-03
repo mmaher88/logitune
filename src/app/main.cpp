@@ -12,7 +12,6 @@
 #include <QQuickImageProvider>
 #include <QIcon>
 #include <QTimer>
-#include <QLockFile>
 #include <QStandardPaths>
 #include <QSystemTrayIcon>
 #include <QDBusConnection>
@@ -25,6 +24,18 @@
 #include "logging/CrashHandler.h"
 #include "dialogs/CrashReportDialog.h"
 #include "TrayManager.h"
+#include "SingleInstance.h"
+
+static void showMainWindow(QQmlApplicationEngine &engine)
+{
+    for (auto *obj : engine.rootObjects()) {
+        if (auto *window = qobject_cast<QQuickWindow*>(obj)) {
+            window->show();
+            window->raise();
+            window->requestActivate();
+        }
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -90,12 +101,13 @@ int main(int argc, char *argv[])
     const bool editMode = parser.isSet(editOption);
     const bool startMinimized = parser.isSet(minimizedOption);
 
-    // Single-instance guard — prevent two instances fighting over the device
-    QLockFile lockFile(QStandardPaths::writableLocation(QStandardPaths::TempLocation)
-                       + "/logitune.lock");
-    if (!lockFile.tryLock(100)) {
-        qCritical() << "Another instance of Logitune is already running";
-        return 1;
+    const QString runtimePath = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    logitune::SingleInstance singleInstance(runtimePath + "/logitune.lock",
+                                           runtimePath + "/logitune");
+    if (const auto exitCode = singleInstance.start()) {
+        if (*exitCode != 0)
+            qCritical() << "Could not start or contact the primary Logitune instance";
+        return *exitCode;
     }
 
     // Initialize logging — enabled by default, user can disable in Settings
@@ -176,6 +188,10 @@ int main(int argc, char *argv[])
     // QML engine
     qCInfo(lcApp) << "Creating QML engine...";
     QQmlApplicationEngine engine;
+    const bool trayVisible = QSystemTrayIcon::isSystemTrayAvailable();
+    engine.rootContext()->setContextProperty("systemTrayAvailable", trayVisible);
+    QObject::connect(&singleInstance, &logitune::SingleInstance::showRequested,
+                     &engine, [&engine]() { showMainWindow(engine); });
     qCInfo(lcApp) << "QML engine created";
 
     class IconProvider : public QQuickImageProvider {
@@ -250,13 +266,7 @@ int main(int argc, char *argv[])
     // System tray
     logitune::TrayManager tray(controller.deviceModel());
     QObject::connect(&tray, &logitune::TrayManager::showWindowRequested, [&engine]() {
-        for (auto *obj : engine.rootObjects()) {
-            if (auto *window = qobject_cast<QQuickWindow*>(obj)) {
-                window->show();
-                window->raise();
-                window->requestActivate();
-            }
-        }
+        showMainWindow(engine);
     });
     QObject::connect(tray.quitAction(), &QAction::triggered, &app, &QApplication::quit);
     tray.show();
@@ -267,7 +277,6 @@ int main(int argc, char *argv[])
     // on GNOME Wayland without an AppIndicator extension. Using the wrong
     // check stranded users with no way to reach the app after --minimized
     // autostart on a session without a tray.
-    const bool trayVisible = QSystemTrayIcon::isSystemTrayAvailable();
     if (!trayVisible) {
         // Without a tray icon (e.g. GNOME with no AppIndicator extension)
         // there is no way to re-open the window or quit from a tray menu, so
