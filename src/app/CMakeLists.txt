@@ -16,6 +16,7 @@ add_library(logitune-app-lib STATIC
     dialogs/CrashReportDialog.cpp
     TrayManager.cpp
     SingleInstance.cpp
+    MainWindowController.cpp
 )
 
 target_include_directories(logitune-app-lib PUBLIC

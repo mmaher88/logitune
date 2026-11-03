@@ -7,7 +7,6 @@
 #include <signal.h>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include <QQmlExpression>
 #include <QQuickWindow>
 #include <QQuickImageProvider>
 #include <QIcon>
@@ -25,17 +24,7 @@
 #include "dialogs/CrashReportDialog.h"
 #include "TrayManager.h"
 #include "SingleInstance.h"
-
-static void showMainWindow(QQmlApplicationEngine &engine)
-{
-    for (auto *obj : engine.rootObjects()) {
-        if (auto *window = qobject_cast<QQuickWindow*>(obj)) {
-            window->show();
-            window->raise();
-            window->requestActivate();
-        }
-    }
-}
+#include "MainWindowController.h"
 
 int main(int argc, char *argv[])
 {
@@ -68,7 +57,7 @@ int main(int argc, char *argv[])
     app.setOrganizationName("Logitune");
     app.setApplicationName("Logitune");
     app.setApplicationVersion(QStringLiteral(PROJECT_VERSION_FULL));
-    app.setQuitOnLastWindowClosed(false);  // tray icon keeps app alive
+    app.setQuitOnLastWindowClosed(false);
     app.setWindowIcon(QIcon(":/Logitune/qml/assets/logitune-icon.svg"));
 
     // Command-line parsing
@@ -93,9 +82,12 @@ int main(int argc, char *argv[])
     parser.addOption(editOption);
     QCommandLineOption minimizedOption(
         QStringLiteral("minimized"),
-        QStringLiteral("Start hidden to the system tray. Intended for autostart "
-                       "launchers; ignored if no system tray is available."));
+        QStringLiteral("Start without a window. Launch again to show it."));
     parser.addOption(minimizedOption);
+    QCommandLineOption quitOption(
+        QStringLiteral("quit"),
+        QStringLiteral("Quit the running instance without starting a new one."));
+    parser.addOption(quitOption);
     parser.process(app);
     const bool simulateAll = parser.isSet(simulateAllOption);
     const bool editMode = parser.isSet(editOption);
@@ -104,7 +96,11 @@ int main(int argc, char *argv[])
     const QString runtimePath = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
     logitune::SingleInstance singleInstance(runtimePath + "/logitune.lock",
                                            runtimePath + "/logitune");
-    if (const auto exitCode = singleInstance.start()) {
+    QObject::connect(&singleInstance, &logitune::SingleInstance::quitRequested,
+                     &app, &QCoreApplication::quit);
+    const auto command = parser.isSet(quitOption) ? logitune::SingleInstance::Command::Quit
+                                                : logitune::SingleInstance::Command::Show;
+    if (const auto exitCode = singleInstance.start(command)) {
         if (*exitCode != 0)
             qCritical() << "Could not start or contact the primary Logitune instance";
         return *exitCode;
@@ -188,10 +184,7 @@ int main(int argc, char *argv[])
     // QML engine
     qCInfo(lcApp) << "Creating QML engine...";
     QQmlApplicationEngine engine;
-    const bool trayVisible = QSystemTrayIcon::isSystemTrayAvailable();
-    engine.rootContext()->setContextProperty("systemTrayAvailable", trayVisible);
-    QObject::connect(&singleInstance, &logitune::SingleInstance::showRequested,
-                     &engine, [&engine]() { showMainWindow(engine); });
+    QObject::connect(&engine, &QQmlApplicationEngine::quit, &app, &QCoreApplication::quit);
     qCInfo(lcApp) << "QML engine created";
 
     class IconProvider : public QQuickImageProvider {
@@ -240,63 +233,31 @@ int main(int argc, char *argv[])
 #endif
     }
 
-    qCInfo(lcApp) << "Loading QML...";
-    engine.load(QUrl(QStringLiteral("qrc:/Logitune/qml/Main.qml")));
-    qCInfo(lcApp) << "QML loaded, root objects:" << engine.rootObjects().size();
-
-    if (engine.rootObjects().isEmpty()) {
-        qCCritical(lcApp) << "QML failed to load — no root objects";
-        return -1;
-    }
-
-    // Set theme via the root QML object which has access to the Theme singleton
-    qCInfo(lcApp) << "Setting theme dark:" << isDark;
-    if (!engine.rootObjects().isEmpty()) {
-        QObject *root = engine.rootObjects().first();
-        QQmlExpression expr(QQmlEngine::contextForObject(root), root,
-            isDark ? QStringLiteral("Theme.dark = true")
-                   : QStringLiteral("Theme.dark = false"));
-        QVariant result = expr.evaluate();
-        if (expr.hasError())
-            qCWarning(lcApp) << "Theme expression error:" << expr.error().toString();
-        else
-            qCInfo(lcApp) << "Theme.dark applied:" << isDark;
-    }
+    logitune::MainWindowController windows(engine, isDark);
+    auto showMainWindow = [&windows]() {
+        if (!windows.showMainWindow())
+            qCCritical(lcApp) << "QML failed to load — no main window";
+    };
+    QObject::connect(&singleInstance, &logitune::SingleInstance::showRequested,
+                     &windows, showMainWindow);
 
     // System tray
     logitune::TrayManager tray(controller.deviceModel());
-    QObject::connect(&tray, &logitune::TrayManager::showWindowRequested, [&engine]() {
-        showMainWindow(engine);
-    });
+    QObject::connect(&tray, &logitune::TrayManager::showWindowRequested,
+                     &windows, showMainWindow);
     QObject::connect(tray.quitAction(), &QAction::triggered, &app, &QApplication::quit);
     tray.show();
 
-    // QSystemTrayIcon::isVisible() returns true as soon as show() is called,
-    // even when no StatusNotifier host exists to actually render the icon.
-    // isSystemTrayAvailable() is the real capability check: it returns false
-    // on GNOME Wayland without an AppIndicator extension. Using the wrong
-    // check stranded users with no way to reach the app after --minimized
-    // autostart on a session without a tray.
-    if (!trayVisible) {
-        // Without a tray icon (e.g. GNOME with no AppIndicator extension)
-        // there is no way to re-open the window or quit from a tray menu, so
-        // closing the window must terminate the process or the user gets
-        // stranded with an invisible running app.
-        app.setQuitOnLastWindowClosed(true);
-        qCInfo(lcApp) << "Tray unavailable -- closing the last window will "
-                         "quit the app";
-    }
-    if (startMinimized && trayVisible) {
-        for (QObject *obj : engine.rootObjects()) {
-            if (auto *window = qobject_cast<QQuickWindow*>(obj))
-                window->hide();
-        }
-        qCInfo(lcApp) << "Startup: minimized to tray";
-    } else if (startMinimized && !trayVisible) {
-        qCInfo(lcApp) << "Startup: --minimized requested but tray is not "
-                         "visible, showing window";
+    if (!QSystemTrayIcon::isSystemTrayAvailable())
+        qCInfo(lcApp) << "Tray unavailable -- launch again to show the window; use --quit to exit";
+
+    if (startMinimized) {
+        qCInfo(lcApp) << "Startup: running without a window";
     } else {
-        qCDebug(lcApp) << "Startup: showing window";
+        if (!windows.showMainWindow()) {
+            qCCritical(lcApp) << "QML failed to load — no main window";
+            return -1;
+        }
     }
 
     qCInfo(lcApp) << "Startup complete";

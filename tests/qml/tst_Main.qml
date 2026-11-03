@@ -11,18 +11,10 @@ TestCase {
         Main {}
     }
 
-    function test_close_data() {
-        return [
-            { tag: "withoutTray", tray: false, accepted: true },
-            { tag: "withTray", tray: true, accepted: false }
-        ]
-    }
-
-    function test_close(data) {
-        TestSetup.setTrayAvailable(data.tray)
+    function test_closeAlwaysAccepted() {
         var main = createTemporaryObject(mainComponent, null)
         verify(main !== null)
-        compare(main.close(), data.accepted)
+        compare(main.close(), true)
         compare(main.visible, false)
     }
 }

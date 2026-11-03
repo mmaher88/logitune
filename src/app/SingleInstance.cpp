@@ -15,8 +15,11 @@ SingleInstance::SingleInstance(const QString &lockPath, const QString &serverNam
             connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
             auto receive = [this, socket]() {
                 if (socket->canReadLine()) {
-                    if (socket->readLine() == "show\n")
+                    const auto command = socket->readLine();
+                    if (command == "show\n")
                         emit showRequested();
+                    else if (command == "quit\n")
+                        emit quitRequested();
                     socket->disconnectFromServer();
                 } else if (socket->bytesAvailable() > 64) {
                     socket->disconnectFromServer();
@@ -28,9 +31,13 @@ SingleInstance::SingleInstance(const QString &lockPath, const QString &serverNam
     });
 }
 
-std::optional<int> SingleInstance::start()
+std::optional<int> SingleInstance::start(Command command)
 {
     if (m_lockFile.tryLock(100)) {
+        if (command == Command::Quit) {
+            m_lockFile.unlock();
+            return 0;
+        }
         // Only the lock owner may remove a socket left by a crashed instance.
         QLocalServer::removeServer(m_serverName);
         if (!m_server.listen(m_serverName))
@@ -45,7 +52,8 @@ std::optional<int> SingleInstance::start()
         QLocalSocket socket;
         socket.connectToServer(m_serverName);
         if (socket.waitForConnected(100)) {
-            if (socket.write("show\n") != 5)
+            const QByteArray message = command == Command::Quit ? "quit\n" : "show\n";
+            if (socket.write(message) != message.size())
                 return 1;
             if (socket.bytesToWrite() && !socket.waitForBytesWritten(1000))
                 return 1;
