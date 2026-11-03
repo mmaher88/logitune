@@ -139,6 +139,14 @@ void AppRoot::startMonitoring(bool simulateAll, bool editMode)
 
 void AppRoot::wireSignals()
 {
+    m_actionsRing = std::make_unique<ActionsRingService>(&m_profileEngine, &m_deviceManager,
+        &m_actionExecutor, &m_deviceResolver, m_desktop, &m_profileOrchestrator);
+    connect(&m_buttonDispatcher, &ButtonActionDispatcher::actionsRingTriggered,
+            m_actionsRing.get(), &ActionsRingService::trigger);
+    connect(&m_profileEngine, &ProfileEngine::deviceDisplayProfileChanged,
+            m_actionsRing.get(), &ActionsRingService::editorChanged);
+    connect(&m_deviceModel, &DeviceModel::selectedChanged, m_actionsRing.get(),
+            &ActionsRingService::editorChanged);
     // User edits in the UI (button reassignments, focus-follow from desktop,
     // tab selection, engine-driven display refresh) route to the orchestrator.
     connect(&m_buttonModel, &ButtonModel::userActionChanged,
@@ -276,7 +284,10 @@ void AppRoot::onPhysicalDeviceAdded(PhysicalDevice *device)
     connect(device, &PhysicalDevice::gestureRawXY,
             &m_buttonDispatcher, &ButtonActionDispatcher::onGestureRaw);
     connect(device, &PhysicalDevice::divertedButtonPressed,
-            &m_buttonDispatcher, &ButtonActionDispatcher::onDivertedButtonPressed);
+            &m_buttonDispatcher, [this, device](uint16_t cid, bool pressed) {
+                m_buttonDispatcher.dispatchButton(device->primary(), device->deviceSerial(),
+                                                   device->descriptor(), cid, pressed);
+            });
     connect(device, &PhysicalDevice::thumbWheelRotation,
             &m_buttonDispatcher, &ButtonActionDispatcher::onThumbWheelRotation);
 

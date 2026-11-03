@@ -30,6 +30,7 @@ Rectangle {
     // re-bind). Drives the Loader's fillHeight and the action list's height
     // cap so the sub-form has room without the picker pushing it offscreen.
     readonly property bool _hasContextual: currentActionType === "gesture-trigger"
+        || currentActionType === "actions-ring"
         || currentAction === "Keyboard shortcut"
         || isCustomKeystroke
 
@@ -504,6 +505,8 @@ Rectangle {
             visible: item !== null
 
             sourceComponent: {
+                if (root.currentActionType === "actions-ring")
+                    return ringComponent
                 if (root.currentActionType === "gesture-trigger")
                     return gestureComponent
                 if (root.currentAction === "Keyboard shortcut" || root.isCustomKeystroke)
@@ -514,6 +517,10 @@ Rectangle {
     }
 
     // ── Contextual component definitions ───────────────────────────────────
+    Component {
+        id: ringComponent
+        RingEditor {}
+    }
 
     Component {
         id: keystrokeComponent

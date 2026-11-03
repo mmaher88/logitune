@@ -9,6 +9,20 @@
 
 #include "SingleInstance.h"
 
+TEST(SingleInstanceTest, SecondaryRequestsRingWithoutMainWindow)
+{
+    QTemporaryDir dir;
+    const QString serverName = "logitune-test-" + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    logitune::SingleInstance primary(dir.filePath("instance.lock"), serverName);
+    ASSERT_FALSE(primary.start().has_value());
+    QSignalSpy ring(&primary, &logitune::SingleInstance::ringRequested);
+    QSignalSpy shown(&primary, &logitune::SingleInstance::showRequested);
+    logitune::SingleInstance secondary(dir.filePath("instance.lock"), serverName);
+    EXPECT_EQ(secondary.start(logitune::SingleInstance::Command::Ring), std::optional<int>(0));
+    ASSERT_TRUE(ring.wait(2000));
+    EXPECT_EQ(shown.count(), 0);
+}
+
 TEST(SingleInstanceTest, SecondaryRequestsShowAndExitsSuccessfully)
 {
     QTemporaryDir dir;

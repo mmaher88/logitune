@@ -1,6 +1,23 @@
 #include "hidpp/features/ReprogControls.h"
+#include <algorithm>
 
 namespace logitune::hidpp::features {
+
+std::vector<std::pair<uint16_t, bool>> DivertedButtons::update(const Report &report)
+{
+    std::vector<uint16_t> held;
+    for (int offset = 0; offset + 1 < std::min(8, report.paramLength); offset += 2) {
+        const uint16_t cid = (report.params[offset] << 8) | report.params[offset + 1];
+        if (cid && std::find(held.begin(), held.end(), cid) == held.end()) held.push_back(cid);
+    }
+    std::vector<std::pair<uint16_t, bool>> events;
+    for (auto cid : m_held)
+        if (std::find(held.begin(), held.end(), cid) == held.end()) events.emplace_back(cid, false);
+    for (auto cid : held)
+        if (std::find(m_held.begin(), m_held.end(), cid) == m_held.end()) events.emplace_back(cid, true);
+    m_held = std::move(held);
+    return events;
+}
 
 int ReprogControls::parseControlCount(const Report &r)
 {

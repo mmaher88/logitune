@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QJsonDocument>
 
 namespace logitune {
 
@@ -19,6 +20,9 @@ ButtonAction ButtonAction::parse(const QString &str)
 
     if (str == "gesture-trigger")
         return {GestureTrigger, {}};
+
+    if (str == "actions-ring")
+        return {ActionsRing, {}};
 
     if (str == "smartshift-toggle")
         return {SmartShiftToggle, {}};
@@ -51,6 +55,7 @@ QString ButtonAction::serialize() const
 {
     switch (type) {
     case Default:       return "default";
+    case ActionsRing:   return "actions-ring";
     case GestureTrigger:  return "gesture-trigger";
     case SmartShiftToggle: return "smartshift-toggle";
     case DpiCycle:      return "dpi-cycle";
@@ -88,6 +93,11 @@ Profile ProfileEngine::loadProfile(const QString &path)
 
     p.thumbWheelMode      = s.value("ThumbWheel/mode", "scroll").toString();
     p.thumbWheelInvert    = s.value("ThumbWheel/invert", false).toBool();
+    p.ringButtonMigrated = s.value("ActionsRing/buttonMigrated", false).toBool();
+    if (s.contains("ActionsRing/slots"))
+        p.ringSlots = ringSlotsFromJson(QJsonDocument::fromJson(s.value("ActionsRing/slots").toByteArray()).array());
+    p.ringSize = s.value("ActionsRing/size", 100).toInt();
+    if (p.ringSize != 80 && p.ringSize != 150) p.ringSize = 100;
 
     s.beginGroup("Buttons");
     const QStringList buttonKeys = s.childKeys();
@@ -128,6 +138,9 @@ void ProfileEngine::saveProfile(const QString &path, const Profile &profile)
 
     s.setValue("ThumbWheel/mode",  profile.thumbWheelMode);
     s.setValue("ThumbWheel/invert", profile.thumbWheelInvert);
+    s.setValue("ActionsRing/slots", QJsonDocument(ringSlotsToJson(profile.ringSlots)).toJson(QJsonDocument::Compact));
+    s.setValue("ActionsRing/size", profile.ringSize);
+    s.setValue("ActionsRing/buttonMigrated", profile.ringButtonMigrated);
 
     s.beginGroup("Buttons");
     for (std::size_t i = 0; i < profile.buttons.size(); ++i)

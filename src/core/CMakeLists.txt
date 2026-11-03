@@ -21,6 +21,8 @@ target_sources(logitune-core PRIVATE
     hidpp/capabilities/SmartShiftCapability.cpp
     hidpp/capabilities/ReprogControlsCapability.cpp
     ProfileEngine.cpp
+    ActionsRing.cpp
+    hidpp/capabilities/HapticsCapability.cpp
     ActionExecutor.cpp
     DeviceRegistry.cpp
     devices/DescriptorWriter.cpp
@@ -33,6 +35,7 @@ target_sources(logitune-core PRIVATE
     desktop/LinuxDesktopBase.cpp
     desktop/GnomeDesktop.cpp
     desktop/HyprlandDesktop.cpp
+    desktop/HyprlandCursor.cpp
     desktop/KDeDesktop.cpp
     desktop/GenericDesktop.cpp
     input/UinputInjector.cpp

@@ -18,6 +18,7 @@
 #include "services/DeviceCommandHandler.h"
 #include "services/ButtonActionDispatcher.h"
 #include "services/ProfileOrchestrator.h"
+#include "services/ActionsRingService.h"
 #include <QObject>
 #include <memory>
 
@@ -68,6 +69,7 @@ public:
     ProfileModel   *profileModel()   { return &m_profileModel; }
     SettingsModel  *settingsModel()  { return &m_settingsModel; }
     EditorModel    *editorModel() const { return m_editorModel.get(); }
+    ActionsRingService *actionsRing() { return m_actionsRing.get(); }
 
 private slots:
     void onPhysicalDeviceAdded(PhysicalDevice *device);
@@ -107,6 +109,7 @@ private:
     ActionExecutor m_actionExecutor;
     ButtonActionDispatcher m_buttonDispatcher;
     ProfileOrchestrator    m_profileOrchestrator;
+    std::unique_ptr<ActionsRingService> m_actionsRing;
 
     std::unique_ptr<EditorModel>         m_editorModel;
 };

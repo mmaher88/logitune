@@ -5,6 +5,27 @@
 using namespace logitune::hidpp;
 using namespace logitune::hidpp::features;
 
+TEST(ReprogControls, HeldButtonsTrackIndividualReleases) {
+    DivertedButtons buttons;
+    Report report;
+    report.paramLength = 8;
+    report.params[0] = 1; report.params[1] = 0xa0;
+    report.params[2] = 0; report.params[3] = 0x53;
+    auto events = buttons.update(report);
+    ASSERT_EQ(events.size(), 2);
+    EXPECT_EQ(events[0], (std::pair<uint16_t, bool>{0x1a0, true}));
+    EXPECT_TRUE(buttons.update(report).empty());
+    report.params[0] = 0; report.params[1] = 0x53;
+    report.params[2] = 0; report.params[3] = 0;
+    events = buttons.update(report);
+    ASSERT_EQ(events.size(), 1);
+    EXPECT_EQ(events[0], (std::pair<uint16_t, bool>{0x1a0, false}));
+    report.params[1] = 0;
+    events = buttons.update(report);
+    ASSERT_EQ(events.size(), 1);
+    EXPECT_EQ(events[0], (std::pair<uint16_t, bool>{0x53, false}));
+}
+
 // ---------------------------------------------------------------------------
 // ReprogControls
 // ---------------------------------------------------------------------------

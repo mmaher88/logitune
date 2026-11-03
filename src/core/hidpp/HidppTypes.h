@@ -27,6 +27,7 @@ enum class FeatureId : uint16_t {
     BatteryStatus   = 0x1000,
     BatteryUnified  = 0x1004,
     ChangeHost      = 0x1814,
+    Haptics         = 0x19b0,
     ReprogControls    = 0x1b00,
     ReprogControlsV2  = 0x1b01,
     ReprogControlsV2_2= 0x1b02,

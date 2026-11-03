@@ -70,10 +70,16 @@ void ButtonModel::setAction(int buttonId, const QString &actionName, const QStri
 void ButtonModel::loadFromProfile(const QList<ButtonAssignment> &assignments)
 {
     beginResetModel();
+    while (m_buttons.size() > qMax(8, assignments.size())) m_buttons.removeLast();
+    while (m_buttons.size() < assignments.size()) {
+        const int i = m_buttons.size();
+        m_buttons.append({i, assignments[i].buttonName, {}, {}, assignments[i].controlId});
+    }
     for (int i = 0; i < assignments.size() && i < m_buttons.size(); ++i) {
         m_buttons[i].actionName = assignments[i].actionName;
         m_buttons[i].actionType = assignments[i].actionType;
         m_buttons[i].controlId  = assignments[i].controlId;
+        if (!assignments[i].buttonName.isEmpty()) m_buttons[i].buttonName = assignments[i].buttonName;
     }
     endResetModel();
 

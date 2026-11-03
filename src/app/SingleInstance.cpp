@@ -20,6 +20,8 @@ SingleInstance::SingleInstance(const QString &lockPath, const QString &serverNam
                         emit showRequested();
                     else if (command == "quit\n")
                         emit quitRequested();
+                    else if (command == "ring\n")
+                        emit ringRequested();
                     socket->disconnectFromServer();
                 } else if (socket->bytesAvailable() > 64) {
                     socket->disconnectFromServer();
@@ -52,7 +54,8 @@ std::optional<int> SingleInstance::start(Command command)
         QLocalSocket socket;
         socket.connectToServer(m_serverName);
         if (socket.waitForConnected(100)) {
-            const QByteArray message = command == Command::Quit ? "quit\n" : "show\n";
+            const QByteArray message = command == Command::Quit ? "quit\n"
+                : command == Command::Ring ? "ring\n" : "show\n";
             if (socket.write(message) != message.size())
                 return 1;
             if (socket.bytesToWrite() && !socket.waitForBytesWritten(1000))

@@ -43,6 +43,7 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
     // can be extended later to handle them as gesture actions.
     if (m_gestureMode) {
         if (type == QLatin1String("gesture-trigger")) return false;
+        if (type == QLatin1String("actions-ring")) return false;
         if (type == QLatin1String("none")) return false;
     }
 

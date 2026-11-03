@@ -88,6 +88,9 @@ int main(int argc, char *argv[])
         QStringLiteral("quit"),
         QStringLiteral("Quit the running instance without starting a new one."));
     parser.addOption(quitOption);
+    QCommandLineOption ringOption(QStringLiteral("show-ring"), QStringLiteral("Toggle the Actions Ring"));
+    ringOption.setFlags(QCommandLineOption::HiddenFromHelp);
+    parser.addOption(ringOption);
     parser.process(app);
     const bool simulateAll = parser.isSet(simulateAllOption);
     const bool editMode = parser.isSet(editOption);
@@ -99,7 +102,8 @@ int main(int argc, char *argv[])
     QObject::connect(&singleInstance, &logitune::SingleInstance::quitRequested,
                      &app, &QCoreApplication::quit);
     const auto command = parser.isSet(quitOption) ? logitune::SingleInstance::Command::Quit
-                                                : logitune::SingleInstance::Command::Show;
+        : parser.isSet(ringOption) ? logitune::SingleInstance::Command::Ring
+                                  : logitune::SingleInstance::Command::Show;
     if (const auto exitCode = singleInstance.start(command)) {
         if (*exitCode != 0)
             qCritical() << "Could not start or contact the primary Logitune instance";
@@ -199,6 +203,12 @@ int main(int argc, char *argv[])
         }
     };
     engine.addImageProvider(QStringLiteral("icon"), new IconProvider);
+    controller.actionsRing()->setEngine(&engine);
+    QObject::connect(&app, &QCoreApplication::aboutToQuit,
+                     controller.actionsRing(), &logitune::ActionsRingService::shutdown);
+    engine.rootContext()->setContextProperty("ActionsRing", controller.actionsRing());
+    QObject::connect(&singleInstance, &logitune::SingleInstance::ringRequested,
+                     controller.actionsRing(), &logitune::ActionsRingService::toggle);
 
     // Qt 6.5+: register into the module. Qt 6.4: module is protected by plugin,
     // use context properties instead (globally available in QML, same effect).
@@ -222,6 +232,10 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/Logitune/qml/Theme.qml")),
                              "Logitune", 1, 0, "Theme");
 #endif
+
+    const int themeId = qmlTypeId("Logitune", 1, 0, "Theme");
+    if (auto *theme = engine.singletonInstance<QObject *>(themeId))
+        theme->setProperty("dark", isDark);
 
     controller.startMonitoring(simulateAll, editMode);
 
@@ -251,7 +265,7 @@ int main(int argc, char *argv[])
     if (!QSystemTrayIcon::isSystemTrayAvailable())
         qCInfo(lcApp) << "Tray unavailable -- launch again to show the window; use --quit to exit";
 
-    if (startMinimized) {
+    if (startMinimized || parser.isSet(ringOption)) {
         qCInfo(lcApp) << "Startup: running without a window";
     } else {
         if (!windows.showMainWindow()) {
@@ -261,6 +275,8 @@ int main(int argc, char *argv[])
     }
 
     qCInfo(lcApp) << "Startup complete";
+    if (parser.isSet(ringOption))
+        QTimer::singleShot(0, controller.actionsRing(), &logitune::ActionsRingService::toggle);
 
     // Run with exception safety net
     try {

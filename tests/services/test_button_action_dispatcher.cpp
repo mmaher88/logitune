@@ -1,4 +1,5 @@
 #include "services/ButtonActionDispatcherFixture.h"
+#include <QSignalSpy>
 
 using namespace logitune;
 using namespace logitune::test;
@@ -19,6 +20,37 @@ void setProfileButton(Profile &p, int idx, ButtonAction ba) {
 }
 
 } // namespace
+
+TEST_F(ButtonActionDispatcherFixture, RingReleaseSurvivesProfileChange) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 3, {ButtonAction::ActionsRing, {}});
+    QSignalSpy ring(m_dispatcher.get(), &ButtonActionDispatcher::actionsRingTriggered);
+    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    setProfileButton(hwProfile(), 3, {ButtonAction::Default, {}});
+    m_dispatcher->onDivertedButtonPressed(kBackCid, false);
+    ASSERT_EQ(ring.count(), 2);
+    EXPECT_EQ(ring[0][0].toString(), "mock-serial");
+    EXPECT_TRUE(ring[0][1].toBool());
+    EXPECT_FALSE(ring[1][1].toBool());
+}
+
+TEST_F(ButtonActionDispatcherFixture, RingUsesEmittingDeviceWithoutCarouselSelection) {
+    attachMockSession();
+    setProfileButton(hwProfile(), 3, {ButtonAction::ActionsRing, {}});
+    m_deviceModel->setSelectedIndex(-1);
+    QSignalSpy ring(m_dispatcher.get(), &ButtonActionDispatcher::actionsRingTriggered);
+    m_dispatcher->dispatchButton(m_session, "mock-serial", &m_device, kBackCid, true);
+    m_dispatcher->dispatchButton(m_session, "mock-serial", &m_device, kBackCid, false);
+    ASSERT_EQ(ring.count(), 2);
+    EXPECT_EQ(ring[0][0].toString(), "mock-serial");
+}
+
+TEST_F(ButtonActionDispatcherFixture, UnrelatedReleaseDoesNotTriggerRing) {
+    attachMockSession();
+    QSignalSpy ring(m_dispatcher.get(), &ButtonActionDispatcher::actionsRingTriggered);
+    m_dispatcher->onDivertedButtonPressed(0, false);
+    EXPECT_EQ(ring.count(), 0);
+}
 
 // --- Gesture accumulation + resolution --------------------------------------
 

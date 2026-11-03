@@ -8,6 +8,7 @@ ActionModel::ActionModel(QObject *parent)
     //                name                   description                                  actionType         payload                 category
     m_actions = {
         // Device
+        { "Actions Ring",          "Open the profile's radial actions menu",     "actions-ring",      "",                  "Device" },
         { "DPI cycle",             "Step through the device's DPI preset list",  "dpi-cycle",         "",                  "Device" },
         { "Gestures",              "Trigger gesture recognition",                "gesture-trigger",   "",                  "Device" },
         { "Shift wheel mode",      "Toggle scroll wheel ratchet/freespin",       "smartshift-toggle", "",                  "Device" },
@@ -123,6 +124,8 @@ QString ActionModel::buttonActionToName(const ButtonAction &ba) const
 {
     if (ba.type == ButtonAction::Default)
         return QString();
+    if (ba.type == ButtonAction::ActionsRing)
+        return QStringLiteral("Actions Ring");
     if (ba.type == ButtonAction::GestureTrigger)
         return QStringLiteral("Gestures");
     if (ba.type == ButtonAction::PresetRef) {
@@ -146,6 +149,8 @@ ButtonAction ActionModel::buttonEntryToAction(const QString &actionType, const Q
 {
     if (actionType == QStringLiteral("default"))
         return {ButtonAction::Default, {}};
+    if (actionType == QStringLiteral("actions-ring"))
+        return {ButtonAction::ActionsRing, {}};
     if (actionType == QStringLiteral("gesture-trigger"))
         return {ButtonAction::GestureTrigger, {}};
     if (actionType == QStringLiteral("smartshift-toggle"))

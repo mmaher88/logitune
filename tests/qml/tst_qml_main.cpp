@@ -9,6 +9,21 @@
 #include "models/ProfileModel.h"
 #include "models/SettingsModel.h"
 #include "logging/LogManager.h"
+#include "ActionsRing.h"
+
+class RingEditorStub : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QVariantList entries READ entries NOTIFY editorChanged)
+    Q_PROPERTY(int size MEMBER m_size NOTIFY editorChanged)
+public:
+    QVariantList entries() const { return m_entries; }
+    Q_INVOKABLE void setEntries(const QVariantList &entries) { m_entries = entries; emit editorChanged(); }
+signals:
+    void editorChanged();
+private:
+    int m_size = 100;
+    QVariantList m_entries = logitune::ringSlotsToJson(logitune::defaultRingSlots()).toVariantList();
+};
 
 Q_IMPORT_QML_PLUGIN(LogitunePlugin)
 
@@ -33,6 +48,7 @@ public slots:
         engine->rootContext()->setContextProperty("ActionModel",  &m_actionModel);
         engine->rootContext()->setContextProperty("ProfileModel",  &m_profileModel);
         engine->rootContext()->setContextProperty("SettingsModel", &m_settingsModel);
+        engine->rootContext()->setContextProperty("ActionsRing", &m_ringEditor);
 
         m_deviceModel.setDisplayValues(1000, true, 50, true, false, "scroll");
     }
@@ -43,6 +59,7 @@ private:
     logitune::ActionModel  m_actionModel;
     logitune::ProfileModel  m_profileModel;
     logitune::SettingsModel m_settingsModel;
+    RingEditorStub m_ringEditor;
 };
 
 QUICK_TEST_MAIN_WITH_SETUP(logitune_qml, QmlTestSetup)

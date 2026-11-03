@@ -65,7 +65,7 @@ project(logitune VERSION ${LOGITUNE_VERSION} LANGUAGES CXX)
 # first `cmake -B build`. Skipped for source-tarball builds (AUR, OBS) that
 # have no .git, and no-ops if already pointing at hooks/.
 # ---------------------------------------------------------------------------
-if(Git_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+if(Git_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git" AND NOT LOGITUNE_NO_GIT_WRITES)
     execute_process(
         COMMAND ${GIT_EXECUTABLE} config --local --get core.hooksPath
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

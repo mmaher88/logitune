@@ -100,6 +100,8 @@ void ProfileOrchestrator::setupProfileForDevice(PhysicalDevice *device)
                     seed.buttons[i] = {ButtonAction::SmartShiftToggle, {}};
                 else if (ctrl.defaultActionType == "dpi-cycle")
                     seed.buttons[i] = {ButtonAction::DpiCycle, {}};
+                else if (ctrl.defaultActionType == "actions-ring")
+                    seed.buttons[i] = {ButtonAction::ActionsRing, {}};
             }
             const auto defaultGestures = m_currentDevice->defaultGestures();
             for (auto it = defaultGestures.begin();
@@ -110,6 +112,23 @@ void ProfileOrchestrator::setupProfileForDevice(PhysicalDevice *device)
         ProfileEngine::saveProfile(defaultConf, seed);
         m_profileEngine->registerDevice(serial, profilesDir);  // reload cache after seeding
         qCDebug(lcApp) << "created default profile at" << defaultConf;
+    }
+
+    for (const auto &name : m_profileEngine->profileNames(serial)) {
+        auto &profile = m_profileEngine->cachedProfile(serial, name);
+        if (profile.ringButtonMigrated) continue;
+        bool hasRingButton = false;
+        for (const auto &control : device->descriptor()->controls()) {
+            if (control.defaultActionType == "actions-ring") hasRingButton = true;
+            if (control.defaultActionType == "actions-ring"
+                && control.buttonIndex >= 0 && control.buttonIndex < int(profile.buttons.size())
+                && profile.buttons[control.buttonIndex].type == ButtonAction::Default)
+                profile.buttons[control.buttonIndex] = {ButtonAction::ActionsRing, {}};
+        }
+        if (hasRingButton) {
+            profile.ringButtonMigrated = true;
+            m_profileEngine->saveProfileToDisk(serial, name);
+        }
     }
 
     const QString bindingsFile = profilesDir + QStringLiteral("/app-bindings.conf");
@@ -257,7 +276,7 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
             };
             QString wheelName = kWheelNames.value(p.thumbWheelMode, p.thumbWheelMode);
             QString wheelType = (p.thumbWheelMode == "scroll") ? "default" : "wheel-mode";
-            assignments.append({wheelName, wheelType, ctrl.controlId});
+            assignments.append({wheelName, wheelType, ctrl.controlId, ctrl.defaultName});
             continue;
         }
         const auto &ba = (static_cast<std::size_t>(i) < p.buttons.size())
@@ -273,6 +292,10 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
         case ButtonAction::GestureTrigger:
             aType = QStringLiteral("gesture-trigger");
             aName = QStringLiteral("Gestures");
+            break;
+        case ButtonAction::ActionsRing:
+            aType = QStringLiteral("actions-ring");
+            aName = QStringLiteral("Actions Ring");
             break;
         case ButtonAction::SmartShiftToggle:
             aType = QStringLiteral("smartshift-toggle");
@@ -309,7 +332,7 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
             aName = ctrl.defaultName;
             break;
         }
-        assignments.append({aName, aType, ctrl.controlId});
+        assignments.append({aName, aType, ctrl.controlId, ctrl.defaultName});
     }
 
     m_buttonModel->loadFromProfile(assignments);

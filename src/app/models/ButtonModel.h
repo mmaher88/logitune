@@ -18,6 +18,7 @@ struct ButtonAssignment {
     QString actionName;
     QString actionType;
     uint16_t controlId;
+    QString buttonName;
 };
 
 class ButtonModel : public QAbstractListModel {

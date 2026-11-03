@@ -52,10 +52,21 @@ void ButtonActionDispatcher::onGestureRaw(int16_t dx, int16_t dy)
 void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pressed)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
+    dispatchButton(session, m_selection ? m_selection->activeSerial() : QString(),
+                   m_currentDevice, controlId, pressed);
+}
+
+void ButtonActionDispatcher::dispatchButton(DeviceSession *session, const QString &serial,
+                                             const IDevice *descriptor, uint16_t controlId, bool pressed)
+{
     if (!session) return;
     auto &state = m_state[session->deviceId()];
 
-    const QString serial = m_selection->activeSerial();
+    if (!pressed && state.ringControlId != 0 && state.ringControlId == controlId) {
+        state.ringControlId = 0;
+        emit actionsRingTriggered(serial, false);
+        return;
+    }
     if (serial.isEmpty()) return;
     const Profile &hwProfile = m_profileEngine->cachedProfile(
         serial, m_profileEngine->hardwareProfile(serial));
@@ -105,9 +116,9 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
 
     if (!pressed) return;
 
-    if (!m_currentDevice) return;
+    if (!descriptor) return;
     int idx = -1;
-    for (const auto &ctrl : m_currentDevice->controls()) {
+    for (const auto &ctrl : descriptor->controls()) {
         if (ctrl.controlId == controlId) {
             idx = ctrl.buttonIndex;
             break;
@@ -123,7 +134,10 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
 
     if (ba.type == ButtonAction::Default) return;
 
-    if (ba.type == ButtonAction::SmartShiftToggle) {
+    if (ba.type == ButtonAction::ActionsRing) {
+        state.ringControlId = controlId;
+        emit actionsRingTriggered(serial, true);
+    } else if (ba.type == ButtonAction::SmartShiftToggle) {
         bool current = session->smartShiftEnabled();
         session->setSmartShift(!current, session->smartShiftThreshold());
         emit smartShiftChangedByButton(!current, session->smartShiftThreshold());

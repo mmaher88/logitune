@@ -22,6 +22,7 @@ QtObject {
     readonly property color selectedBg: accent
     readonly property color batteryGreen: "#79E053"
     readonly property color batteryWarning: "#FFA414"
+    readonly property color error: "#dc3545"
 
     // Sidebar active tab
     readonly property color activeTabBg: accent

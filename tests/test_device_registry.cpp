@@ -72,8 +72,8 @@ static const DeviceSpec kDevices[] = {
         .pid = 0xb042,
         .name = "MX Master 4",
         .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
-        .buttonHotspots = 6, .scrollHotspots = 3,
-        .minControls = 7,
+        .buttonHotspots = 7, .scrollHotspots = 3,
+        .minControls = 9,
         .control0Cid = 0x0050, .control5Cid = 0x00C3,
         .control5ActionType = "gesture-trigger",
         .control6ActionType = "smartshift-toggle",
@@ -211,6 +211,17 @@ TEST_P(DeviceRegistryTest, FeatureSupport) {
     EXPECT_EQ(f.smartShift, s.smartShift);
     EXPECT_EQ(f.reprogControls, s.reprogControls);
     EXPECT_EQ(f.gestureV2, s.gestureV2);
+    EXPECT_EQ(f.hapticFeedback, s.pid == 0xb042);
+}
+
+TEST_P(DeviceRegistryTest, ActionsRingControl) {
+    if (GetParam().pid != 0xb042) return;
+    const auto controls = reg.findByPid(GetParam().pid)->controls();
+    ASSERT_GE(controls.size(), 9);
+    EXPECT_EQ(controls[8].controlId, 0x01a0);
+    EXPECT_EQ(controls[8].defaultName, "Haptic button");
+    EXPECT_EQ(controls[8].defaultActionType, "actions-ring");
+    EXPECT_TRUE(controls[8].configurable);
 }
 
 TEST_P(DeviceRegistryTest, DpiRange) {

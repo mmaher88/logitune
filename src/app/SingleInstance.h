@@ -12,7 +12,7 @@ class SingleInstance : public QObject
 {
     Q_OBJECT
 public:
-    enum class Command { Show, Quit };
+    enum class Command { Show, Quit, Ring };
     SingleInstance(const QString &lockPath, const QString &serverName);
 
     // An exit code means this launch must not initialize the devices or UI.
@@ -21,6 +21,7 @@ public:
 signals:
     void showRequested();
     void quitRequested();
+    void ringRequested();
 
 private:
     QLockFile m_lockFile;

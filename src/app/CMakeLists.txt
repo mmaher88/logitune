@@ -12,6 +12,7 @@ add_library(logitune-app-lib STATIC
     services/DeviceCommandHandler.cpp
     services/ButtonActionDispatcher.cpp
     services/ProfileOrchestrator.cpp
+    services/ActionsRingService.cpp
     dialogs/GitHubIssueBuilder.cpp
     dialogs/CrashReportDialog.cpp
     TrayManager.cpp
@@ -26,6 +27,11 @@ target_include_directories(logitune-app-lib PUBLIC
 )
 
 target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widgets Qt6::Network)
+find_package(LayerShellQt QUIET)
+if(TARGET LayerShellQt::Interface)
+    target_link_libraries(logitune-app-lib PUBLIC LayerShellQt::Interface)
+    target_compile_definitions(logitune-app-lib PRIVATE LOGITUNE_LAYER_SHELL)
+endif()
 target_compile_definitions(logitune-app-lib PUBLIC
     PROJECT_VERSION="${PROJECT_VERSION}"
     PROJECT_VERSION_FULL="${LOGITUNE_DISPLAY_VERSION}"
@@ -72,6 +78,11 @@ qt_add_qml_module(logitune-app-lib
         qml/components/KeystrokeCapture.qml
         qml/components/ButtonCallout.qml
         qml/components/ActionsPanel.qml
+        qml/components/actionsring/Ring.qml
+        qml/components/actionsring/RingButton.qml
+        qml/components/actionsring/Glyph.qml
+        qml/components/actionsring/RingEditor.qml
+        qml/components/actionsring/RingSlotEditor.qml
         qml/components/DeviceCard.qml
         qml/components/DeviceRender.qml
         qml/components/AppProfileBar.qml

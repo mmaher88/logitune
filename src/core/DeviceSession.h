@@ -7,6 +7,8 @@
 #include "hidpp/capabilities/BatteryCapability.h"
 #include "hidpp/capabilities/SmartShiftCapability.h"
 #include "hidpp/capabilities/ReprogControlsCapability.h"
+#include "hidpp/capabilities/HapticsCapability.h"
+#include "hidpp/features/ReprogControls.h"
 #include <QObject>
 #include <QSocketNotifier>
 #include <QTimer>
@@ -77,6 +79,7 @@ public:
     void setSmartShift(bool enabled, int threshold);
     void setScrollConfig(bool hiRes, bool invert);
     void divertButton(uint16_t controlId, bool divert, bool rawXY = false);
+    void playHaptic(uint8_t waveform);
     void setThumbWheelMode(const QString &mode, bool invert = false);
     void flushCommandProcessor();
     void touchResponseTime();
@@ -140,6 +143,8 @@ private:
     std::optional<hidpp::capabilities::BatteryVariant>         m_batteryDispatch;
     std::optional<hidpp::capabilities::SmartShiftVariant>      m_smartShiftDispatch;
     std::optional<hidpp::capabilities::ReprogControlsVariant>  m_reprogControlsDispatch;
+    std::optional<hidpp::capabilities::HapticsVariant> m_hapticsDispatch;
+    hidpp::features::DivertedButtons m_divertedButtons;
 
     QTimer *m_reconnectTimer = nullptr;
     QTimer *m_batteryPollTimer = nullptr;

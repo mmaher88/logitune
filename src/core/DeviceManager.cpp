@@ -19,6 +19,12 @@
 
 namespace logitune {
 
+void DeviceManager::playHaptic(const QString &serial, uint8_t waveform)
+{
+    auto *device = physicalDeviceBySerial(serial);
+    if (device && device->primary()) device->primary()->playHaptic(waveform);
+}
+
 // ---------------------------------------------------------------------------
 // Static helpers
 // ---------------------------------------------------------------------------

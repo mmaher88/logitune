@@ -104,6 +104,7 @@
               "default",
               "keystroke",
               "gesture-trigger",
+              "actions-ring",
               "smartshift-toggle",
               "dpi-cycle",
               "app-launch",

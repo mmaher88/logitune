@@ -265,6 +265,9 @@ void DeviceSession::enumerateAndSetup()
     }
 
     // Resolve variant dispatches
+    m_divertedButtons.clear();
+    m_hapticsDispatch = hidpp::capabilities::resolveCapability(
+        m_features.get(), hidpp::capabilities::kHapticsVariants);
     m_batteryDispatch        = hidpp::capabilities::resolveCapability(
                                    m_features.get(), hidpp::capabilities::kBatteryVariants);
     m_smartShiftDispatch     = hidpp::capabilities::resolveCapability(
@@ -652,12 +655,11 @@ void DeviceSession::handleNotification(const hidpp::Report &report)
         auto idx = m_features->featureIndex(m_reprogControlsDispatch->feature);
         if (idx.has_value() && report.featureIndex == *idx) {
             if (report.functionId == 0) {
-                uint16_t controlId = (static_cast<uint16_t>(report.params[0]) << 8)
-                                     | report.params[1];
-                bool pressed = (controlId != 0);
-                qCDebug(lcDevice) << "button event: CID" << Qt::hex << controlId
-                                  << (pressed ? "pressed" : "released");
-                emit divertedButtonPressed(controlId, pressed);
+                for (const auto &[controlId, pressed] : m_divertedButtons.update(report)) {
+                    qCDebug(lcDevice) << "button event: CID" << Qt::hex << controlId
+                                      << (pressed ? "pressed" : "released");
+                    emit divertedButtonPressed(controlId, pressed);
+                }
             } else if (report.functionId == 1) {
                 auto evt = hidpp::features::ReprogControls::parseDivertedRawXYEvent(report);
                 emit gestureRawXY(evt.dx, evt.dy);
@@ -825,6 +827,14 @@ void DeviceSession::divertButton(uint16_t controlId, bool divert, bool rawXY)
                             std::span<const uint8_t>(params));
     qCDebug(lcDevice) << "button" << Qt::hex << controlId
                       << (divert ? "diverted" : "undiverted") << (rawXY ? "+rawXY" : "");
+}
+
+void DeviceSession::playHaptic(uint8_t waveform)
+{
+    if (!m_connected || !m_commandProcessor || !m_hapticsDispatch) return;
+    const auto params = m_hapticsDispatch->buildPlay(waveform);
+    m_commandProcessor->enqueue(m_hapticsDispatch->feature, m_hapticsDispatch->playFn,
+                                std::span<const uint8_t>(params));
 }
 
 QString DeviceSession::thumbWheelMode() const { return m_thumbWheelMode; }

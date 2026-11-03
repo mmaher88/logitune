@@ -4,6 +4,12 @@
 
 using logitune::ButtonAction;
 
+TEST(ButtonAction, ActionsRingRoundTrip) {
+    const auto action = ButtonAction::parse("actions-ring");
+    EXPECT_NE(action.type, ButtonAction::Default);
+    EXPECT_EQ(action.serialize(), "actions-ring");
+}
+
 // ---------------------------------------------------------------------------
 // Parse tests
 // ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@ struct ButtonAction {
         DBus,
         Media,
         PresetRef,
+        ActionsRing,
     };
 
     Type type = Default;

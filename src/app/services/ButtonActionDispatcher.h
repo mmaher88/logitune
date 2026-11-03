@@ -16,6 +16,7 @@ class ActiveDeviceResolver;
 class ProfileEngine;
 class IDevice;
 class IDesktopIntegration;
+class DeviceSession;
 
 /// Turns raw HID++ input events (gestureRawXY, divertedButtonPressed,
 /// thumbWheelRotation) into high-level actions (SmartShift toggle, DPI
@@ -32,11 +33,14 @@ public:
                            QObject *parent = nullptr);
 
     void onDeviceRemoved(const QString &serial);
+    void dispatchButton(DeviceSession *session, const QString &serial,
+                        const IDevice *descriptor, uint16_t controlId, bool pressed);
 
     friend class test::AppRootFixture;
     friend class test::ButtonActionDispatcherFixture;
 
 signals:
+    void actionsRingTriggered(const QString &serial, bool pressed);
     /// Emitted after a diverted button changes a device setting, so the
     /// orchestrator can persist it into the active profile. Notifying
     /// explicitly (rather than having the orchestrator listen to
@@ -59,6 +63,7 @@ private:
         int thumbAccum = 0;
         bool gestureActive = false;
         uint16_t gestureControlId = 0;
+        uint16_t ringControlId = 0;
     };
     static constexpr int kGestureThreshold = 50;
     static constexpr int kThumbThreshold = 15;

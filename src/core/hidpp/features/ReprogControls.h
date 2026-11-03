@@ -2,6 +2,7 @@
 #include "hidpp/HidppTypes.h"
 #include <cstdint>
 #include <vector>
+#include <utility>
 
 namespace logitune::hidpp::features {
 
@@ -16,6 +17,14 @@ struct ControlInfo {
 struct RawXYEvent {
     int16_t dx;
     int16_t dy;
+};
+
+class DivertedButtons {
+public:
+    std::vector<std::pair<uint16_t, bool>> update(const Report &report);
+    void clear() { m_held.clear(); }
+private:
+    std::vector<uint16_t> m_held;
 };
 
 class ReprogControls {

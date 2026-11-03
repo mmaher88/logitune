@@ -1,5 +1,6 @@
 #pragma once
 #include "ButtonAction.h"
+#include "ActionsRing.h"
 #include <QObject>
 #include <QString>
 #include <QMap>
@@ -10,6 +11,9 @@
 namespace logitune {
 
 struct Profile {
+    QList<RingSlot> ringSlots = defaultRingSlots();
+    int ringSize = 100;
+    bool ringButtonMigrated = false;
     int version = 1;
     QString name;
     QString icon;

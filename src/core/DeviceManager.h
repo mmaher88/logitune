@@ -45,6 +45,7 @@ public:
     // Physical device access (logical layer, one per unique serial).
     QList<PhysicalDevice *> physicalDevices() const;
     PhysicalDevice *physicalDeviceBySerial(const QString &serial) const;
+    void playHaptic(const QString &serial, uint8_t waveform);
 
     // Backward compat — returns first session's descriptor
     const IDevice* activeDevice() const;

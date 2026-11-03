@@ -199,7 +199,10 @@ void UinputInjector::sendDBusCall(const QString &spec)
 
 void UinputInjector::launchApp(const QString &command)
 {
-    QProcess::startDetached(command);
+    auto arguments = QProcess::splitCommand(command);
+    if (arguments.isEmpty()) return;
+    const auto program = arguments.takeFirst();
+    QProcess::startDetached(program, arguments);
 }
 
 // ---------------------------------------------------------------------------

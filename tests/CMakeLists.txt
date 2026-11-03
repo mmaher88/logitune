@@ -25,6 +25,7 @@ add_executable(logitune-tests
     mocks/MockTransport.cpp
     test_keystroke_parser.cpp
     test_button_action.cpp
+    test_actions_ring.cpp
     test_button_model.cpp
     test_profile_model.cpp
     test_action_model.cpp
