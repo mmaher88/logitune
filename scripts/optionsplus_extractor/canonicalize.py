@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from .slots import ButtonSlot, ScrollSlot, EasySwitchSlot, THUMBWHEEL_CID
-
+from .slots import THUMBWHEEL_CID, ButtonSlot, EasySwitchSlot, ScrollSlot
 
 _SCROLL_KIND_ORDER = {"scrollwheel": 0, "thumbwheel": 1, "pointer": 2}
 

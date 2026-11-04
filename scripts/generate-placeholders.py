@@ -32,7 +32,7 @@ USBID_PATTERN = re.compile(r'usbid=0x(\w+)')
 
 def slugify(name):
     """Convert device name to directory slug: 'MX Master 3S' -> 'mx-master-3s'"""
-    return SLUGIFY_PATTERN.sub("X", '-', name.lower()).strip('-')
+    return SLUGIFY_PATTERN.sub('-', name.lower()).strip('-')
 
 def parse_solaar_devices():
     """Extract mouse device entries from Solaar's descriptors.py."""

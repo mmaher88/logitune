@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from . import sources
-from .sources import DeviceDbEntry, Depot
-from .capabilities import features_from_capabilities, dpi_from_capabilities
+from . import canonicalize, sources
 from . import slots as slots_mod
-from . import canonicalize
-
+from .capabilities import dpi_from_capabilities, features_from_capabilities
+from .sources import Depot, DeviceDbEntry
 
 _DEFAULT_CONTROLS = [
     {

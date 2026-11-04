@@ -8,14 +8,15 @@ import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Optional
 
-from . import sources, descriptor, validate
+from . import descriptor, sources, validate
 from .slots import UnknownSlotName
 
+# re.compile for various patterns because they are checked in a loop
+SLUGIFY_PATTERN = re.compile(r'[^a-z0-9]+')
 
 def _slugify(name: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    return SLUGIFY_PATTERN.sub('-', name.lower()).strip('-')
 
 
 def run(
@@ -104,7 +105,7 @@ def run(
     return 1 if unknown_slot_reports else 0
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Generate logitune descriptors from extracted Options+ data",
     )
