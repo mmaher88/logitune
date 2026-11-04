@@ -12,23 +12,30 @@ Requires: Solaar installed (logitech_receiver package available on PYTHONPATH)
 """
 
 import argparse
+import inspect
 import json
-import os
 import re
 import sys
-import inspect
+from pathlib import Path
+
+try:
+    from logitech_receiver import descriptors, special_keys  # pyright: ignore[reportMissingImports]
+except ImportError:
+    print("Error: Solaar not installed. Install with: pip install solaar", file=sys.stderr)
+    sys.exit(1)
+
+# re.compile for various patterns because they are checked in a loop
+SLUGIFY_PATTERN = re.compile(r'[^a-z0-9]+')
+WPID_PATTERN = re.compile(r'wpid="(\w+)"')
+BTID_PATTERN = re.compile(r'btid=0x(\w+)')
+USBID_PATTERN = re.compile(r'usbid=0x(\w+)')
 
 def slugify(name):
     """Convert device name to directory slug: 'MX Master 3S' -> 'mx-master-3s'"""
-    return re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+    return SLUGIFY_PATTERN.sub("X", '-', name.lower()).strip('-')
 
 def parse_solaar_devices():
     """Extract mouse device entries from Solaar's descriptors.py."""
-    try:
-        from logitech_receiver import descriptors
-    except ImportError:
-        print("Error: Solaar not installed. Install with: pip install solaar", file=sys.stderr)
-        sys.exit(1)
 
     src = inspect.getsource(descriptors)
     devices = []
@@ -44,11 +51,11 @@ def parse_solaar_devices():
 
         # Extract PIDs
         pids = []
-        for pid_match in re.finditer(r'wpid="(\w+)"', params):
+        for pid_match in WPID_PATTERN.finditer(params):
             pids.append(f"0x{pid_match.group(1)}")
-        for pid_match in re.finditer(r'btid=0x(\w+)', params):
+        for pid_match in BTID_PATTERN.finditer(params):
             pids.append(f"0x{pid_match.group(1)}")
-        for pid_match in re.finditer(r'usbid=0x(\w+)', params):
+        for pid_match in USBID_PATTERN.finditer(params):
             pids.append(f"0x{pid_match.group(1)}")
 
         if not pids:
@@ -74,10 +81,6 @@ def parse_solaar_devices():
 
 def get_common_mouse_cids():
     """Get standard mouse CID names from Solaar's special_keys.py."""
-    try:
-        from logitech_receiver import special_keys
-    except ImportError:
-        return {}
 
     cid_names = {}
     if hasattr(special_keys, 'CONTROL'):
@@ -144,10 +147,10 @@ def main():
 
     for device in sorted(devices, key=lambda d: d['name']):
         slug = slugify(device['name'])
-        dir_path = os.path.join(args.output_dir, slug)
-        json_path = os.path.join(dir_path, 'descriptor.json')
+        dir_path = Path(args.output_dir) / slug
+        json_path = dir_path / 'descriptor.json'
 
-        if args.skip_existing and os.path.exists(json_path):
+        if args.skip_existing and json_path.exists():
             skipped += 1
             continue
 
@@ -157,8 +160,8 @@ def main():
             print(f"  Would create: {dir_path}/")
             print(f"    {device['name']} PIDs={device['pids']} HID++2.0={device['hidpp2']}")
         else:
-            os.makedirs(dir_path, exist_ok=True)
-            with open(json_path, 'w') as f:
+            dir_path.mkdir(parents=True, exist_ok=True)
+            with json_path.open('w') as f:
                 json.dump(descriptor, f, indent=2)
                 f.write('\n')
             print(f"  Created: {dir_path}/descriptor.json")
