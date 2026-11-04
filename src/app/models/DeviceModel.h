@@ -41,6 +41,17 @@ class DeviceModel : public QAbstractListModel {
     Q_PROPERTY(int dpiStep READ dpiStep NOTIFY selectedChanged)
     Q_PROPERTY(bool smartShiftEnabled READ smartShiftEnabled NOTIFY smartShiftEnabledChanged)
     Q_PROPERTY(int smartShiftThreshold READ smartShiftThreshold NOTIFY smartShiftThresholdChanged)
+    // Haptic feedback and the thumb panel's press force: settings of the mouse itself, not of an
+    // application profile. One signal covers them all; they're read and written together.
+    Q_PROPERTY(bool hapticsSupported READ hapticsSupported NOTIFY panelSettingsChanged)
+    Q_PROPERTY(bool hapticsEnabled READ hapticsEnabled NOTIFY panelSettingsChanged)
+    Q_PROPERTY(int hapticsLevel READ hapticsLevel NOTIFY panelSettingsChanged)
+    Q_PROPERTY(bool hapticsFourLevelsOnly READ hapticsFourLevelsOnly NOTIFY panelSettingsChanged)
+    Q_PROPERTY(bool panelForceSupported READ panelForceSupported NOTIFY panelSettingsChanged)
+    Q_PROPERTY(int panelForce READ panelForce NOTIFY panelSettingsChanged)
+    Q_PROPERTY(int panelForceMin READ panelForceMin NOTIFY panelSettingsChanged)
+    Q_PROPERTY(int panelForceMax READ panelForceMax NOTIFY panelSettingsChanged)
+    Q_PROPERTY(int panelForceDefault READ panelForceDefault NOTIFY panelSettingsChanged)
     Q_PROPERTY(bool scrollHiRes READ scrollHiRes NOTIFY scrollConfigChanged)
     Q_PROPERTY(bool scrollInvert READ scrollInvert NOTIFY scrollConfigChanged)
     Q_PROPERTY(QString activeProfileName READ activeProfileName NOTIFY activeProfileNameChanged)
@@ -142,6 +153,17 @@ public:
 
     Q_INVOKABLE void setDPI(int value);
     Q_INVOKABLE void setSmartShift(bool enabled, int threshold);
+    Q_INVOKABLE void setHaptics(bool enabled, int level);
+    Q_INVOKABLE void setPanelForce(int force);
+    bool hapticsSupported() const;
+    bool hapticsEnabled() const;
+    int hapticsLevel() const;
+    bool hapticsFourLevelsOnly() const;
+    bool panelForceSupported() const;
+    int panelForce() const;
+    int panelForceMin() const;
+    int panelForceMax() const;
+    int panelForceDefault() const;
     Q_INVOKABLE void setScrollConfig(bool hiRes, bool invert);
     Q_INVOKABLE void setThumbWheelMode(const QString &mode);
     Q_INVOKABLE void resetAllProfiles();
@@ -190,6 +212,7 @@ signals:
     void currentDPIChanged();
     void smartShiftEnabledChanged();
     void smartShiftThresholdChanged();
+    void panelSettingsChanged();
     void scrollConfigChanged();
     void thumbWheelModeChanged();
     void settingsReloaded();

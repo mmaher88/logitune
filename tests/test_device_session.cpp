@@ -208,3 +208,19 @@ TEST_F(DeviceSessionTest, AccessorsReturnNullables) {
     EXPECT_NE(session->transport(), nullptr);
     EXPECT_NE(session->device(), nullptr);
 }
+
+TEST_F(DeviceSessionTest, PanelSettingsUnsupportedBeforeConnect) {
+    auto session = makeSession();
+    EXPECT_FALSE(session->hapticsSupported());
+    EXPECT_FALSE(session->panelForceSupported());
+}
+
+TEST_F(DeviceSessionTest, PanelSettersSkipWhenNotConnected) {
+    auto session = makeSession();
+    QSignalSpy spy(session.get(), &DeviceSession::panelSettingsChanged);
+    session->setHaptics(true, 60);
+    session->setPanelForce(5000);
+    EXPECT_EQ(spy.count(), 0);
+    EXPECT_EQ(session->hapticsLevel(), 0);
+    EXPECT_EQ(session->panelForce(), 0);
+}

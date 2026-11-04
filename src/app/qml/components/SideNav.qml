@@ -25,6 +25,9 @@ Rectangle {
         ];
         if (easySwitchSupported)
             items.push({ name: "easyswitch", label: "EASY-SWITCH", icon: "\u21C4", enabled: true });
+        // Only for mice that report haptics or a force-sensing panel (MX Master 4).
+        if (DeviceModel.hapticsSupported || DeviceModel.panelForceSupported)
+            items.push({ name: "haptics", label: "HAPTICS", icon: "\u2248", enabled: true });
         items.push({ name: "settings", label: "SETTINGS", icon: "\u2261", enabled: true });
         return items;
     }

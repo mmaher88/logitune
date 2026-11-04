@@ -1,4 +1,5 @@
 #include "DeviceSession.h"
+#include "PanelSettings.h"
 #include "DeviceRegistry.h"
 #include "interfaces/IDevice.h"
 #include "hidpp/features/Battery.h"
@@ -341,6 +342,44 @@ void DeviceSession::enumerateAndSetup()
         }
     }
 
+    // Read haptic feedback strength and the thumb panel's press force. A device that lacks either
+    // feature, or doesn't answer, just leaves it unsupported; it must not hold up the connection.
+    m_hapticsRead = false;
+    if (m_hapticsDispatch) {
+        auto resp = m_features->call(m_transport.get(), m_deviceIndex,
+                                     m_hapticsDispatch->feature, m_hapticsDispatch->getConfigFn);
+        if (resp.has_value()) {
+            m_hapticConfig = m_hapticsDispatch->parseConfig(*resp);
+            m_hapticsRead = true;
+            qCDebug(lcDevice) << "haptics: enabled=" << m_hapticConfig.enabled
+                              << "level=" << m_hapticConfig.level
+                              << "fourLevelsOnly=" << m_hapticConfig.fourLevelsOnly;
+        }
+    }
+    m_panelForceRead = false;
+    m_forceSensingDispatch = hidpp::capabilities::resolveCapability(
+        m_features.get(), hidpp::capabilities::kForceSensingVariants);
+    if (m_forceSensingDispatch) {
+        // Button 0: the MX Master 4 has a single force-sensing button, its haptic thumb panel.
+        const std::array<uint8_t, 1> firstButton{0x00};
+        auto infoResp = m_features->call(m_transport.get(), m_deviceIndex,
+                                         m_forceSensingDispatch->feature,
+                                         m_forceSensingDispatch->infoFn, firstButton);
+        auto currentResp = m_features->call(m_transport.get(), m_deviceIndex,
+                                            m_forceSensingDispatch->feature,
+                                            m_forceSensingDispatch->currentFn, firstButton);
+        if (infoResp.has_value() && currentResp.has_value()) {
+            m_panelForceInfo = m_forceSensingDispatch->parseInfo(*infoResp);
+            m_panelForce = m_forceSensingDispatch->parseCurrent(*currentResp);
+            m_panelForceRead = true;
+            qCDebug(lcDevice) << "panel force:" << m_panelForce
+                              << "range" << m_panelForceInfo.minForce << "-" << m_panelForceInfo.maxForce
+                              << "default" << m_panelForceInfo.defaultForce
+                              << "changeable" << m_panelForceInfo.changeable;
+        }
+    }
+    emit panelSettingsChanged();
+
     // Read scroll wheel config
     if (m_features->hasFeature(hidpp::FeatureId::HiResWheel)) {
         auto modeResp = m_features->call(m_transport.get(), m_deviceIndex,
@@ -484,6 +523,9 @@ void DeviceSession::enumerateAndSetup()
     }
     m_batteryPollTimer->start();
 
+    // Needs m_connected and the command processor, so it runs here rather than where they're read.
+    applyStoredPanelSettings();
+
     emit setupComplete();
 }
 
@@ -528,6 +570,10 @@ void DeviceSession::disconnectCleanup()
     m_batteryDispatch.reset();
     m_smartShiftDispatch.reset();
     m_reprogControlsDispatch.reset();
+    m_hapticsDispatch.reset();
+    m_forceSensingDispatch.reset();
+    m_hapticsRead = false;
+    m_panelForceRead = false;
     m_features.reset();
     m_transport.reset();
     m_device.reset();
@@ -835,6 +881,49 @@ void DeviceSession::playHaptic(uint8_t waveform)
     const auto params = m_hapticsDispatch->buildPlay(waveform);
     m_commandProcessor->enqueue(m_hapticsDispatch->feature, m_hapticsDispatch->playFn,
                                 std::span<const uint8_t>(params));
+}
+
+void DeviceSession::setHaptics(bool enabled, int level)
+{
+    if (!m_connected || !m_commandProcessor || !m_hapticsDispatch || !m_hapticsRead)
+        return;
+    level = qBound(0, level, 100);
+    // Devices that only take four levels would otherwise round on their own, out of our sight.
+    if (m_hapticConfig.fourLevelsOnly)
+        level = qBound(25, ((level + 12) / 25) * 25, 100);
+    m_hapticConfig.enabled = enabled;
+    m_hapticConfig.level = level;
+    emit panelSettingsChanged();
+    const auto params = m_hapticsDispatch->buildSetConfig(enabled, level);
+    m_commandProcessor->enqueue(m_hapticsDispatch->feature, m_hapticsDispatch->setConfigFn,
+                                std::span<const uint8_t>(params));
+    saveHaptics(panelSettingsPath(m_deviceSerial), enabled, level);
+}
+
+void DeviceSession::setPanelForce(int force)
+{
+    if (!m_connected || !m_commandProcessor || !m_forceSensingDispatch || !panelForceSupported())
+        return;
+    force = qBound(m_panelForceInfo.minForce, force, m_panelForceInfo.maxForce);
+    m_panelForce = force;
+    emit panelSettingsChanged();
+    const auto params = m_forceSensingDispatch->buildSet(0, force);
+    m_commandProcessor->enqueue(m_forceSensingDispatch->feature, m_forceSensingDispatch->setFn,
+                                std::span<const uint8_t>(params));
+    savePanelForce(panelSettingsPath(m_deviceSerial), force);
+}
+
+void DeviceSession::applyStoredPanelSettings()
+{
+    const auto stored = loadPanelSettings(panelSettingsPath(m_deviceSerial));
+    if (hapticsSupported() && stored.hapticsLevel.has_value()) {
+        const bool enabled = stored.hapticsEnabled.value_or(true);
+        const bool differs = enabled != m_hapticConfig.enabled || *stored.hapticsLevel != m_hapticConfig.level;
+        if (differs)
+            setHaptics(enabled, *stored.hapticsLevel);
+    }
+    if (panelForceSupported() && stored.panelForce.has_value() && *stored.panelForce != m_panelForce)
+        setPanelForce(*stored.panelForce);
 }
 
 QString DeviceSession::thumbWheelMode() const { return m_thumbWheelMode; }

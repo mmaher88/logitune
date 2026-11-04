@@ -106,6 +106,7 @@ qt_add_qml_module(logitune-app-lib
         qml/pages/ButtonsPage.qml
         qml/pages/EasySwitchPage.qml
         qml/pages/SettingsPage.qml
+        qml/pages/HapticsPage.qml
     RESOURCES
         qml/assets/logitune-icon.svg
         qml/assets/logitune-tray.svg

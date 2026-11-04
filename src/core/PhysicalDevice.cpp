@@ -102,6 +102,8 @@ void PhysicalDevice::connectSessionSignals(DeviceSession *session)
         emit smartShiftChanged(enabled, threshold);
         emit stateChanged();
     });
+    connect(session, &DeviceSession::panelSettingsChanged, this,
+            &PhysicalDevice::panelSettingsChanged);
     connect(session, &DeviceSession::scrollConfigChanged, this,
             [this]() {
         emit scrollConfigChanged();

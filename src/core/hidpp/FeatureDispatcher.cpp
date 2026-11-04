@@ -13,6 +13,7 @@ static constexpr FeatureId kKnownFeatures[] = {
     FeatureId::BatteryUnified,
     FeatureId::ChangeHost,
     FeatureId::Haptics,
+    FeatureId::ForceSensingButton,
     FeatureId::ReprogControls,
     FeatureId::ReprogControlsV2,
     FeatureId::ReprogControlsV2_2,

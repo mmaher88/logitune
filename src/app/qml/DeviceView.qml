@@ -26,6 +26,8 @@ Item {
                     contentStack.replace(easySwitchComponent, {}, StackView.Immediate)
                 } else if (page === "settings") {
                     contentStack.replace(settingsComponent, {}, StackView.Immediate)
+                } else if (page === "haptics") {
+                    contentStack.replace(hapticsComponent, {}, StackView.Immediate)
                 } else {
                     contentStack.replace(placeholderComponent,
                                          {pageName: page},
@@ -138,6 +140,11 @@ Item {
     Component {
         id: settingsComponent
         SettingsPage {}
+    }
+
+    Component {
+        id: hapticsComponent
+        HapticsPage {}
     }
 
     // Placeholder page component

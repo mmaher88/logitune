@@ -93,6 +93,7 @@ signals:
     // waiting on the catch-all stateChanged. DeviceModel subscribes to
     // these to drive targeted dataChanged roles.
     void smartShiftChanged(bool enabled, int threshold);
+    void panelSettingsChanged();
     void scrollConfigChanged();
     void thumbWheelModeChanged();
     void currentDPIChanged();

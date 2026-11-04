@@ -18,6 +18,8 @@ namespace logitune {
 DeviceModel::DeviceModel(QObject *parent)
     : QAbstractListModel(parent)
 {
+    // Switching to another mouse changes every panel setting at once.
+    connect(this, &DeviceModel::selectedChanged, this, &DeviceModel::panelSettingsChanged);
 }
 
 // ---------------------------------------------------------------------------
@@ -180,6 +182,10 @@ void DeviceModel::addPhysicalDevice(PhysicalDevice *device)
         m_hasDisplayValues = false;
         emit smartShiftEnabledChanged();
         emit smartShiftThresholdChanged();
+    });
+    connect(device, &PhysicalDevice::panelSettingsChanged, this, [this, device]() {
+        if (device == selectedDevice())
+            emit panelSettingsChanged();
     });
     connect(device, &PhysicalDevice::scrollConfigChanged, this,
             [this, device]() {
@@ -901,6 +907,79 @@ QString DeviceModel::deviceStatus() const
     case JsonDevice::Status::Beta:     return QStringLiteral("beta");
     }
     return QStringLiteral("beta");
+}
+
+// Panel settings come straight from the selected mouse's active session; with no mouse
+// connected they read as unsupported and the setters do nothing.
+static DeviceSession *activeSessionOf(PhysicalDevice *device)
+{
+    return device ? device->primary() : nullptr;
+}
+
+bool DeviceModel::hapticsSupported() const
+{
+    auto *session = activeSessionOf(selectedDevice());
+    return session && session->hapticsSupported();
+}
+
+bool DeviceModel::hapticsEnabled() const
+{
+    auto *session = activeSessionOf(selectedDevice());
+    return session && session->hapticsEnabled();
+}
+
+int DeviceModel::hapticsLevel() const
+{
+    auto *session = activeSessionOf(selectedDevice());
+    return session ? session->hapticsLevel() : 0;
+}
+
+bool DeviceModel::hapticsFourLevelsOnly() const
+{
+    auto *session = activeSessionOf(selectedDevice());
+    return session && session->hapticsFourLevelsOnly();
+}
+
+bool DeviceModel::panelForceSupported() const
+{
+    auto *session = activeSessionOf(selectedDevice());
+    return session && session->panelForceSupported();
+}
+
+int DeviceModel::panelForce() const
+{
+    auto *session = activeSessionOf(selectedDevice());
+    return session ? session->panelForce() : 0;
+}
+
+int DeviceModel::panelForceMin() const
+{
+    auto *session = activeSessionOf(selectedDevice());
+    return session ? session->panelForceMin() : 0;
+}
+
+int DeviceModel::panelForceMax() const
+{
+    auto *session = activeSessionOf(selectedDevice());
+    return session ? session->panelForceMax() : 0;
+}
+
+int DeviceModel::panelForceDefault() const
+{
+    auto *session = activeSessionOf(selectedDevice());
+    return session ? session->panelForceDefault() : 0;
+}
+
+void DeviceModel::setHaptics(bool enabled, int level)
+{
+    if (auto *session = activeSessionOf(selectedDevice()))
+        session->setHaptics(enabled, level);
+}
+
+void DeviceModel::setPanelForce(int force)
+{
+    if (auto *session = activeSessionOf(selectedDevice()))
+        session->setPanelForce(force);
 }
 
 } // namespace logitune

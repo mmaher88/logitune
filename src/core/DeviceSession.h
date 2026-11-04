@@ -8,6 +8,7 @@
 #include "hidpp/capabilities/SmartShiftCapability.h"
 #include "hidpp/capabilities/ReprogControlsCapability.h"
 #include "hidpp/capabilities/HapticsCapability.h"
+#include "hidpp/capabilities/ForceSensingCapability.h"
 #include "hidpp/features/ReprogControls.h"
 #include <QObject>
 #include <QSocketNotifier>
@@ -55,6 +56,18 @@ public:
     int dpiStep() const;
     bool smartShiftEnabled() const;
     int smartShiftThreshold() const;
+
+    // Haptic feedback strength and the thumb panel's press force, read from the device on
+    // connect. "Supported" is false when the device lacks the feature or didn't answer.
+    bool hapticsSupported() const { return m_hapticsRead; }
+    bool hapticsEnabled() const { return m_hapticConfig.enabled; }
+    int hapticsLevel() const { return m_hapticConfig.level; }
+    bool hapticsFourLevelsOnly() const { return m_hapticConfig.fourLevelsOnly; }
+    bool panelForceSupported() const { return m_panelForceRead && m_panelForceInfo.changeable; }
+    int panelForce() const { return m_panelForce; }
+    int panelForceMin() const { return m_panelForceInfo.minForce; }
+    int panelForceMax() const { return m_panelForceInfo.maxForce; }
+    int panelForceDefault() const { return m_panelForceInfo.defaultForce; }
     bool scrollHiRes() const;
     bool scrollInvert() const;
     bool scrollRatchet() const;
@@ -80,6 +93,10 @@ public:
     void setScrollConfig(bool hiRes, bool invert);
     void divertButton(uint16_t controlId, bool divert, bool rawXY = false);
     void playHaptic(uint8_t waveform);
+    void setHaptics(bool enabled, int level);
+    void setPanelForce(int force);
+    // Reapplies the haptics and panel force saved for this device; called once connected.
+    void applyStoredPanelSettings();
     void setThumbWheelMode(const QString &mode, bool invert = false);
     void flushCommandProcessor();
     void touchResponseTime();
@@ -116,6 +133,7 @@ signals:
     void disconnected();
     void batteryChanged(int level, bool charging);
     void smartShiftChanged(bool enabled, int threshold);
+    void panelSettingsChanged();
     void currentDPIChanged();
     void scrollConfigChanged();
     void thumbWheelModeChanged();
@@ -144,6 +162,7 @@ private:
     std::optional<hidpp::capabilities::SmartShiftVariant>      m_smartShiftDispatch;
     std::optional<hidpp::capabilities::ReprogControlsVariant>  m_reprogControlsDispatch;
     std::optional<hidpp::capabilities::HapticsVariant> m_hapticsDispatch;
+    std::optional<hidpp::capabilities::ForceSensingVariant> m_forceSensingDispatch;
     hidpp::features::DivertedButtons m_divertedButtons;
 
     QTimer *m_reconnectTimer = nullptr;
@@ -168,6 +187,11 @@ private:
     int m_dpiStep = 50;
     bool m_smartShiftEnabled = false;
     int m_smartShiftThreshold = 0;
+    hidpp::capabilities::HapticConfig m_hapticConfig;
+    bool m_hapticsRead = false;
+    hidpp::capabilities::ForceButtonInfo m_panelForceInfo;
+    int m_panelForce = 0;
+    bool m_panelForceRead = false;
     bool m_scrollHiRes = false;
     bool m_scrollInvert = false;
     bool m_scrollRatchet = true;

@@ -22,7 +22,9 @@ target_sources(logitune-core PRIVATE
     hidpp/capabilities/ReprogControlsCapability.cpp
     ProfileEngine.cpp
     ActionsRing.cpp
+    PanelSettings.cpp
     hidpp/capabilities/HapticsCapability.cpp
+    hidpp/capabilities/ForceSensingCapability.cpp
     ActionExecutor.cpp
     DeviceRegistry.cpp
     devices/DescriptorWriter.cpp
