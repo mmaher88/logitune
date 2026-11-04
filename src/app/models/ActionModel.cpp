@@ -176,4 +176,17 @@ ButtonAction ActionModel::buttonEntryToAction(const QString &actionType, const Q
     return {ButtonAction::Default, {}};
 }
 
+QVariantMap ActionModel::get(int row) const
+{
+    if (row < 0 || row >= rowCount())
+        return {};
+    const QModelIndex idx = index(row);
+    return {
+        {QStringLiteral("name"), data(idx, NameRole)},
+        {QStringLiteral("type"), data(idx, ActionTypeRole)},
+        {QStringLiteral("payload"), data(idx, PayloadRole)},
+        {QStringLiteral("category"), data(idx, CategoryRole)},
+    };
+}
+
 } // namespace logitune

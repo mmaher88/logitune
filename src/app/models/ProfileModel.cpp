@@ -183,4 +183,11 @@ void ProfileModel::setHwActiveByProfileName(const QString &profileName)
     setHwActiveIndex(targetIndex);
 }
 
+QString ProfileModel::wmClassAt(int row) const
+{
+    if (row < 0 || row >= rowCount())
+        return {};
+    return data(index(row), WmClassRole).toString();
+}
+
 } // namespace logitune

@@ -6,6 +6,7 @@ import Logitune
 Item {
     id: profileBar
     implicitHeight: 48
+    property bool compact: false
 
     property var _allApps: []
 
@@ -47,7 +48,7 @@ Item {
                     model: ProfileModel
 
                     delegate: Rectangle {
-                        width: chipLabel.implicitWidth + (model.icon ? 46 : 24)
+                        width: profileBar.compact && model.index > 0 ? 36 : chipLabel.implicitWidth + (model.icon ? 46 : 24)
                         height: 32
                         radius: 6
                         color: model.isActive ? Theme.accent
@@ -66,14 +67,15 @@ Item {
                             Image {
                                 width: 16; height: 16
                                 anchors.verticalCenter: parent.verticalCenter
-                                source: model.icon ? "image://icon/" + model.icon : ""
+                                source: model.index === 0 && profileBar.compact ? "" : model.icon ? "image://icon/" + model.icon : ""
                                 sourceSize: Qt.size(16, 16)
                                 visible: status === Image.Ready
                             }
 
                             Text {
                                 id: chipLabel
-                                text: model.name
+                                text: profileBar.compact && model.index === 0 ? "All applications" : model.name
+                                visible: !profileBar.compact || model.index === 0 || !model.icon
                                 font.pixelSize: 12
                                 font.bold: model.isActive
                                 color: model.isActive ? Theme.activeTabText : Theme.text
@@ -106,6 +108,8 @@ Item {
                                 }
                             }
                         }
+                        ToolTip.visible: chipHover.hovered && profileBar.compact
+                        ToolTip.text: model.name
                     }
                 }
             }
@@ -180,7 +184,7 @@ Item {
             Text {
                 id: addLabel
                 anchors.centerIn: parent
-                text: "+ Add application"
+                text: profileBar.compact ? "+" : "+ Add application"
                 font.pixelSize: 12
                 color: Theme.textSecondary
             }

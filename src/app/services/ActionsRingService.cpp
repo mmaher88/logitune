@@ -13,6 +13,7 @@
 #include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QProcess>
 #include <QQmlEngine>
 #include <QQmlComponent>
 #include <QQuickItem>
@@ -163,6 +164,33 @@ void ActionsRingService::placed(QObject *ring)
 void ActionsRingService::haptic(const QString &kind)
 {
     if (kind == "hover") m_devices->playHaptic(m_serial, 0x04);
+}
+
+void ActionsRingService::adjust(const QString &command, const QString &readCommand)
+{
+    if (command.trimmed().isEmpty()) return;
+    // Read the level only after the change has finished. Reading straight away raced the command
+    // and showed the value from one step earlier, so reversing direction looked like an extra step.
+    auto *process = new QProcess(this);
+    connect(process, &QProcess::finished, this, [this, process, readCommand]() {
+        process->deleteLater();
+        readLevel(readCommand);
+    });
+    // Through sh so user commands can use pipes and $(...), like custom commands do.
+    process->start(QStringLiteral("sh"), {QStringLiteral("-c"), command});
+    // One light tick per step, so scrolling through the level can be felt.
+    m_devices->playHaptic(m_serial, 0x04);
+}
+
+void ActionsRingService::readLevel(const QString &command)
+{
+    if (command.trimmed().isEmpty()) return;
+    auto *process = new QProcess(this);
+    connect(process, &QProcess::finished, this, [this, process]() {
+        emit levelRead(QString::fromUtf8(process->readAllStandardOutput()).trimmed());
+        process->deleteLater();
+    });
+    process->start(QStringLiteral("sh"), {QStringLiteral("-c"), command});
 }
 
 void ActionsRingService::run(const QString &action)

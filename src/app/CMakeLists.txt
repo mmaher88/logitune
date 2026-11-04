@@ -8,6 +8,7 @@ add_library(logitune-app-lib STATIC
     models/ActionModel.cpp
     models/ProfileModel.cpp
     models/EditorModel.cpp
+    models/InstalledAppsModel.cpp
     services/ActiveDeviceResolver.cpp
     services/DeviceCommandHandler.cpp
     services/ButtonActionDispatcher.cpp
@@ -83,6 +84,16 @@ qt_add_qml_module(logitune-app-lib
         qml/components/actionsring/Glyph.qml
         qml/components/actionsring/RingEditor.qml
         qml/components/actionsring/RingSlotEditor.qml
+        qml/components/actionsring/RingEditorState.qml
+        qml/components/actionsring/RingActionLibrary.qml
+        qml/components/actionsring/RingPreview.qml
+        qml/components/actionsring/RingEditorBubble.qml
+        qml/components/actionsring/RingGeometry.js
+        qml/components/actionsring/RingParameterCard.qml
+        qml/components/actionsring/RingTextField.qml
+        qml/components/actionsring/RingFlatButton.qml
+        qml/components/actionsring/RingIconPicker.qml
+        qml/components/actionsring/RingFileBrowser.qml
         qml/components/DeviceCard.qml
         qml/components/DeviceRender.qml
         qml/components/AppProfileBar.qml

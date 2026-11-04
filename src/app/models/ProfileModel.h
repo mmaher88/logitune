@@ -27,6 +27,8 @@ public:
     int displayIndex() const;
 
     Q_INVOKABLE void addProfile(const QString &wmClass, const QString &name, const QString &icon = QString());
+    // The profile's key for QML, which can't see the Roles enum. Empty for an out-of-range row.
+    Q_INVOKABLE QString wmClassAt(int row) const;
     Q_INVOKABLE void removeProfile(int index);
     Q_INVOKABLE void selectTab(int index);                      // user click -> emits profileSwitched
 

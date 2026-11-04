@@ -278,3 +278,15 @@ TEST(ActionModel, buttonActionToNamePresetLooksUpLabel) {
     EXPECT_EQ(m.buttonActionToName(ButtonAction{ButtonAction::PresetRef, "show-desktop"}),
               "Show desktop");
 }
+
+// QML reads rows through get(); it can't see the C++ role enum, and raw role numbers broke silently.
+TEST_F(ActionModelTest, GetReturnsNamedFields) {
+    const QModelIndex idx = model.index(0);
+    const QVariantMap row = model.get(0);
+    EXPECT_EQ(row.value("name"), model.data(idx, ActionModel::NameRole));
+    EXPECT_EQ(row.value("type"), model.data(idx, ActionModel::ActionTypeRole));
+    EXPECT_EQ(row.value("payload"), model.data(idx, ActionModel::PayloadRole));
+    EXPECT_EQ(row.value("category"), model.data(idx, ActionModel::CategoryRole));
+    EXPECT_TRUE(model.get(-1).isEmpty());
+    EXPECT_TRUE(model.get(model.rowCount()).isEmpty());
+}

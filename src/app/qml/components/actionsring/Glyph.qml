@@ -25,7 +25,7 @@ Item {
     Text {
         id: label
         text: themeIcon.visible ? "?" : glyph.icon
-        visible: !themeIcon.visible || themeIcon.status === Image.Error
+        visible: !glyph.isGif && (!themeIcon.visible || themeIcon.status === Image.Error)
         color: glyph.color
         font.family: "JetBrainsMono Nerd Font"
         font.pixelSize: glyph.pixelSize
@@ -34,13 +34,38 @@ Item {
         y: (glyph.height - ink.tightBoundingRect.height) / 2 - ink.tightBoundingRect.y - fontMetrics.ascent
     }
 
+    // An icon is one of three things: a Nerd Font glyph (drawn as text above), a freedesktop theme
+    // icon name such as "firefox", or an absolute path to an image file the user picked.
+    readonly property bool isImageFile: glyph.icon.startsWith("/") || glyph.icon.startsWith("file:")
+    readonly property bool isThemeName: /^[a-zA-Z][a-zA-Z0-9._-]+$/.test(glyph.icon)
+    readonly property bool isGif: glyph.isImageFile && /\.gif$/i.test(glyph.icon)
+    readonly property string fileUrl: glyph.icon.startsWith("file:") ? glyph.icon : "file://" + glyph.icon
+
+    // A plain Image would only show a GIF's first frame.
+    AnimatedImage {
+        anchors.centerIn: parent
+        width: glyph.pixelSize
+        height: glyph.pixelSize
+        visible: glyph.isGif
+        source: visible ? glyph.fileUrl : ""
+        playing: visible
+        fillMode: Image.PreserveAspectFit
+    }
+
     Image {
         id: themeIcon
         anchors.centerIn: parent
         width: glyph.pixelSize
         height: glyph.pixelSize
-        visible: /^[a-zA-Z][a-zA-Z0-9-]+$/.test(glyph.icon)
-        source: visible ? "image://icon/" + glyph.icon : ""
+        visible: (glyph.isThemeName || glyph.isImageFile) && !glyph.isGif
+        source: {
+            if (glyph.isImageFile)
+                return glyph.fileUrl
+            if (glyph.isThemeName)
+                return "image://icon/" + glyph.icon
+            return ""
+        }
         sourceSize: Qt.size(width, height)
+        fillMode: Image.PreserveAspectFit
     }
 }

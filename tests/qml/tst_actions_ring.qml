@@ -5,6 +5,7 @@ import "../../src/app/qml/components/actionsring"
 TestCase {
     name: "ActionsRing"
     when: windowShown
+    visible: true
     width: 800
     height: 800
     QtObject {
@@ -61,7 +62,7 @@ TestCase {
     }
     Component { id: editorComponent; RingEditor {} }
     function test_editorLoadsAndEdits() {
-        let editor = createTemporaryObject(editorComponent, this, {width: 360, height: 500})
+        let editor = createTemporaryObject(editorComponent, this, {width: 1000, height: 700})
         verify(editor !== null)
         compare(editor.entries.length, 8)
         let entry = Object.assign({}, editor.entries[0])
@@ -74,5 +75,19 @@ TestCase {
         editor.save(6, entry)
         compare(editor.selectedSlot, 6)
         compare(editor.entries[6].name, "Edited undo")
+    }
+    function test_editorClickAssignmentAndCancel() {
+        let editor = createTemporaryObject(editorComponent, this, {width: 1000, height: 700})
+        verify(editor !== null)
+        verify(editor.editorState !== undefined)
+        editor.chooseAction({name: "Copy", icon: "C", action: "keystroke:Ctrl+C"})
+        compare(editor.entries[0].action, "keystroke:Ctrl+C")
+        editor.chooseAction({name: "URL", icon: "U", kind: "url"})
+        verify(editor.editorState.pending !== null)
+        let cancel = findChild(editor, "parameterCancel")
+        verify(cancel !== null)
+        mouseClick(cancel)
+        compare(editor.editorState.pending, null)
+        compare(editor.entries[0].action, "keystroke:Ctrl+C")
     }
 }

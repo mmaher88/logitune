@@ -1,6 +1,7 @@
 #pragma once
 #include "ButtonAction.h"
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QList>
 
 namespace logitune {
@@ -10,6 +11,10 @@ struct RingSlot {
     QString name;
     ButtonAction action;
     QList<RingSlot> children;
+    // Set for an adjuster slot (scroll to change a level, e.g. volume): shell commands under
+    // "up", "down", "read" (prints the current level) and "press" (on click). Empty otherwise.
+    // Kept as raw JSON because only the ring overlay interprets it.
+    QJsonObject adjust;
 };
 
 QList<RingSlot> defaultRingSlots();

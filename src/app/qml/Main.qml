@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
 import Logitune
+import "components/actionsring"
 
 ApplicationWindow {
     id: root
@@ -262,7 +263,14 @@ ApplicationWindow {
             onSettingsClicked: mainStack.push(appSettingsComponent)
         }
     }
-    Component { id: deviceViewComponent; DeviceView {} }
+    Component {
+        id: deviceViewComponent
+        DeviceView { onConfigureRingRequested: mainStack.push(ringEditorComponent) }
+    }
+    Component {
+        id: ringEditorComponent
+        RingEditor { onBackRequested: mainStack.pop() }
+    }
     Component {
         id: appSettingsComponent
         AppSettingsView { onQuitRequested: Qt.quit() }

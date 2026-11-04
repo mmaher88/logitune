@@ -3,81 +3,117 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Logitune
 
-ScrollView {
+Item {
     id: root
-    property var entries: ActionsRing.entries
-    property int selectedSlot: 0
-    clip: true
-    contentWidth: availableWidth
+    property alias editorState: state
+    readonly property var entries: state.entries
+    property alias selectedSlot: state.selectedSlot
+    signal backRequested()
 
-    function save(index, entry) {
-        let copy = entries.slice()
-        copy[index] = entry
-        ActionsRing.setEntries(copy)
+    function save(index, entry) { state.select(index, -1); state.assign(entry) }
+    function chooseAction(entry) {
+        if (entry.kind) state.beginParameter(entry)
+        else state.assign(entry)
+    }
+    function reloadProfile() {
+        let key = ProfileModel.wmClassAt(ProfileModel.displayIndex) || "default"
+        state.loadProfile(key, ActionsRing.entries, ActionsRing.size)
+    }
+    Component.onCompleted: reloadProfile()
+    Connections {
+        target: ProfileModel
+        // Backend profile switching completes synchronously before the next event turn.
+        function onDisplayIndexChanged() { Qt.callLater(root.reloadProfile) }
+        function onProfileRemoved(wmClass) { delete state.histories[wmClass] }
+    }
+    RingEditorState {
+        id: state
+        onCommitted: (value, ringSize) => {
+            ActionsRing.setEntries(value)
+            ActionsRing.setSize(ringSize)
+        }
     }
     ColumnLayout {
-        width: root.availableWidth
-        spacing: 10
-        Label { text: "Actions Ring"; color: Theme.text; font.bold: true }
+        anchors.fill: parent; anchors.margins: 20; spacing: 16
         RowLayout {
-            Label { text: "Size"; color: Theme.text }
-            ComboBox {
-                model: ["80%", "100%", "150%"]
-                currentIndex: [80, 100, 150].indexOf(ActionsRing.size)
-                onActivated: ActionsRing.size = [80, 100, 150][currentIndex]
-            }
-        }
-        ComboBox {
-            id: selected
             Layout.fillWidth: true
-            model: root.entries.map((entry, index) => (index + 1) + ". " + entry.name)
-            currentIndex: root.selectedSlot
-            onActivated: root.selectedSlot = currentIndex
+            RingFlatButton { text: "← Back"; onClicked: root.backRequested() }
+            AppProfileBar { Layout.fillWidth: true; Layout.preferredHeight: 48; compact: true }
+            Item { Layout.preferredWidth: 80 }
         }
-        RingSlotEditor {
-            Layout.fillWidth: true
-            visible: root.selectedSlot >= 0
-            entry: root.entries[root.selectedSlot] || ({})
-            allowSubmenu: true
-            onEdited: (value) => root.save(root.selectedSlot, value)
-        }
-        Repeater {
-            model: (root.entries[root.selectedSlot] || {}).children || []
-            ColumnLayout {
-                id: childRow
-                required property int index
-                required property var modelData
+        Label { text: "Actions Ring"; color: Theme.text; font { pixelSize: 24; bold: true } }
+        RowLayout {
+            Layout.fillWidth: true; Layout.fillHeight: true; spacing: 20
+            // Fills the space so the ring's hub sits in the middle of the visible area.
+            RingPreview {
                 Layout.fillWidth: true
-                Label { text: "Child " + (childRow.index + 1); color: Theme.textSecondary }
-                RingSlotEditor {
-                    Layout.fillWidth: true
-                    entry: childRow.modelData
-                    onEdited: (value) => {
-                        let parent = Object.assign({}, root.entries[root.selectedSlot])
-                        parent.children = parent.children.slice()
-                        parent.children[childRow.index] = value
-                        root.save(root.selectedSlot, parent)
+                Layout.fillHeight: true
+                clip: true
+                editor: state
+            }
+            Rectangle { Layout.fillHeight: true; width: 1; color: Theme.border }
+            ScrollView {
+                Layout.preferredWidth: root.width < 900 ? 250 : 300
+                Layout.fillHeight: true; clip: true; contentWidth: availableWidth
+                ColumnLayout {
+                    width: parent.width; spacing: 20
+                    RingParameterCard {
+                        Layout.fillWidth: true
+                        visible: state.pending !== null
+                        editor: state
                     }
-                }
-                Button {
-                    text: "Remove child"
-                    onClicked: {
-                        let parent = Object.assign({}, root.entries[root.selectedSlot])
-                        parent.children = parent.children.filter((entry, i) => i !== childRow.index)
-                        if (!parent.children.length) delete parent.children
-                        root.save(root.selectedSlot, parent)
+                    RingSlotEditor { Layout.fillWidth: true; visible: state.pending === null; editor: state }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                    RingActionLibrary {
+                        objectName: "actionLibrary"
+                        Layout.fillWidth: true; Layout.preferredHeight: 500
+                        onChosen: entry => root.chooseAction(entry)
                     }
                 }
             }
         }
-        Button {
-            text: "Add child"
-            visible: ((root.entries[root.selectedSlot] || {}).children || []).length > 0
-            enabled: ((root.entries[root.selectedSlot] || {}).children || []).length < 8
-            onClicked: {
-                let parent = Object.assign({}, root.entries[root.selectedSlot])
-                parent.children = parent.children.concat([{icon: "", name: "New action", action: "default"}])
-                root.save(root.selectedSlot, parent)
+        RowLayout {
+            Layout.fillWidth: true
+            RingFlatButton { text: "↶ Undo"; enabled: state.canUndo; onClicked: state.undo() }
+            RingFlatButton { text: "↷ Redo"; enabled: state.canRedo; onClicked: state.redo() }
+            Label { text: "Saved automatically"; color: Theme.textSecondary; font.pixelSize: 12 }
+            Item { Layout.fillWidth: true }
+            RingFlatButton {
+                text: "⚙"; Accessible.name: "Ring size settings"
+                onClicked: settings.open()
+                Menu {
+                    id: settings
+                    y: -height
+                    background: Rectangle {
+                        implicitWidth: 160
+                        radius: 8
+                        color: Theme.cardBg
+                        border.color: Theme.border
+                    }
+                    Repeater {
+                        model: [80, 100, 150]
+                        MenuItem {
+                            id: sizeItem
+                            required property int modelData
+                            text: "Ring size " + modelData + "%"
+                            checkable: true
+                            checked: state.size === modelData
+                            onTriggered: state.changeSize(modelData)
+                            contentItem: Text {
+                                text: sizeItem.text
+                                color: sizeItem.checked ? Theme.accent : Theme.text
+                                font.pixelSize: 13
+                                font.bold: sizeItem.checked
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: 8
+                            }
+                            background: Rectangle {
+                                radius: 6
+                                color: sizeItem.highlighted ? Theme.hoverBg : "transparent"
+                            }
+                        }
+                    }
+                }
             }
         }
     }

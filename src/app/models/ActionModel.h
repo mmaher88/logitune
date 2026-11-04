@@ -39,6 +39,9 @@ public:
 
     Q_INVOKABLE int indexForName(const QString &name) const;
     Q_INVOKABLE QString payloadForName(const QString &name) const;
+    // One row by field name, for QML: it can't see the Roles enum, and raw role numbers break
+    // silently if the roles are ever reordered. Empty for an out-of-range row.
+    Q_INVOKABLE QVariantMap get(int row) const;
 
     /// Translate a ButtonAction (domain type) to the (typeName, displayName)
     /// pair the UI uses. Inverse of buttonEntryToAction.

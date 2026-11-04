@@ -63,6 +63,25 @@ TEST(ActionsRing, ProfileRoundTrip) {
     EXPECT_EQ(loaded.ringSize, 150);
 }
 
+TEST(ActionsRing, AdjusterSettingsSurviveRoundTrip) {
+    // An adjuster (e.g. volume) carries its commands in an "adjust" object; storage must keep it,
+    // both on a main slot and on a submenu child.
+    const QJsonObject volume{{"up", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"},
+                             {"down", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"},
+                             {"read", "wpctl get-volume @DEFAULT_AUDIO_SINK@"},
+                             {"press", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"}};
+    RingSlot adjuster{"V", "Volume", ButtonAction::parse("default"), {}, volume};
+    RingSlot menu{"M", "Media", ButtonAction::parse("default"), {adjuster}, {}};
+
+    const auto loaded = ringSlotsFromJson(ringSlotsToJson({adjuster, menu}));
+
+    ASSERT_EQ(loaded.size(), 2);
+    EXPECT_EQ(loaded[0].adjust, volume);
+    ASSERT_EQ(loaded[1].children.size(), 1);
+    EXPECT_EQ(loaded[1].children[0].adjust, volume);
+    EXPECT_TRUE(loaded[1].adjust.isEmpty());
+}
+
 TEST(ActionsRing, LimitsAndNoNestedSubmenus) {
     RingSlot slot;
     slot.children.resize(12);

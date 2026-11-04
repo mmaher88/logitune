@@ -1,4 +1,5 @@
 #include <QApplication>
+#include "models/InstalledAppsModel.h"
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QDir>
@@ -207,6 +208,8 @@ int main(int argc, char *argv[])
     QObject::connect(&app, &QCoreApplication::aboutToQuit,
                      controller.actionsRing(), &logitune::ActionsRingService::shutdown);
     engine.rootContext()->setContextProperty("ActionsRing", controller.actionsRing());
+    logitune::InstalledAppsModel installedApps;
+    engine.rootContext()->setContextProperty("InstalledApps", &installedApps);
     QObject::connect(&singleInstance, &logitune::SingleInstance::ringRequested,
                      controller.actionsRing(), &logitune::ActionsRingService::toggle);
 

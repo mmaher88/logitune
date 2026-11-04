@@ -11,6 +11,7 @@ import Logitune
 // ─────────────────────────────────────────────────────────────────────────────
 Item {
     id: root
+    signal configureRingRequested()
 
     // Currently selected button (-1 = none)
     property int selectedButton: -1
@@ -189,7 +190,8 @@ Item {
 
     // ── Actions Panel (per-button picker + thumb-wheel modes) ────────────────
     ActionsPanel {
-        id: actionsPanel
+            id: actionsPanel
+            onConfigureRingRequested: root.configureRingRequested()
 
         anchors {
             top:    parent.top

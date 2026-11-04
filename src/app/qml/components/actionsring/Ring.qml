@@ -1,5 +1,6 @@
 import QtQuick
 import Logitune
+import "RingGeometry.js" as Geometry
 
 // Sizes and timings follow ~/re/logioptionsplus/findings/02-ring-behaviour.md. Styling is our own.
 Item {
@@ -42,18 +43,16 @@ Item {
 
     function slotAngle(index) {
         // First slot at 12 o'clock, then clockwise in 45 degree steps.
-        return index * 45 - 90
+        return Geometry.rootAngle(index)
     }
 
     function childAngle(parentIndex, childIndex, childCount) {
         // Children are 22.5 degrees apart, as a group centred on the parent's angle.
-        let offset = (childIndex - (childCount - 1) / 2) * 22.5
-        return slotAngle(parentIndex) + offset
+        return Geometry.childAngle(parentIndex, childIndex, childCount)
     }
 
     function pointOnCircle(radius, angleDegrees) {
-        let angle = angleDegrees * Math.PI / 180
-        return Qt.point(radius * Math.cos(angle), radius * Math.sin(angle))
+        return Geometry.point(angleDegrees, radius)
     }
 
     function angleBetween(firstDegrees, secondDegrees) {
@@ -182,9 +181,86 @@ Item {
             expandedParent = -1
     }
 
+    // The slot or submenu child under the pointer, or null.
+    function hoveredEntry() {
+        if (hoveredChild >= 0)
+            return expandedChildren[hoveredChild]
+        if (hovered >= 0)
+            return slotList[hovered]
+        return null
+    }
+
+    function isAdjuster(entry) {
+        return entry !== null && entry !== undefined && entry.adjust !== undefined
+    }
+
+    // Level shown on an adjuster's label: a percentage, or -1 while unknown.
+    property int level: -1
+    property bool levelMuted: false
+    property real wheelRemainder: 0
+
+    function refreshLevel() {
+        let entry = hoveredEntry()
+        if (isAdjuster(entry) && entry.adjust.read)
+            launcher.readLevel(entry.adjust.read)
+    }
+
+    // Turns a command's output into a percentage. Handles wpctl ("Volume: 0.45 [MUTED]", a 0..1
+    // fraction) and anything that prints a plain number or "45%".
+    function parseLevel(output) {
+        let match = output.match(/(\d*\.?\d+)\s*(%?)/)
+        if (!match)
+            return {percent: -1, muted: false}
+        let value = parseFloat(match[1])
+        let isFraction = match[2] === "" && match[1].indexOf(".") >= 0 && value <= 1.5
+        let percent = Math.round(isFraction ? value * 100 : value)
+        return {percent: percent, muted: /mute/i.test(output)}
+    }
+
+    Connections {
+        target: root.launcher
+        function onLevelRead(output) {
+            let parsed = root.parseLevel(output)
+            root.level = parsed.percent
+            root.levelMuted = parsed.muted
+        }
+    }
+
+    // One step per notch of the wheel (120 units); smooth-scrolling mice send smaller deltas,
+    // so the remainder carries over between events.
+    function scrollAdjuster(delta) {
+        let entry = hoveredEntry()
+        if (!isAdjuster(entry))
+            return
+        // Turning back the other way starts fresh; otherwise the leftover from the old direction
+        // has to be scrolled off first and the first step back feels late.
+        let reversed = delta * wheelRemainder < 0
+        if (reversed)
+            wheelRemainder = 0
+        wheelRemainder += delta
+        while (Math.abs(wheelRemainder) >= 120) {
+            let goingUp = wheelRemainder > 0
+            // The service reads the level once the change has finished, so the label never shows
+            // the value from one step earlier.
+            launcher.adjust(goingUp ? entry.adjust.up : entry.adjust.down, entry.adjust.read || "")
+            wheelRemainder -= goingUp ? 120 : -120
+        }
+    }
+
+    onHoveredChanged: { level = -1; wheelRemainder = 0; refreshLevel() }
+    onHoveredChildChanged: { level = -1; wheelRemainder = 0; refreshLevel() }
+
     function choose(slot, child) {
         if (closing)
             return
+        // Clicking an adjuster runs its press command (mute, for volume) and keeps the ring open,
+        // so you can keep scrolling.
+        let entry = child >= 0 ? slotList[slot].children[child] : slotList[slot]
+        if (slot >= 0 && isAdjuster(entry)) {
+            if (entry.adjust.press)
+                launcher.adjust(entry.adjust.press, entry.adjust.read || "")
+            return
+        }
         if (child >= 0) {
             launcher.run(slotList[slot].children[child].action)
             dismiss()
@@ -250,6 +326,18 @@ Item {
             let sameTarget = root.pressedSlot === root.hovered && root.pressedChild === root.hoveredChild
             if (sameTarget)
                 root.choose(root.hovered, root.hoveredChild)
+        }
+    }
+
+    // Scrolling over an adjuster changes its level. Vertical wheel up raises it; the MX Master's
+    // thumb wheel sends horizontal deltas, and scrolling it forward raises it too.
+    WheelHandler {
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: (event) => {
+            if (!root.isPlaced)
+                return
+            let delta = event.angleDelta.y !== 0 ? event.angleDelta.y : -event.angleDelta.x
+            root.scrollAdjuster(delta)
         }
     }
 
@@ -385,13 +473,22 @@ Item {
             id: legend
 
             // Slots that open a submenu get no legend; their children say what's inside.
-            readonly property string label: {
+            readonly property string name: {
                 if (root.hoveredChild >= 0)
                     return root.expandedChildren[root.hoveredChild].name
                 if (root.hovered >= 0 && !root.hasChildren(root.hovered))
                     return root.slotList[root.hovered].name
                 return ""
             }
+            // Adjusters show their live level and appear at once: you're about to scroll, and
+            // waiting 800 ms to see the value would defeat the point.
+            readonly property bool forAdjuster: root.isAdjuster(root.hoveredEntry())
+            readonly property string levelText: {
+                if (root.levelMuted)
+                    return "muted"
+                return root.level >= 0 ? root.level + "%" : ""
+            }
+            readonly property string label: forAdjuster && levelText !== "" ? name + "  " + levelText : name
             readonly property point anchorCentre: {
                 if (root.hoveredChild >= 0)
                     return root.pointOnCircle(root.childRadius, root.childAngle(root.expandedParent,
@@ -410,9 +507,14 @@ Item {
 
             Behavior on opacity { NumberAnimation { duration: 200 } }
 
-            onLabelChanged: {
+            // Keyed on the name, not the full label, so a changing level doesn't restart the delay.
+            onNameChanged: {
                 shown = false
-                if (label !== "")
+                if (name === "")
+                    return
+                if (forAdjuster)
+                    shown = true
+                else
                     legendDelay.restart()
             }
 
@@ -452,6 +554,18 @@ Item {
                 height: legendText.implicitHeight + 8
                 radius: height / 2
                 color: root.theme.surfaceRaised
+                clip: true
+
+                // Level fill behind the text, for adjusters.
+                Rectangle {
+                    visible: legend.forAdjuster && root.level >= 0 && !root.levelMuted
+                    width: parent.width * Math.min(root.level, 100) / 100
+                    height: parent.height
+                    radius: parent.radius
+                    color: root.theme.accent
+                    opacity: 0.35
+                    Behavior on width { NumberAnimation { duration: 90 } }
+                }
 
                 Text {
                     id: legendText

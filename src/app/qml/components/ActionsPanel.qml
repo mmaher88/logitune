@@ -16,6 +16,7 @@ Rectangle {
     property bool   isWheel:      false  // true for thumb wheel — shows wheel-specific modes
 
     signal closed()
+    signal configureRingRequested()
     signal actionSelected(string actionName, string actionType)
     signal wheelModeSelected(string mode)  // "scroll", "zoom", "volume"
 
@@ -517,9 +518,53 @@ Rectangle {
     }
 
     // ── Contextual component definitions ───────────────────────────────────
+    // The loader stretches its item to fill the panel, so the content sits in a column pinned to
+    // the top; a bare Button here grew into a huge, unthemed block.
     Component {
         id: ringComponent
-        RingEditor {}
+
+        Item {
+            implicitHeight: ringCol.implicitHeight + 24
+            width: parent ? parent.width : 340
+
+            Column {
+                id: ringCol
+                anchors {
+                    left: parent.left; right: parent.right
+                    top: parent.top
+                    leftMargin: 20; rightMargin: 20; topMargin: 12
+                }
+                spacing: 12
+
+                Text {
+                    width: parent.width
+                    text: "Pressing this button opens the Actions Ring at your cursor. Choose what's on it, per application."
+                    font.pixelSize: 12
+                    color: Theme.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+
+                Rectangle {
+                    id: configureButton
+                    width: parent.width
+                    height: 40
+                    radius: 8
+                    color: configureHover.hovered ? Theme.accentHover : Theme.accent
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Configure Actions Ring"
+                        font.pixelSize: 13
+                        font.bold: true
+                        color: Theme.activeTabText
+                    }
+                    HoverHandler { id: configureHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: root.configureRingRequested() }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Configure Actions Ring"
+                }
+            }
+        }
     }
 
     Component {

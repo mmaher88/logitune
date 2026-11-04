@@ -28,6 +28,8 @@ static QJsonArray encodeSlots(const QList<RingSlot> &entries, bool children)
                            {"action", slot.action.serialize()}};
         if (children && !slot.children.isEmpty())
             object.insert("children", encodeSlots(slot.children, false));
+        if (!slot.adjust.isEmpty())
+            object.insert("adjust", slot.adjust);
         array.append(object);
     }
     return array;
@@ -43,7 +45,8 @@ static QList<RingSlot> decodeSlots(const QJsonArray &array, bool children)
         if (!value.isObject()) continue;
         const auto object = value.toObject();
         RingSlot slot{object.value("icon").toString(), object.value("name").toString(),
-                      ButtonAction::parse(object.value("action").toString()), {}};
+                      ButtonAction::parse(object.value("action").toString()), {},
+                      object.value("adjust").toObject()};
         if (children) slot.children = decodeSlots(object.value("children").toArray(), false);
         entries.append(slot);
     }

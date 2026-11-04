@@ -191,3 +191,10 @@ TEST_F(ProfileModelTest, RemoveShiftsDisplayIndex) {
     EXPECT_EQ(model.rowCount(), 3);
     EXPECT_EQ(model.displayIndex(), 2);
 }
+
+TEST_F(ProfileModelTest, WmClassAtReadsTheProfileKey) {
+    model.addProfile(QStringLiteral("firefox"), QStringLiteral("Firefox"));
+    EXPECT_EQ(model.wmClassAt(1), QStringLiteral("firefox"));
+    EXPECT_EQ(model.wmClassAt(1), model.data(model.index(1), ProfileModel::WmClassRole).toString());
+    EXPECT_TRUE(model.wmClassAt(99).isEmpty());
+}

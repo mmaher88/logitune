@@ -29,6 +29,7 @@ add_executable(logitune-tests
     test_button_model.cpp
     test_profile_model.cpp
     test_action_model.cpp
+    test_installed_apps_model.cpp
     test_device_model.cpp
     test_wmclass_resolution.cpp
     test_app_root.cpp

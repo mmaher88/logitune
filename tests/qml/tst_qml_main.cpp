@@ -8,6 +8,7 @@
 #include "models/ActionModel.h"
 #include "models/ProfileModel.h"
 #include "models/SettingsModel.h"
+#include "models/InstalledAppsModel.h"
 #include "logging/LogManager.h"
 #include "ActionsRing.h"
 
@@ -18,6 +19,7 @@ class RingEditorStub : public QObject {
 public:
     QVariantList entries() const { return m_entries; }
     Q_INVOKABLE void setEntries(const QVariantList &entries) { m_entries = entries; emit editorChanged(); }
+    Q_INVOKABLE void setSize(int size) { m_size = size; emit editorChanged(); }
 signals:
     void editorChanged();
 private:
@@ -49,6 +51,7 @@ public slots:
         engine->rootContext()->setContextProperty("ProfileModel",  &m_profileModel);
         engine->rootContext()->setContextProperty("SettingsModel", &m_settingsModel);
         engine->rootContext()->setContextProperty("ActionsRing", &m_ringEditor);
+        engine->rootContext()->setContextProperty("InstalledApps", &m_installedApps);
 
         m_deviceModel.setDisplayValues(1000, true, 50, true, false, "scroll");
     }
@@ -60,6 +63,7 @@ private:
     logitune::ProfileModel  m_profileModel;
     logitune::SettingsModel m_settingsModel;
     RingEditorStub m_ringEditor;
+    logitune::InstalledAppsModel m_installedApps;
 };
 
 QUICK_TEST_MAIN_WITH_SETUP(logitune_qml, QmlTestSetup)
