@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # Virtual CID used for the thumb wheel. The HID++ device does not expose
 # a real CID for the thumb wheel button, so we emit a synthetic 0x0000
@@ -68,8 +66,8 @@ class ParsedMetadata:
 
 
 def parse(
-    metadata: Optional[dict],
-    back_image_aspect: Optional[float] = None,
+    metadata: dict | None,
+    back_image_aspect: float | None = None,
 ) -> ParsedMetadata:
     """Parse a core_metadata.json dict into typed slot records.
 
@@ -114,7 +112,7 @@ def _marker_to_pct(marker: dict) -> tuple[float, float]:
 _CID_SUFFIX_RE = re.compile(r"_c(\d+)$")
 
 
-def _cid_from_slot_id(slot_id: str) -> Optional[int]:
+def _cid_from_slot_id(slot_id: str) -> int | None:
     m = _CID_SUFFIX_RE.search(slot_id or "")
     return int(m.group(1)) if m else None
 
@@ -146,18 +144,19 @@ def _parse_buttons(assignments: list[dict]) -> list[ButtonSlot]:
         name, action_type, configurable = SLOT_NAME_MAP[slot_name]
 
         x, y = _marker_to_pct(a.get("marker", {}) or {})
-        out.append(ButtonSlot(
-            cid=cid,
-            name=name,
-            action_type=action_type,
-            configurable=configurable,
-            x_pct=x,
-            y_pct=y,
-        ))
+        if cid is not None:
+            out.append(ButtonSlot(
+                cid=cid,
+                name=name,
+                action_type=action_type,
+                configurable=configurable,
+                x_pct=x,
+                y_pct=y,
+            ))
     return out
 
 
-def _scroll_kind_from_slot_id(slot_id: str) -> Optional[str]:
+def _scroll_kind_from_slot_id(slot_id: str) -> str | None:
     sid = slot_id.lower()
     if "scroll_wheel" in sid:
         return "scrollwheel"
@@ -188,7 +187,7 @@ _EASYSWITCH_RE = re.compile(r"_easy_switch_(\d+)$")
 
 def _parse_easyswitch(
     assignments: list[dict],
-    back_image_aspect: Optional[float] = None,
+    back_image_aspect: float | None = None,
 ) -> list[EasySwitchSlot]:
     """Parse easy-switch slot markers, applying the coordinate-system fix.
 
