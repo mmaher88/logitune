@@ -88,7 +88,6 @@ qt_add_qml_module(logitune-app-lib
         qml/components/actionsring/RingActionLibrary.qml
         qml/components/actionsring/RingPreview.qml
         qml/components/actionsring/RingEditorBubble.qml
-        qml/components/actionsring/RingGeometry.js
         qml/components/actionsring/RingParameterCard.qml
         qml/components/actionsring/RingTextField.qml
         qml/components/actionsring/RingFlatButton.qml

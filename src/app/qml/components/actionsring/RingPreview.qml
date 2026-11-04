@@ -1,23 +1,36 @@
 import QtQuick
 import QtQuick.Controls
 import Logitune
-import "RingGeometry.js" as Geometry
 
 Item {
     id: root
     required property var editor
+    // The ring's geometry: first slot at 12 o'clock, clockwise in 45 degree steps; children 22.5
+    // degrees apart, centred on their parent. Kept here rather than in a shared .js file: a relative
+    // JS import clashes with "import Logitune" once the module only exists inside the binary, which
+    // is how it's installed, and the ring then fails to load.
+    function rootAngle(index) {
+        return index * 45 - 90
+    }
+    function childAngle(parentIndex, childIndex, count) {
+        return rootAngle(parentIndex) + (childIndex - (count - 1) / 2) * 22.5
+    }
+    function point(angleDegrees, radius) {
+        let radians = angleDegrees * Math.PI / 180
+        return Qt.point(Math.cos(radians) * radius, Math.sin(radians) * radius)
+    }
     readonly property real sizeScale: editor.size / 100
     readonly property var targets: {
         let result = []
         for (let i = 0; i < editor.entries.length; ++i) {
-            let p = Geometry.point(Geometry.rootAngle(i), 82 * sizeScale)
+            let p = root.point(root.rootAngle(i), 82 * sizeScale)
             result.push({slot: i, child: -1, entry: editor.entries[i], x: p.x, y: p.y})
         }
         let parent = editor.entries[editor.selectedSlot]
         if (parent && parent.children !== undefined) {
             let count = Math.min(8, parent.children.length + 1)
             for (let j = 0; j < count; ++j) {
-                let p = Geometry.point(Geometry.childAngle(editor.selectedSlot, j, count), 182 * sizeScale)
+                let p = root.point(root.childAngle(editor.selectedSlot, j, count), 182 * sizeScale)
                 result.push({slot: editor.selectedSlot, child: j, entry: parent.children[j] || {}, x: p.x, y: p.y})
             }
         }
@@ -31,8 +44,8 @@ Item {
         let result = []
         for (let t of targets) {
             let isMainSlot = t.child < 0
-            let fanAngle = Geometry.rootAngle(editor.selectedSlot)
-            let slotAngle = Geometry.rootAngle(t.slot)
+            let fanAngle = root.rootAngle(editor.selectedSlot)
+            let slotAngle = root.rootAngle(t.slot)
             let pointsIntoFan = isMainSlot && submenuOpen && angleBetween(slotAngle, fanAngle) <= 70
             if (!pointsIntoFan)
                 result.push(t)

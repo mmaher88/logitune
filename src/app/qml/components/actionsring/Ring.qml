@@ -1,6 +1,5 @@
 import QtQuick
 import Logitune
-import "RingGeometry.js" as Geometry
 
 // Sizes and timings follow ~/re/logioptionsplus/findings/02-ring-behaviour.md. Styling is our own.
 Item {
@@ -43,16 +42,18 @@ Item {
 
     function slotAngle(index) {
         // First slot at 12 o'clock, then clockwise in 45 degree steps.
-        return Geometry.rootAngle(index)
+        return index * 45 - 90
     }
 
     function childAngle(parentIndex, childIndex, childCount) {
         // Children are 22.5 degrees apart, as a group centred on the parent's angle.
-        return Geometry.childAngle(parentIndex, childIndex, childCount)
+        let offset = (childIndex - (childCount - 1) / 2) * 22.5
+        return slotAngle(parentIndex) + offset
     }
 
     function pointOnCircle(radius, angleDegrees) {
-        return Geometry.point(angleDegrees, radius)
+        let angle = angleDegrees * Math.PI / 180
+        return Qt.point(radius * Math.cos(angle), radius * Math.sin(angle))
     }
 
     function angleBetween(firstDegrees, secondDegrees) {
