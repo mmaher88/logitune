@@ -45,6 +45,12 @@ public:
 
     void setupProfileForDevice(PhysicalDevice *device);
 
+    /// Fills the profile tab bar with \p serial's app profiles and points
+    /// its highlights at that mouse's displayed / hardware profiles. Called
+    /// whenever the carousel selects a mouse; an empty serial leaves only
+    /// the Defaults tab.
+    void rebuildProfileTabs(const QString &serial);
+
     /// Writes \p p to \p device's active transport, using that device's own
     /// descriptor. Does nothing (and logs why) if the device has no
     /// transport or descriptor yet.

@@ -314,12 +314,18 @@ void AppRoot::onPhysicalDeviceRemoved(PhysicalDevice *device)
 void AppRoot::onSelectionChanged()
 {
     auto *device = m_deviceResolver.activeDevice();
-    if (!device) return;
+    if (!device) {
+        // No mouse on screen: no app profile tabs to show.
+        m_profileOrchestrator.rebuildProfileTabs(QString());
+        return;
+    }
 
     // Tell the orchestrator which descriptor the UI now shows, for UI edits.
     m_profileOrchestrator.onCurrentDeviceChanged(device->descriptor());
 
     const QString serial = device->deviceSerial();
+    // Each mouse has its own app profiles; show this one's.
+    m_profileOrchestrator.rebuildProfileTabs(serial);
     const QString name = m_profileEngine.displayProfile(serial);
     if (name.isEmpty()) return;  // device not yet fully set up
 

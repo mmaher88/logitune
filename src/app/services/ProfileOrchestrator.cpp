@@ -113,40 +113,46 @@ void ProfileOrchestrator::setupProfileForDevice(PhysicalDevice *device)
         qCDebug(lcApp) << "created default profile at" << defaultConf;
     }
 
-    const QString bindingsFile = profilesDir + QStringLiteral("/app-bindings.conf");
-    if (QFile::exists(bindingsFile)) {
-        const auto bindings = ProfileEngine::loadAppBindings(bindingsFile);
-        QMap<QString, QString> iconLookup;
-        if (m_desktop) {
-            const auto apps = m_desktop->runningApplications();
-            for (const auto &app : apps) {
-                auto map = app.toMap();
-                iconLookup[map[QStringLiteral("wmClass")].toString().toLower()]
-                    = map[QStringLiteral("icon")].toString();
-            }
-        }
-        for (auto it = bindings.cbegin(); it != bindings.cend(); ++it) {
-            QString icon = iconLookup.value(it.key().toLower());
-            m_profileModel->restoreProfile(it.key(), it.value(), icon);
-        }
-    }
-
     QString hwName = m_profileEngine->hardwareProfile(serial);
     bool isFirstConnect = hwName.isEmpty();
     if (isFirstConnect) {
         hwName = QStringLiteral("default");
-        // The profile tab bar shows the selected mouse; a second mouse
-        // connecting must not move its "active on device" marker.
-        if (isSelected)
-            m_profileModel->setHwActiveIndex(0);
         m_profileEngine->setHardwareProfile(serial, hwName);
         m_profileEngine->setDisplayProfile(serial, hwName);
     }
+
+    // The tab bar shows the selected mouse's app profiles only. A second
+    // mouse connecting must not add its tabs to them; its own tabs appear
+    // when the carousel selects it (AppRoot::onSelectionChanged).
+    if (isSelected)
+        rebuildProfileTabs(serial);
 
     Profile &p = m_profileEngine->cachedProfile(serial, hwName);
     qCDebug(lcApp) << "setupProfileForDevice: applying profile" << hwName
                    << "thumbWheelMode=" << p.thumbWheelMode << "to" << serial;
     applyProfileToHardware(device, p);
+}
+
+void ProfileOrchestrator::rebuildProfileTabs(const QString &serial)
+{
+    QMap<QString, QString> iconLookup;
+    if (m_desktop) {
+        const auto apps = m_desktop->runningApplications();
+        for (const auto &app : apps) {
+            const auto map = app.toMap();
+            iconLookup[map[QStringLiteral("wmClass")].toString().toLower()]
+                = map[QStringLiteral("icon")].toString();
+        }
+    }
+
+    QList<ProfileModel::AppTab> tabs;
+    const auto bindings = m_profileEngine->appBindings(serial);
+    for (auto it = bindings.cbegin(); it != bindings.cend(); ++it)
+        tabs.append({it.key(), it.value(), iconLookup.value(it.key().toLower())});
+
+    m_profileModel->resetProfiles(tabs,
+                                  m_profileEngine->displayProfile(serial),
+                                  m_profileEngine->hardwareProfile(serial));
 }
 
 void ProfileOrchestrator::onUserButtonChanged(int buttonId,

@@ -199,3 +199,102 @@ TEST_F(DeviceRoutingTest, FocusChangeSwitchesEveryConnectedMouse) {
     EXPECT_EQ(m_session->thumbWheelMode(), QStringLiteral("zoom"));
     EXPECT_EQ(b->primary()->thumbWheelMode(), QStringLiteral("volume"));
 }
+
+// --- Profile tabs ------------------------------------------------------------
+// The tab bar shows the app profiles of the mouse selected in the carousel.
+// Each mouse has its own; they must never be merged.
+
+namespace {
+
+QStringList tabNames(ProfileModel &model)
+{
+    QStringList names;
+    for (int i = 0; i < model.rowCount(); ++i)
+        names << model.data(model.index(i), ProfileModel::NameRole).toString();
+    return names;
+}
+
+} // namespace
+
+TEST_F(DeviceRoutingTest, TabsShowOnlyTheSelectedMousesAppProfiles) {
+    PhysicalDevice *b = addSecondMouseAndSelectFirst();
+    createAppProfile(QStringLiteral("google-chrome"), QStringLiteral("Google Chrome"));
+    profileEngine().createProfileForApp(kSerialB, QStringLiteral("firefox"),
+                                        QStringLiteral("Firefox"));
+
+    deviceModel().setSelectedIndex(deviceModel().devices().indexOf(b));
+    EXPECT_EQ(tabNames(profileModel()),
+              (QStringList{QStringLiteral("Defaults"), QStringLiteral("Firefox")}));
+
+    deviceModel().setSelectedIndex(deviceModel().devices().indexOf(m_physicalDevice));
+    EXPECT_EQ(tabNames(profileModel()),
+              (QStringList{QStringLiteral("Defaults"), QStringLiteral("Google Chrome")}));
+}
+
+TEST_F(DeviceRoutingTest, ConnectingSecondMouseDoesNotAddItsTabs) {
+    // B already has a Firefox profile on disk when it connects.
+    const QString bDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
+        + QStringLiteral("/devices/") + kSerialB + QStringLiteral("/profiles");
+    QDir().mkpath(bDir);
+    Profile bDefault;
+    bDefault.name = QStringLiteral("Default");
+    ProfileEngine::saveProfile(bDir + QStringLiteral("/default.conf"), bDefault);
+    Profile bFirefox = bDefault;
+    bFirefox.name = QStringLiteral("Firefox");
+    ProfileEngine::saveProfile(bDir + QStringLiteral("/Firefox.conf"), bFirefox);
+    ProfileEngine::saveAppBindings(bDir + QStringLiteral("/app-bindings.conf"),
+                                   {{QStringLiteral("firefox"), QStringLiteral("Firefox")}});
+
+    addMockDevice(QStringLiteral("B"));
+
+    // A is still the mouse on screen, and A has no app profiles.
+    ASSERT_EQ(deviceModel().selectedIndex(),
+              deviceModel().devices().indexOf(m_physicalDevice));
+    EXPECT_EQ(tabNames(profileModel()), (QStringList{QStringLiteral("Defaults")}));
+}
+
+TEST_F(DeviceRoutingTest, TabAddedOnOneMouseIsNotShownOnTheOther) {
+    PhysicalDevice *b = addSecondMouseAndSelectFirst();
+    const int idxA = deviceModel().devices().indexOf(m_physicalDevice);
+    const int idxB = deviceModel().devices().indexOf(b);
+
+    deviceModel().setSelectedIndex(idxB);
+    profileModel().addProfile(QStringLiteral("firefox"), QStringLiteral("Firefox"));
+    EXPECT_EQ(profileEngine().profileForApp(kSerialB, QStringLiteral("firefox")),
+              QStringLiteral("Firefox"));
+
+    deviceModel().setSelectedIndex(idxA);
+    EXPECT_EQ(tabNames(profileModel()), (QStringList{QStringLiteral("Defaults")}));
+
+    // A can have a Firefox profile of its own.
+    profileModel().addProfile(QStringLiteral("firefox"), QStringLiteral("Firefox on A"));
+    EXPECT_EQ(profileEngine().profileForApp(kSerialA, QStringLiteral("firefox")),
+              QStringLiteral("Firefox on A"));
+    EXPECT_EQ(profileEngine().profileForApp(kSerialB, QStringLiteral("firefox")),
+              QStringLiteral("Firefox"));
+}
+
+TEST_F(DeviceRoutingTest, TabHighlightsFollowTheSelectedMouse) {
+    PhysicalDevice *b = addSecondMouseAndSelectFirst();
+    const int idxA = deviceModel().devices().indexOf(m_physicalDevice);
+    const int idxB = deviceModel().devices().indexOf(b);
+    createAppProfile(QStringLiteral("google-chrome"), QStringLiteral("Google Chrome"));
+    profileEngine().createProfileForApp(kSerialB, QStringLiteral("firefox"),
+                                        QStringLiteral("Firefox"));
+
+    // Viewing and running Google Chrome on A; B stays on its defaults.
+    deviceModel().setSelectedIndex(idxB);
+    deviceModel().setSelectedIndex(idxA);
+    profileModel().selectTab(1);
+    m_desktop->simulateFocus(QStringLiteral("google-chrome"), QStringLiteral("Chrome"));
+    ASSERT_EQ(profileEngine().displayProfile(kSerialA), QStringLiteral("Google Chrome"));
+    ASSERT_EQ(profileEngine().hardwareProfile(kSerialB), QStringLiteral("default"));
+
+    deviceModel().setSelectedIndex(idxB);
+    EXPECT_EQ(profileModel().displayIndex(), 0);
+    EXPECT_TRUE(profileModel().data(profileModel().index(0), ProfileModel::IsHwActiveRole).toBool());
+
+    deviceModel().setSelectedIndex(idxA);
+    EXPECT_EQ(profileModel().displayIndex(), 1);
+    EXPECT_TRUE(profileModel().data(profileModel().index(1), ProfileModel::IsHwActiveRole).toBool());
+}
