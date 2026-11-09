@@ -43,6 +43,7 @@ add_executable(logitune-tests
     test_desktop_factory.cpp
     test_profile_apply_behavior.cpp
     test_settings_model.cpp
+    test_system_color_scheme.cpp
     test_json_device.cpp
     test_device_fetcher.cpp
     test_dpi_cycle_ring.cpp

@@ -12,6 +12,7 @@ add_library(logitune-app-lib STATIC
     services/DeviceCommandHandler.cpp
     services/ButtonActionDispatcher.cpp
     services/ProfileOrchestrator.cpp
+    services/SystemColorScheme.cpp
     dialogs/GitHubIssueBuilder.cpp
     dialogs/CrashReportDialog.cpp
     TrayManager.cpp
@@ -23,7 +24,7 @@ target_include_directories(logitune-app-lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/services
 )
 
-target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widgets)
+target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widgets Qt6::DBus)
 target_compile_definitions(logitune-app-lib PUBLIC
     PROJECT_VERSION="${PROJECT_VERSION}"
     PROJECT_VERSION_FULL="${LOGITUNE_DISPLAY_VERSION}"

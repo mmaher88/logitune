@@ -15,9 +15,6 @@
 #include <QLockFile>
 #include <QStandardPaths>
 #include <QSystemTrayIcon>
-#include <QDBusConnection>
-#include <QDBusMessage>
-#include <QDBusVariant>
 
 #include "AppRoot.h"
 #include "models/EditorModel.h"
@@ -25,6 +22,7 @@
 #include "logging/CrashHandler.h"
 #include "dialogs/CrashReportDialog.h"
 #include "TrayManager.h"
+#include "services/SystemColorScheme.h"
 
 int main(int argc, char *argv[])
 {
@@ -145,22 +143,12 @@ int main(int argc, char *argv[])
     qCInfo(lcApp) << "settings file:" << settings.fileName()
                   << "contains theme/dark:" << settings.contains("theme/dark")
                   << "value:" << settings.value("theme/dark");
+    logitune::SystemColorScheme systemScheme;
     if (settings.contains("theme/dark")) {
         isDark = settings.value("theme/dark").toBool();
     } else {
-        QDBusMessage msg = QDBusMessage::createMethodCall(
-            "org.freedesktop.portal.Desktop",
-            "/org/freedesktop/portal/desktop",
-            "org.freedesktop.portal.Settings",
-            "Read");
-        msg << QStringLiteral("org.freedesktop.appearance")
-            << QStringLiteral("color-scheme");
-        QDBusMessage reply = QDBusConnection::sessionBus().call(msg, QDBus::Block, 250);
-        if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-            QVariant value = reply.arguments().first().value<QDBusVariant>().variant();
-            if (value.canConvert<QDBusVariant>())
-                value = value.value<QDBusVariant>().variant();
-            isDark = (value.toUInt() == 1);
+        if (auto portalDark = systemScheme.readDark()) {
+            isDark = *portalDark;
         } else {
             QColor windowBg = app.palette().window().color();
             double lum = windowBg.redF() * 0.299 + windowBg.greenF() * 0.587
@@ -234,18 +222,29 @@ int main(int argc, char *argv[])
     }
 
     // Set theme via the root QML object which has access to the Theme singleton
-    qCInfo(lcApp) << "Setting theme dark:" << isDark;
-    if (!engine.rootObjects().isEmpty()) {
+    auto applyDark = [&engine](bool dark) {
+        qCInfo(lcApp) << "Setting theme dark:" << dark;
+        if (engine.rootObjects().isEmpty())
+            return;
         QObject *root = engine.rootObjects().first();
         QQmlExpression expr(QQmlEngine::contextForObject(root), root,
-            isDark ? QStringLiteral("Theme.dark = true")
-                   : QStringLiteral("Theme.dark = false"));
-        QVariant result = expr.evaluate();
+            dark ? QStringLiteral("Theme.dark = true")
+                 : QStringLiteral("Theme.dark = false"));
+        expr.evaluate();
         if (expr.hasError())
             qCWarning(lcApp) << "Theme expression error:" << expr.error().toString();
         else
-            qCInfo(lcApp) << "Theme.dark applied:" << isDark;
-    }
+            qCInfo(lcApp) << "Theme.dark applied:" << dark;
+    };
+    applyDark(isDark);
+
+    // Follow later desktop switches (darkman, GNOME's toggle) unless the user
+    // picked a theme in Settings, which saves theme/dark and takes priority.
+    QObject::connect(&systemScheme, &logitune::SystemColorScheme::darkChanged,
+                     &engine, [applyDark](bool dark) {
+        if (!QSettings().contains("theme/dark"))
+            applyDark(dark);
+    });
 
     // System tray
     logitune::TrayManager tray(controller.deviceModel());
