@@ -28,6 +28,13 @@ void ActionFilterModel::setGestureMode(bool mode)
     invalidateFilter();
 }
 
+void ActionFilterModel::setRadialMode(bool mode)
+{
+    if (m_radialMode == mode) return;
+    m_radialMode = mode;
+    invalidateFilter();
+}
+
 bool ActionFilterModel::filterAcceptsRow(int sourceRow,
                                          const QModelIndex &sourceParent) const
 {
@@ -46,6 +53,13 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
             || type == QLatin1String("radial-menu")) return false;
         if (type == QLatin1String("none")) return false;
     }
+
+    // Ring entries may execute ordinary actions, but must not recursively
+    // open either gesture recognition or another ring.
+    if (m_radialMode
+        && (type == QLatin1String("gesture-trigger")
+            || type == QLatin1String("radial-menu")))
+        return false;
 
     // Preset filtering: hide if not supported on the current DE variant.
     if (type == QLatin1String("preset")) {

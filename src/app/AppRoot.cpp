@@ -67,6 +67,11 @@ AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject
     m_gestureActionFilterModel->setSourceModel(&m_actionModel);
     m_gestureActionFilterModel->setGestureMode(true);
 
+    m_radialActionFilterModel = std::make_unique<ActionFilterModel>(
+        &m_deviceModel, m_desktop, &m_presetRegistry, this);
+    m_radialActionFilterModel->setSourceModel(&m_actionModel);
+    m_radialActionFilterModel->setRadialMode(true);
+
     if (auto *kde = dynamic_cast<KDeDesktop *>(m_desktop))
         kde->setPresetRegistry(&m_presetRegistry);
     if (auto *gnome = dynamic_cast<GnomeDesktop *>(m_desktop))
@@ -173,6 +178,8 @@ void AppRoot::wireSignals()
             [this](const QString &, const QString &, const QString &, const QString &) {
                 m_profileOrchestrator.saveCurrentProfile();
             });
+    connect(&m_deviceModel, &DeviceModel::userRadialMenuChanged,
+            &m_profileOrchestrator, &ProfileOrchestrator::saveCurrentProfile);
 
     connect(&m_profileModel, &ProfileModel::profileAdded, this,
             [this](const QString &wmClass, const QString &profileName) {

@@ -45,7 +45,8 @@ else()
         SideNav BatteryChip LogituneSlider LogituneToggle InfoCallout
         DetailPanel KeystrokeCapture ButtonCallout ActionsPanel
         DeviceCard DeviceRender AppProfileBar Toast EditorToolbar
-        EditableText ConflictBanner DiffModal HotspotControl RadialMenuRing)
+        EditableText ConflictBanner DiffModal HotspotControl RadialMenuRing
+        RadialActionIcon RadialMenuEditor)
         set_source_files_properties(qml/components/${_file}.qml
             PROPERTIES QT_RESOURCE_ALIAS qml/${_file}.qml)
     endforeach()
@@ -86,6 +87,8 @@ qt_add_qml_module(logitune-app-lib
         qml/components/DiffModal.qml
         qml/components/HotspotControl.qml
         qml/components/RadialMenuRing.qml
+        qml/components/RadialActionIcon.qml
+        qml/components/RadialMenuEditor.qml
         qml/pages/PointScrollPage.qml
         qml/pages/ButtonsPage.qml
         qml/pages/EasySwitchPage.qml
@@ -93,6 +96,31 @@ qt_add_qml_module(logitune-app-lib
     RESOURCES
         qml/assets/logitune-icon.svg
         qml/assets/logitune-tray.svg
+        qml/assets/actions/LICENSE.md
+        qml/assets/actions/copy.svg
+        qml/assets/actions/clipboard-paste.svg
+        qml/assets/actions/scissors.svg
+        qml/assets/actions/undo-2.svg
+        qml/assets/actions/redo-2.svg
+        qml/assets/actions/keyboard.svg
+        qml/assets/actions/terminal.svg
+        qml/assets/actions/play.svg
+        qml/assets/actions/skip-forward.svg
+        qml/assets/actions/skip-back.svg
+        qml/assets/actions/volume-2.svg
+        qml/assets/actions/volume-1.svg
+        qml/assets/actions/volume-x.svg
+        qml/assets/actions/arrow-left.svg
+        qml/assets/actions/arrow-right.svg
+        qml/assets/actions/sun.svg
+        qml/assets/actions/camera.svg
+        qml/assets/actions/monitor.svg
+        qml/assets/actions/calculator.svg
+        qml/assets/actions/x.svg
+        qml/assets/actions/gauge.svg
+        qml/assets/actions/mouse.svg
+        qml/assets/actions/circle-off.svg
+        qml/assets/actions/sparkles.svg
 )
 
 # ── Executable: main entry point ─────────────────────────────────────────

@@ -14,6 +14,7 @@
 using logitune::ButtonAction;
 using logitune::DeviceModel;
 using logitune::GestureEntry;
+using logitune::RadialMenuConfig;
 
 // ---------------------------------------------------------------------------
 // Fixture
@@ -221,6 +222,52 @@ TEST_F(DeviceModelTest, AppIndicatorInstallCommandNonEmpty) {
     EXPECT_FALSE(cmd.isEmpty());
     EXPECT_TRUE(cmd.contains(QStringLiteral("gnome-shell-extension-appindicator")))
         << "command: " << cmd.toStdString();
+}
+
+TEST_F(DeviceModelTest, LoadRadialMenuUpdatesEditorWithoutUserSignal) {
+    QSignalSpy changedSpy(&model, &DeviceModel::radialMenuChanged);
+    QSignalSpy userSpy(&model, &DeviceModel::userRadialMenuChanged);
+    RadialMenuConfig config;
+    config.items = {
+        {QStringLiteral("Back"), {ButtonAction::Keystroke, QStringLiteral("Alt+Left")}},
+        {QStringLiteral("Mute"), {ButtonAction::Keystroke, QStringLiteral("Mute")}},
+    };
+
+    model.loadRadialMenu(config);
+
+    EXPECT_EQ(changedSpy.count(), 1);
+    EXPECT_EQ(userSpy.count(), 0);
+    const QVariantList items = model.radialItems();
+    ASSERT_EQ(items.size(), 2);
+    EXPECT_EQ(items.at(0).toMap().value(QStringLiteral("action")).toString(),
+              QStringLiteral("keystroke:Alt+Left"));
+}
+
+TEST_F(DeviceModelTest, SaveRadialMenuAcceptsValidEntriesAndEmitsUserSignal) {
+    QSignalSpy userSpy(&model, &DeviceModel::userRadialMenuChanged);
+    const QVariantList items{
+        QVariantMap{{QStringLiteral("label"), QStringLiteral("Copy")},
+                    {QStringLiteral("action"), QStringLiteral("keystroke:Ctrl+C")}},
+        QVariantMap{{QStringLiteral("label"), QStringLiteral("Terminal")},
+                    {QStringLiteral("action"), QStringLiteral("app-launch:konsole")}},
+    };
+
+    EXPECT_TRUE(model.saveRadialMenu(items));
+    EXPECT_EQ(userSpy.count(), 1);
+    EXPECT_EQ(model.radialMenuConfig().items.size(), 2);
+}
+
+TEST_F(DeviceModelTest, SaveRadialMenuRejectsRecursiveEntryWithoutMutation) {
+    const RadialMenuConfig before = model.radialMenuConfig();
+    const QVariantList items{
+        QVariantMap{{QStringLiteral("label"), QStringLiteral("Copy")},
+                    {QStringLiteral("action"), QStringLiteral("keystroke:Ctrl+C")}},
+        QVariantMap{{QStringLiteral("label"), QStringLiteral("Nested")},
+                    {QStringLiteral("action"), QStringLiteral("radial-menu")}},
+    };
+
+    EXPECT_FALSE(model.saveRadialMenu(items));
+    EXPECT_EQ(model.radialMenuConfig().items, before.items);
 }
 
 // ---------------------------------------------------------------------------

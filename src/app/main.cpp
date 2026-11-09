@@ -198,6 +198,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ButtonModel",    controller.buttonModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ActionModel",    controller.actionFilterModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "GestureActionModel", controller.gestureActionFilterModel());
+    qmlRegisterSingletonInstance("Logitune", 1, 0, "RadialActionModel", controller.radialActionFilterModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "ProfileModel",   controller.profileModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "SettingsModel",  controller.settingsModel());
     qmlRegisterSingletonInstance("Logitune", 1, 0, "RadialMenu",    controller.radialMenu());
@@ -206,6 +207,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("ButtonModel",    controller.buttonModel());
     engine.rootContext()->setContextProperty("ActionModel",    controller.actionFilterModel());
     engine.rootContext()->setContextProperty("GestureActionModel", controller.gestureActionFilterModel());
+    engine.rootContext()->setContextProperty("RadialActionModel", controller.radialActionFilterModel());
     engine.rootContext()->setContextProperty("ProfileModel",   controller.profileModel());
     engine.rootContext()->setContextProperty("SettingsModel",  controller.settingsModel());
     engine.rootContext()->setContextProperty("RadialMenu",     controller.radialMenu());

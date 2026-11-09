@@ -88,6 +88,21 @@ TEST(ActionFilterModel, ActionRingFollowsDesktopCapability) {
     EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Action ring")), 0);
 }
 
+TEST(ActionFilterModel, RadialModeRejectsRecursiveActions) {
+    ActionModel source;
+    DeviceModel dm;
+    MockDesktop desktop;
+    desktop.setSupportsActionRing(true);
+    ActionFilterModel proxy(&dm, &desktop);
+    proxy.setSourceModel(&source);
+    proxy.setRadialMode(true);
+
+    EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Action ring")), 0);
+    EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Gestures")), 0);
+    EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Copy")), 1);
+    EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Do nothing")), 1);
+}
+
 TEST(ActionFilterModel, FilterHidesUnsupportedActions) {
     ActionModel source;
     DeviceModel dm;

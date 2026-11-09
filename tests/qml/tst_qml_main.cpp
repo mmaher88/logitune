@@ -31,6 +31,7 @@ public slots:
         engine->rootContext()->setContextProperty("DeviceModel",  &m_deviceModel);
         engine->rootContext()->setContextProperty("ButtonModel",  &m_buttonModel);
         engine->rootContext()->setContextProperty("ActionModel",  &m_actionModel);
+        engine->rootContext()->setContextProperty("RadialActionModel", &m_radialActionModel);
         engine->rootContext()->setContextProperty("ProfileModel",  &m_profileModel);
         engine->rootContext()->setContextProperty("SettingsModel", &m_settingsModel);
 
@@ -41,6 +42,7 @@ private:
     logitune::DeviceModel  m_deviceModel;
     logitune::ButtonModel  m_buttonModel;
     logitune::ActionModel  m_actionModel;
+    logitune::ActionModel  m_radialActionModel;
     logitune::ProfileModel  m_profileModel;
     logitune::SettingsModel m_settingsModel;
 };
