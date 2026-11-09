@@ -62,6 +62,8 @@ public:
     QString displayProfile(const QString &serial) const;
     QString hardwareProfile(const QString &serial) const;
     QString profileForApp(const QString &serial, const QString &wmClass) const;
+    /// wmClass -> profile name for every app profile of this device.
+    QMap<QString, QString> appBindings(const QString &serial) const;
 
     void setDisplayProfile(const QString &serial, const QString &name);
     void setHardwareProfile(const QString &serial, const QString &name);

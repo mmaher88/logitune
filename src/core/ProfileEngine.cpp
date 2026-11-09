@@ -305,6 +305,11 @@ QString ProfileEngine::profileForApp(const QString &serial, const QString &wmCla
     return QStringLiteral("default");
 }
 
+QMap<QString, QString> ProfileEngine::appBindings(const QString &serial) const
+{
+    return ctx(serial).appBindings;
+}
+
 void ProfileEngine::setDisplayProfile(const QString &serial, const QString &name)
 {
     DeviceProfileContext &c = ctx(serial);
