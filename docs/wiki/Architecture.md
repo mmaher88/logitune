@@ -1001,7 +1001,7 @@ flowchart TD
     Connect --> Enumerate[enumerateAndSetup]
     Enumerate --> Features[FeatureDispatcher::enumerate]
     Features --> ReadState[Read battery, DPI, SmartShift, scroll, thumb wheel, Easy-Switch]
-    ReadState --> LookupDesc[DeviceRegistry::findByPid/findByName]
+    ReadState --> LookupDesc[Resolve descriptor<br/>receiver: WPID from register 0x2B5<br/>Bluetooth: hidraw PID<br/>name breaks PID ties]
     LookupDesc --> Undivert[Undivert all buttons + thumb wheel]
     Undivert --> CreateQueue[Create CommandProcessor]
     CreateQueue --> Signal[emit deviceSetupComplete]

@@ -90,12 +90,15 @@ TEST_F(ButtonModelTest, LoadFromProfileDoesNotEmitUserActionChanged) {
 
 TEST_F(ButtonModelTest, LoadFromProfileUpdatesData) {
     QList<ButtonAssignment> buttons;
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < 9; ++i)
         buttons.append({ QStringLiteral("NewAction%1").arg(i), QStringLiteral("type%1").arg(i), 0xFFFF });
     model.loadFromProfile(buttons);
     // loadFromProfile maps by index position (button at index 0 has buttonId 0)
+    EXPECT_EQ(model.rowCount(), 9);
     EXPECT_EQ(model.actionNameForButton(0), QStringLiteral("NewAction0"));
     EXPECT_EQ(model.actionNameForButton(7), QStringLiteral("NewAction7"));
+    EXPECT_EQ(model.actionNameForButton(8), QStringLiteral("NewAction8"));
+    EXPECT_EQ(model.actionTypeForButton(8), QStringLiteral("type8"));
 }
 
 // ---------------------------------------------------------------------------
@@ -149,17 +152,16 @@ TEST_F(ButtonModelTest, InvalidIndexReturnsInvalidVariant) {
 // loadFromProfile with fewer entries than model size
 // ---------------------------------------------------------------------------
 
-TEST_F(ButtonModelTest, LoadFewerThanModelSizeButton0Changes) {
-    // Record original value for button 1 before loading
-    QString original1 = model.actionNameForButton(1);
-
+TEST_F(ButtonModelTest, LoadFewerThanModelSizeShrinksModel) {
     QList<ButtonAssignment> buttons;
     buttons.append({ QStringLiteral("OnlyOne"), QStringLiteral("custom"), 0xFFFF });
     model.loadFromProfile(buttons);
 
     EXPECT_EQ(model.actionNameForButton(0), QStringLiteral("OnlyOne"));
-    // Button 1 should be unchanged
-    EXPECT_EQ(model.actionNameForButton(1), original1);
+    // The model is rebuilt for the incoming device, so the rows the previous
+    // device contributed are gone rather than left behind stale.
+    EXPECT_EQ(model.rowCount(), 1);
+    EXPECT_TRUE(model.actionNameForButton(1).isEmpty());
 }
 
 // ---------------------------------------------------------------------------

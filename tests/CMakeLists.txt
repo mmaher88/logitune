@@ -11,6 +11,7 @@ add_executable(logitune-tests
     test_capability_dispatch.cpp
     test_scroll_features.cpp
     test_features.cpp
+    test_receiver_info.cpp
     test_button_features.cpp
     test_profile_engine.cpp
     test_device_discovery.cpp
@@ -34,6 +35,7 @@ add_executable(logitune-tests
     test_profile_switching.cpp
     test_profile_persistence.cpp
     test_device_reconnect.cpp
+    test_device_routing.cpp
     test_thumb_wheel_behavior.cpp
     test_profile_switch_behavior.cpp
     test_notification_filtering.cpp

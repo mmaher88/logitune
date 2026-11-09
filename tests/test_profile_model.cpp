@@ -191,3 +191,55 @@ TEST_F(ProfileModelTest, RemoveShiftsDisplayIndex) {
     EXPECT_EQ(model.rowCount(), 3);
     EXPECT_EQ(model.displayIndex(), 2);
 }
+
+// ---------------------------------------------------------------------------
+// resetProfiles: swaps in one mouse's tabs when the carousel selection moves
+// ---------------------------------------------------------------------------
+
+TEST_F(ProfileModelTest, ResetProfilesReplacesAppTabsAndKeepsDefaults) {
+    model.restoreProfile(QStringLiteral("blender"), QStringLiteral("Blender"));
+
+    model.resetProfiles({{QStringLiteral("firefox"), QStringLiteral("Firefox"), QString()},
+                         {QStringLiteral("kitty"),   QStringLiteral("Kitty"),   QString()}},
+                        QStringLiteral("default"), QStringLiteral("default"));
+
+    ASSERT_EQ(model.rowCount(), 3);
+    EXPECT_EQ(model.data(model.index(0), ProfileModel::WmClassRole).toString(), QStringLiteral("default"));
+    EXPECT_EQ(model.data(model.index(1), ProfileModel::NameRole).toString(), QStringLiteral("Firefox"));
+    EXPECT_EQ(model.data(model.index(2), ProfileModel::NameRole).toString(), QStringLiteral("Kitty"));
+}
+
+TEST_F(ProfileModelTest, ResetProfilesSetsDisplayAndHardwareIndexByName) {
+    model.resetProfiles({{QStringLiteral("firefox"), QStringLiteral("Firefox"), QString()},
+                         {QStringLiteral("kitty"),   QStringLiteral("Kitty"),   QString()}},
+                        QStringLiteral("Kitty"), QStringLiteral("Firefox"));
+
+    EXPECT_EQ(model.displayIndex(), 2);
+    EXPECT_TRUE(model.data(model.index(2), ProfileModel::IsActiveRole).toBool());
+    EXPECT_TRUE(model.data(model.index(1), ProfileModel::IsHwActiveRole).toBool());
+    EXPECT_FALSE(model.data(model.index(0), ProfileModel::IsHwActiveRole).toBool());
+}
+
+TEST_F(ProfileModelTest, ResetProfilesFallsBackToDefaultsForUnknownNames) {
+    model.resetProfiles({{QStringLiteral("firefox"), QStringLiteral("Firefox"), QString()}},
+                        QStringLiteral("Gone"), QString());
+
+    EXPECT_EQ(model.displayIndex(), 0);
+    EXPECT_TRUE(model.data(model.index(0), ProfileModel::IsHwActiveRole).toBool());
+}
+
+TEST_F(ProfileModelTest, ResetProfilesIsNotAUserTabSwitch) {
+    QSignalSpy switched(&model, &ProfileModel::profileSwitched);
+    QSignalSpy added(&model, &ProfileModel::profileAdded);
+    QSignalSpy removed(&model, &ProfileModel::profileRemoved);
+    QSignalSpy display(&model, &ProfileModel::displayIndexChanged);
+    model.restoreProfile(QStringLiteral("blender"), QStringLiteral("Blender"));
+
+    model.resetProfiles({{QStringLiteral("firefox"), QStringLiteral("Firefox"), QString()}},
+                        QStringLiteral("Firefox"), QStringLiteral("default"));
+
+    EXPECT_EQ(switched.count(), 0);  // the display profile is already that one
+    EXPECT_EQ(added.count(), 0);     // nothing was created
+    EXPECT_EQ(removed.count(), 0);   // Blender belongs to another mouse, not deleted
+    EXPECT_EQ(display.count(), 1);   // QML still has to move the highlight
+}

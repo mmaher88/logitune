@@ -246,6 +246,11 @@ void DeviceModel::insertRow(PhysicalDevice *device)
         emit selectedBatteryChanged();
         emit settingsReloaded();
         emit deviceConnectedChanged();
+    } else if (m_selectedIndex >= 0 && insertAt <= m_selectedIndex) {
+        // A row landed in front of the selection. Keep the same mouse
+        // selected; only its row number moved, so QML must re-read it.
+        ++m_selectedIndex;
+        emit selectedChanged();
     }
 }
 
@@ -255,10 +260,15 @@ void DeviceModel::removeRow(PhysicalDevice *device)
     if (row < 0) return;
 
     const bool wasSelected = (row == m_selectedIndex);
+    // A row in front of the selection is going away: the selected mouse
+    // stays the same but moves up one row.
+    const bool shiftsSelection = (row < m_selectedIndex);
     beginRemoveRows(QModelIndex(), row, row);
     m_devices.removeAt(row);
     endRemoveRows();
 
+    if (shiftsSelection)
+        --m_selectedIndex;
     if (m_selectedIndex >= m_devices.size())
         m_selectedIndex = m_devices.size() - 1;
     if (m_devices.isEmpty())
@@ -270,6 +280,8 @@ void DeviceModel::removeRow(PhysicalDevice *device)
         emit selectedBatteryChanged();
         emit settingsReloaded();
         emit deviceConnectedChanged();
+    } else if (shiftsSelection) {
+        emit selectedChanged();
     }
 }
 

@@ -4,6 +4,7 @@
 #include "DeviceRegistry.h"
 #include "hidpp/HidrawDevice.h"
 #include "hidpp/HidppTypes.h"
+#include "interfaces/IDevice.h"
 
 using namespace logitune;
 using namespace logitune::hidpp;
@@ -207,4 +208,75 @@ TEST_F(DeviceSessionTest, AccessorsReturnNullables) {
     // transport is created in constructor
     EXPECT_NE(session->transport(), nullptr);
     EXPECT_NE(session->device(), nullptr);
+}
+
+// ---------------------------------------------------------------------------
+// Descriptor resolution
+// ---------------------------------------------------------------------------
+
+// On a receiver the hidraw node reports the receiver's PID (Bolt 0xC548),
+// so the device is identified by the WPID read from the receiver's pairing
+// register. The WPID alone is enough, even with no usable name.
+TEST_F(DeviceSessionTest, ReceiverDeviceResolvesByWpid) {
+    const auto *dev = DeviceSession::resolveDescriptor(
+        &registry, kPidBoltReceiver, 0xB038, QString());
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Anywhere 3S for Business"));
+}
+
+TEST_F(DeviceSessionTest, MxMaster3sForBusinessOnBoltResolvesByWpid) {
+    const auto *dev = DeviceSession::resolveDescriptor(
+        &registry, kPidBoltReceiver, 0xB035, QStringLiteral("MX Master 3S For Business"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3S For Business"));
+}
+
+TEST_F(DeviceSessionTest, MxMaster3OnUnifyingResolvesByWpid) {
+    const auto *dev = DeviceSession::resolveDescriptor(
+        &registry, kPidUnifyReceiver, 0x4082, QString());
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3"));
+}
+
+// The receiver's own PID says nothing about which device is paired to it.
+TEST_F(DeviceSessionTest, ReceiverPidNeverSelectsADescriptor) {
+    EXPECT_EQ(DeviceSession::resolveDescriptor(
+                  &registry, kPidBoltReceiver, std::nullopt, QString()), nullptr);
+    EXPECT_EQ(DeviceSession::resolveDescriptor(
+                  &registry, kPidUnifyReceiver, std::nullopt, QString()), nullptr);
+}
+
+// If the pairing register can't be read, the reported name is all we have.
+TEST_F(DeviceSessionTest, ReceiverWithoutWpidFallsBackToName) {
+    const auto *dev = DeviceSession::resolveDescriptor(
+        &registry, kPidBoltReceiver, std::nullopt, QStringLiteral("MX Master 3S"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3S"));
+}
+
+// Over Bluetooth the hidraw PID is the device's own.
+TEST_F(DeviceSessionTest, BluetoothDeviceResolvesByHidrawPid) {
+    const auto *dev = DeviceSession::resolveDescriptor(
+        &registry, 0xB034, std::nullopt, QString());
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3S"));
+}
+
+// MX Vertical and MX Vertical for Business share PID 0xB020; the reported
+// name picks between them, on Bluetooth and on a receiver alike.
+TEST_F(DeviceSessionTest, SharedPidResolvedByName) {
+    const auto *business = DeviceSession::resolveDescriptor(
+        &registry, 0xB020, std::nullopt, QStringLiteral("MX Vertical for Business"));
+    ASSERT_NE(business, nullptr);
+    EXPECT_EQ(business->deviceName(), QStringLiteral("MX Vertical for Business"));
+
+    const auto *retail = DeviceSession::resolveDescriptor(
+        &registry, 0xB020, std::nullopt, QStringLiteral("MX Vertical"));
+    ASSERT_NE(retail, nullptr);
+    EXPECT_EQ(retail->deviceName(), QStringLiteral("MX Vertical"));
+
+    const auto *onBolt = DeviceSession::resolveDescriptor(
+        &registry, kPidBoltReceiver, 0xB020, QStringLiteral("MX Vertical for Business"));
+    ASSERT_NE(onBolt, nullptr);
+    EXPECT_EQ(onBolt->deviceName(), QStringLiteral("MX Vertical for Business"));
 }
