@@ -11,6 +11,7 @@ add_library(logitune-app-lib STATIC
     services/ActiveDeviceResolver.cpp
     services/DeviceCommandHandler.cpp
     services/ButtonActionDispatcher.cpp
+    services/RadialMenuController.cpp
     services/ProfileOrchestrator.cpp
     dialogs/GitHubIssueBuilder.cpp
     dialogs/CrashReportDialog.cpp
@@ -24,6 +25,10 @@ target_include_directories(logitune-app-lib PUBLIC
 )
 
 target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widgets)
+if(TARGET LayerShellQt::Interface)
+    target_link_libraries(logitune-app-lib PUBLIC LayerShellQt::Interface)
+    target_compile_definitions(logitune-app-lib PRIVATE LOGITUNE_LAYER_SHELL)
+endif()
 target_compile_definitions(logitune-app-lib PUBLIC
     PROJECT_VERSION="${PROJECT_VERSION}"
     PROJECT_VERSION_FULL="${LOGITUNE_DISPLAY_VERSION}"
@@ -40,7 +45,7 @@ else()
         SideNav BatteryChip LogituneSlider LogituneToggle InfoCallout
         DetailPanel KeystrokeCapture ButtonCallout ActionsPanel
         DeviceCard DeviceRender AppProfileBar Toast EditorToolbar
-        EditableText ConflictBanner DiffModal HotspotControl)
+        EditableText ConflictBanner DiffModal HotspotControl RadialMenuRing)
         set_source_files_properties(qml/components/${_file}.qml
             PROPERTIES QT_RESOURCE_ALIAS qml/${_file}.qml)
     endforeach()
@@ -58,6 +63,7 @@ qt_add_qml_module(logitune-app-lib
     QML_FILES
         qml/Theme.qml
         qml/Main.qml
+        qml/RadialMenuOverlay.qml
         qml/HomeView.qml
         qml/DeviceView.qml
         qml/AppSettingsView.qml
@@ -79,6 +85,7 @@ qt_add_qml_module(logitune-app-lib
         qml/components/ConflictBanner.qml
         qml/components/DiffModal.qml
         qml/components/HotspotControl.qml
+        qml/components/RadialMenuRing.qml
         qml/pages/PointScrollPage.qml
         qml/pages/ButtonsPage.qml
         qml/pages/EasySwitchPage.qml

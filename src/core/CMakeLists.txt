@@ -22,6 +22,7 @@ target_sources(logitune-core PRIVATE
     hidpp/capabilities/SmartShiftCapability.cpp
     hidpp/capabilities/ReprogControlsCapability.cpp
     ProfileEngine.cpp
+    RadialMenuConfig.cpp
     ActionExecutor.cpp
     DeviceRegistry.cpp
     devices/DescriptorWriter.cpp
@@ -50,5 +51,8 @@ qt_add_resources(logitune-core "action-presets"
 )
 
 target_include_directories(logitune-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(logitune-core PUBLIC Qt6::Core Qt6::DBus Qt6::Network ${UDEV_LIBRARIES})
+target_link_libraries(logitune-core PUBLIC Qt6::Core Qt6::DBus Qt6::Gui Qt6::Network ${UDEV_LIBRARIES})
+if(TARGET LayerShellQt::Interface)
+    target_compile_definitions(logitune-core PUBLIC LOGITUNE_LAYER_SHELL)
+endif()
 target_include_directories(logitune-core PRIVATE ${UDEV_INCLUDE_DIRS})

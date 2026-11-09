@@ -119,6 +119,14 @@ TEST_F(ActionModelTest, ButtonActionToNameGestureTrigger) {
     EXPECT_EQ(model.buttonActionToName(ba), QStringLiteral("Gestures"));
 }
 
+TEST_F(ActionModelTest, RadialMenuRoundTripsThroughPickerEntry) {
+    EXPECT_EQ(model.buttonActionToName({ButtonAction::RadialMenu, {}}),
+              QStringLiteral("Action ring"));
+    EXPECT_EQ(model.buttonEntryToAction(QStringLiteral("radial-menu"),
+                                        QStringLiteral("Action ring")).type,
+              ButtonAction::RadialMenu);
+}
+
 TEST_F(ActionModelTest, ButtonActionToNameForKeystrokeKnownPayload) {
     // Copy has payload "Ctrl+C" — lookup should resolve back to "Copy".
     ButtonAction ba{ButtonAction::Keystroke, QStringLiteral("Ctrl+C")};

@@ -36,7 +36,11 @@ jobs:
   # --------------------------------------------------------------------------
   package-deb:
     runs-on: ubuntu-24.04
+    container: debian:trixie
     steps:
+      - name: Install checkout prerequisites
+        run: apt-get update -qq && apt-get install -y git ca-certificates
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -49,10 +53,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' | \
-            sudo tee /etc/apt/apt.conf.d/01keep-debs >/dev/null
-          sudo apt-get update
-          sudo apt-get install -y \
+          echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > \
+            /etc/apt/apt.conf.d/01keep-debs
+          apt-get update
+          apt-get install -y \
             build-essential cmake ninja-build pkg-config dpkg-dev \
             qt6-base-dev qt6-declarative-dev qt6-svg-dev \
             qt6-tools-dev qt6-tools-dev-tools \
@@ -61,8 +65,8 @@ jobs:
             qml6-module-qtquick-templates qml6-module-qtqml-workerscript \
             qml6-module-qtquick-dialogs qml6-module-qt5compat-graphicaleffects \
             qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev \
-            libxkbcommon-dev libudev-dev
-          sudo chmod -R a+rX /var/cache/apt/archives
+            libxkbcommon-dev libudev-dev liblayershellqtinterface-dev libglib2.0-bin
+          chmod -R a+rX /var/cache/apt/archives
 
       - name: Build .deb
         run: bash scripts/package-deb.sh
@@ -99,7 +103,7 @@ jobs:
             gcc gcc-c++ cmake ninja-build pkgconf-pkg-config rpm-build \
             qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtsvg-devel \
             qt6-qttools-devel qt6-qt5compat-devel \
-            libxkbcommon-devel systemd-devel grep
+            libxkbcommon-devel systemd-devel layer-shell-qt-devel glib2 grep
 
       - name: Build .rpm
         run: bash scripts/package-rpm.sh
@@ -138,7 +142,7 @@ jobs:
           pacman -S --noconfirm --needed \
             base-devel cmake ninja \
             qt6-base qt6-declarative qt6-svg qt6-tools qt6-5compat \
-            libxkbcommon systemd-libs sudo
+            libxkbcommon systemd-libs layer-shell-qt glib2 sudo
 
       - name: Create unprivileged build user (makepkg refuses root)
         run: |

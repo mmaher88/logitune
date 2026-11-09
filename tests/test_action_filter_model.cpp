@@ -63,10 +63,29 @@ PhysicalDevice* attachMockDevice(DeviceModel &model,
 TEST(ActionFilterModel, EmptyDeviceModelShowsFullList) {
     ActionModel source;
     DeviceModel dm;
-    ActionFilterModel proxy(&dm);
+    MockDesktop desktop;
+    desktop.setSupportsActionRing(true);
+    ActionFilterModel proxy(&dm, &desktop);
     proxy.setSourceModel(&source);
 
     EXPECT_EQ(proxy.rowCount(), source.rowCount());
+}
+
+TEST(ActionFilterModel, ActionRingFollowsDesktopCapability) {
+    ActionModel source;
+    DeviceModel dm;
+    MockDesktop desktop;
+    ActionFilterModel proxy(&dm, &desktop);
+    proxy.setSourceModel(&source);
+
+    EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Action ring")), 0);
+
+    desktop.setSupportsActionRing(true);
+    proxy.invalidate();
+    EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Action ring")), 1);
+
+    proxy.setGestureMode(true);
+    EXPECT_EQ(proxyCountByName(proxy, QStringLiteral("Action ring")), 0);
 }
 
 TEST(ActionFilterModel, FilterHidesUnsupportedActions) {
