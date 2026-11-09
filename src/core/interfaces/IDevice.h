@@ -56,6 +56,18 @@ struct FeatureSupport {
     bool persistentRemappableAction = false;
 };
 
+// A model sold under the descriptor's PIDs but with its own name or look,
+// e.g. MX Master 3 for Mac. The device reports which one it is through the
+// extended model ID in DeviceInformation (0x0003) getDeviceInfo. Empty
+// fields fall back to the descriptor's.
+struct DeviceVariant {
+    uint8_t extendedModelId = 0;
+    QString name;
+    QString frontImagePath;
+    QString sideImagePath;
+    QString backImagePath;
+};
+
 struct EasySwitchSlotPosition {
     double xPct;
     double yPct;
@@ -82,6 +94,7 @@ public:
     virtual int dpiStep() const = 0;
     virtual std::vector<int> dpiCycleRing() const = 0;
     virtual QList<EasySwitchSlotPosition> easySwitchSlotPositions() const = 0;
+    virtual QList<DeviceVariant> variants() const = 0;
 };
 
 } // namespace logitune

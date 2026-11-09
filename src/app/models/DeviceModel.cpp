@@ -44,7 +44,7 @@ QVariant DeviceModel::data(const QModelIndex &index, int role) const
         return device->deviceName();
     case FrontImageRole: {
         if (!device->descriptor()) return QString();
-        QString path = device->descriptor()->frontImagePath();
+        QString path = device->frontImagePath();
         if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
             return "file://" + path;
         return path;
@@ -512,7 +512,7 @@ QString DeviceModel::frontImage() const
 {
     auto *s = selectedDevice();
     if (s && s->descriptor()) {
-        QString path = s->descriptor()->frontImagePath();
+        QString path = s->frontImagePath();
         if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
             return "file://" + path;
         return path;
@@ -524,7 +524,7 @@ QString DeviceModel::sideImage() const
 {
     auto *s = selectedDevice();
     if (s && s->descriptor()) {
-        QString path = s->descriptor()->sideImagePath();
+        QString path = s->sideImagePath();
         if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
             return "file://" + path;
         return path;
@@ -536,7 +536,7 @@ QString DeviceModel::backImage() const
 {
     auto *s = selectedDevice();
     if (s && s->descriptor()) {
-        QString path = s->descriptor()->backImagePath();
+        QString path = s->backImagePath();
         if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
             return "file://" + path;
         return path;

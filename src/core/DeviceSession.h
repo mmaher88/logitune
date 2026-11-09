@@ -7,6 +7,7 @@
 #include "hidpp/capabilities/BatteryCapability.h"
 #include "hidpp/capabilities/SmartShiftCapability.h"
 #include "hidpp/capabilities/ReprogControlsCapability.h"
+#include "interfaces/IDevice.h"
 #include <QObject>
 #include <QSocketNotifier>
 #include <QTimer>
@@ -19,7 +20,6 @@ namespace logitune::test { class AppRootFixture; }
 namespace logitune {
 
 class DeviceRegistry;
-class IDevice;
 
 class DeviceSession : public QObject {
     Q_OBJECT
@@ -43,6 +43,13 @@ public:
     bool isConnected() const;
     uint16_t deviceVid() const;
     QString firmwareVersion() const;
+    // Extended model ID from DeviceInformation (0x0003) getDeviceInfo;
+    // absent before enumeration or when the device doesn't report one.
+    std::optional<uint8_t> extendedModelId() const;
+    // The descriptor's images, or the reported variant's where it has its own.
+    QString frontImagePath() const;
+    QString sideImagePath() const;
+    QString backImagePath() const;
 
     // State getters
     int batteryLevel() const;
@@ -77,6 +84,20 @@ public:
                                             uint16_t hidrawPid,
                                             std::optional<uint16_t> receiverWpid,
                                             const QString &name);
+
+    // The descriptor's variant for an extended model ID, or nullopt when
+    // there is no descriptor, no ID, or no variant entry for it (a plain
+    // retail unit). See tests/test_device_registry.cpp.
+    static std::optional<DeviceVariant> resolveVariant(const IDevice *descriptor,
+                                                       std::optional<uint8_t> extendedModelId);
+
+    // Adopts the resolved descriptor and the variant the device reports.
+    // The display name is the variant's, else the descriptor's, else
+    // reportedName (the HID++ DeviceName) for an unknown device.
+    // enumerateAndSetup calls this; tests call it to skip HID++ I/O.
+    void applyDescriptor(const IDevice *descriptor,
+                         std::optional<uint8_t> extendedModelId,
+                         const QString &reportedName);
 
     Q_INVOKABLE void cycleDpi();
 
@@ -139,6 +160,8 @@ private:
 
     DeviceRegistry *m_registry = nullptr;
     const IDevice *m_activeDevice = nullptr;
+    std::optional<uint8_t> m_extendedModelId;
+    std::optional<DeviceVariant> m_variant;
 
     std::unique_ptr<hidpp::HidrawDevice> m_device;
     std::unique_ptr<hidpp::Transport> m_transport;
