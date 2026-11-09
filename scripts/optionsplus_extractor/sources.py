@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import glob
 import json
-import os
 import struct
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 
 @dataclass
@@ -22,10 +20,10 @@ class DeviceDbEntry:
 @dataclass
 class Depot:
     path: Path
-    metadata: Optional[dict]     # core_metadata.json or metadata.json contents
-    front_image: Optional[Path]  # front_core.png | front.png
-    side_image: Optional[Path]
-    back_image: Optional[Path]
+    metadata: dict | None     # core_metadata.json or metadata.json contents
+    front_image: Path | None  # front_core.png | front.png
+    side_image: Path | None
+    back_image: Path | None
 
 
 def load_device_db(main_dir: Path) -> dict[str, DeviceDbEntry]:
@@ -35,10 +33,10 @@ def load_device_db(main_dir: Path) -> dict[str, DeviceDbEntry]:
     JSON files live at `<main_dir>/data/devices/devices*.json`.
     """
     result: dict[str, DeviceDbEntry] = {}
-    pattern = str(main_dir / "data" / "devices" / "devices*.json")
-    for path in sorted(glob.glob(pattern)):
+    devices_dir = main_dir / "data" / "devices"
+    for path in sorted(devices_dir.rglob("devices*.json")):
         try:
-            data = json.load(open(path, encoding="utf-8-sig"))
+            data: dict[str, Any] = json.load(path.open(encoding="utf-8-sig"))
         except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             # Real Options+ dirs sometimes contain non-text files mixed
             # in with the devices JSON (or older files in a different
@@ -103,7 +101,7 @@ def load_depot(depot_dir: Path) -> Depot:
     )
 
 
-def _load_first(base: Path, names: list[str]) -> Optional[dict]:
+def _load_first(base: Path, names: list[str]) -> dict | None:
     for n in names:
         p = base / n
         if p.exists():
@@ -114,7 +112,7 @@ def _load_first(base: Path, names: list[str]) -> Optional[dict]:
     return None
 
 
-def _find_first(base: Path, names: list[str]) -> Optional[Path]:
+def _find_first(base: Path, names: list[str]) -> Path | None:
     for n in names:
         p = base / n
         if p.exists():
@@ -122,7 +120,7 @@ def _find_first(base: Path, names: list[str]) -> Optional[Path]:
     return None
 
 
-def read_png_dimensions(path: Path) -> Optional[tuple[int, int]]:
+def read_png_dimensions(path: Path) -> tuple[int, int] | None:
     """Read (width, height) from a PNG file's IHDR chunk.
 
     Uses only the stdlib (no Pillow) by reading the first 24 bytes of the

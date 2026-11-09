@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from .sources import Depot
 
 
@@ -17,7 +15,7 @@ _REQUIRED_CONTROL_KEYS = {"controlId", "buttonIndex", "defaultName", "defaultAct
 _REQUIRED_HOTSPOT_KEYS = {"buttonIndex", "xPct", "yPct", "side"}
 
 
-def check(descriptor: dict, depot: Optional[Depot]) -> None:
+def check(descriptor: dict, depot: Depot | None) -> None:
     """Validate a generated descriptor dict against JsonDevice.cpp expectations.
 
     Raises SchemaError with a specific message on the first mismatch.
@@ -94,7 +92,7 @@ def _check_hotspots(hotspots: dict) -> None:
                     )
 
 
-def _check_images(images: dict, depot: Optional[Depot]) -> None:
+def _check_images(images: dict, depot: Depot | None) -> None:
     if depot is None:
         return
     front = images.get("front")
