@@ -104,38 +104,38 @@
         "buttons": [
             {
                 "buttonIndex": 2,
-                "labelOffsetYPct": 0,
+                "labelOffsetYPct": 0.04,
                 "side": "right",
-                "xPct": 0.62,
-                "yPct": 0.18
+                "xPct": 0.73,
+                "yPct": 0.33
             },
             {
                 "buttonIndex": 3,
-                "labelOffsetYPct": 0,
+                "labelOffsetYPct": 0.03,
                 "side": "left",
-                "xPct": 0.38,
-                "yPct": 0.58
+                "xPct": 0.175,
+                "yPct": 0.555
             },
             {
                 "buttonIndex": 4,
                 "labelOffsetYPct": 0,
                 "side": "left",
-                "xPct": 0.38,
-                "yPct": 0.38
+                "xPct": 0.14,
+                "yPct": 0.4
             },
             {
                 "buttonIndex": 5,
                 "labelOffsetYPct": 0,
                 "side": "left",
-                "xPct": 0.38,
-                "yPct": 0.18
+                "xPct": 0.54,
+                "yPct": 0.165
             },
             {
                 "buttonIndex": 6,
-                "labelOffsetYPct": 0,
+                "labelOffsetYPct": -0.04,
                 "side": "right",
-                "xPct": 0.62,
-                "yPct": 0.38
+                "xPct": 0.795,
+                "yPct": 0.17
             }
         ],
         "scroll": [
@@ -144,20 +144,23 @@
                 "kind": "scrollwheel",
                 "labelOffsetYPct": 0,
                 "side": "right",
-                "xPct": 0.5,
-                "yPct": 0.2
+                "xPct": 0.67,
+                "yPct": 0.17
             },
             {
                 "buttonIndex": -3,
                 "kind": "pointer",
                 "labelOffsetYPct": 0,
                 "side": "right",
-                "xPct": 0.5,
-                "yPct": 0.6
+                "xPct": 0.6,
+                "yPct": 0.65
             }
         ]
     },
-    "images": {},
+    "images": {
+        "front": "front.png",
+        "side": "side.png"
+    },
     "name": "MX Anywhere 2S",
     "productIds": [
         "0xb01a",

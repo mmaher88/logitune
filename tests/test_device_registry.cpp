@@ -174,10 +174,10 @@ static const DeviceSpec kDevices[] = {
         .gestureDownPayload = nullptr,
         .gestureUpType = ButtonAction::Default,
     },
-    // Beta descriptors built from the Options+ device catalogue without
-    // product images: hotspots carry placeholder coordinates. DPI is the
-    // Options+ importer fallback (200-4000); on hardware the range comes
-    // from AdjustableDPI (0x2201) at connect.
+    // Beta descriptors built from the Options+ device catalogue, with
+    // Logitech product shots for images. DPI is the Options+ importer
+    // fallback (200-4000); on hardware the range comes from
+    // AdjustableDPI (0x2201) at connect.
     {
         .pid = 0xb01d,
         .name = "MX Ergo",
@@ -470,6 +470,29 @@ TEST(DeviceRegistry, EasySwitchSlotCountMatchesHostCount) {
         const auto *dev = reg.findByPid(c.pid);
         ASSERT_NE(dev, nullptr) << std::hex << c.pid;
         EXPECT_EQ(dev->easySwitchSlotPositions().size(), c.hosts) << dev->deviceName().toStdString();
+    }
+}
+
+TEST(DeviceRegistry, ProductImagesExistOnDisk) {
+    logitune::DeviceRegistry reg;
+    // MX Anywhere 2S has no underside shot, so no back image (the
+    // Easy-Switch tab stays hidden for it).
+    const struct { uint16_t pid; bool hasBack; } kCases[] = {
+        { 0xb01d, true },   // MX Ergo
+        { 0xb01a, false },  // MX Anywhere 2S
+        { 0xb031, true },   // LIFT
+        { 0xb033, true },   // LIFT for Business
+    };
+    for (const auto &c : kCases) {
+        const auto *dev = reg.findByPid(c.pid);
+        ASSERT_NE(dev, nullptr) << std::hex << c.pid;
+        const std::string name = dev->deviceName().toStdString();
+        EXPECT_TRUE(QFileInfo::exists(dev->frontImagePath())) << name;
+        EXPECT_TRUE(QFileInfo::exists(dev->sideImagePath())) << name;
+        if (c.hasBack)
+            EXPECT_TRUE(QFileInfo::exists(dev->backImagePath())) << name;
+        else
+            EXPECT_TRUE(dev->backImagePath().isEmpty()) << name;
     }
 }
 

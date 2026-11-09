@@ -66,12 +66,12 @@
     },
     "easySwitchSlots": [
         {
-            "xPct": 0.47,
-            "yPct": 0.65
+            "xPct": 0.533,
+            "yPct": 0.404
         },
         {
-            "xPct": 0.53,
-            "yPct": 0.65
+            "xPct": 0.533,
+            "yPct": 0.438
         }
     ],
     "features": {
@@ -107,45 +107,45 @@
         "buttons": [
             {
                 "buttonIndex": 2,
-                "labelOffsetYPct": 0,
+                "labelOffsetYPct": -0.08,
                 "side": "right",
-                "xPct": 0.62,
+                "xPct": 0.53,
                 "yPct": 0.18
             },
             {
                 "buttonIndex": 3,
-                "labelOffsetYPct": 0,
+                "labelOffsetYPct": 0.105,
                 "side": "left",
-                "xPct": 0.38,
-                "yPct": 0.58
+                "xPct": 0.265,
+                "yPct": 0.235
             },
             {
                 "buttonIndex": 4,
-                "labelOffsetYPct": 0,
+                "labelOffsetYPct": -0.115,
                 "side": "left",
-                "xPct": 0.38,
-                "yPct": 0.38
+                "xPct": 0.265,
+                "yPct": 0.115
             },
             {
                 "buttonIndex": 5,
-                "labelOffsetYPct": 0,
+                "labelOffsetYPct": -0.013,
                 "side": "left",
-                "xPct": 0.38,
-                "yPct": 0.18
+                "xPct": 0.455,
+                "yPct": 0.183
             },
             {
                 "buttonIndex": 6,
-                "labelOffsetYPct": 0,
+                "labelOffsetYPct": 0.09,
                 "side": "right",
-                "xPct": 0.62,
-                "yPct": 0.38
+                "xPct": 0.605,
+                "yPct": 0.183
             },
             {
                 "buttonIndex": 7,
                 "labelOffsetYPct": 0,
-                "side": "right",
-                "xPct": 0.62,
-                "yPct": 0.58
+                "side": "left",
+                "xPct": 0.24,
+                "yPct": 0.553
             }
         ],
         "scroll": [
@@ -154,20 +154,24 @@
                 "kind": "scrollwheel",
                 "labelOffsetYPct": 0,
                 "side": "right",
-                "xPct": 0.5,
-                "yPct": 0.2
+                "xPct": 0.53,
+                "yPct": 0.18
             },
             {
                 "buttonIndex": -3,
                 "kind": "pointer",
                 "labelOffsetYPct": 0,
                 "side": "right",
-                "xPct": 0.5,
-                "yPct": 0.6
+                "xPct": 0.11,
+                "yPct": 0.4
             }
         ]
     },
-    "images": {},
+    "images": {
+        "back": "back.png",
+        "front": "front.png",
+        "side": "side.png"
+    },
     "name": "MX Ergo",
     "productIds": [
         "0xb01d",
