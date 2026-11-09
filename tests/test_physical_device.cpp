@@ -177,3 +177,21 @@ TEST_F(PhysicalDeviceTest, DisconnectedDelegatorsReturnDefaults) {
     EXPECT_FALSE(pd.batteryCharging());
     EXPECT_EQ(pd.descriptor(), nullptr);
 }
+
+// After a reconnect the device model shows and selects the device on stateChanged, and the profile
+// is reapplied to the selected device on transportSetupComplete. If transportSetupComplete came
+// first, nothing was selected yet and the profile (button diversions, DPI, SmartShift) was skipped:
+// the Actions Ring stopped working after every suspend or power cycle.
+TEST_F(PhysicalDeviceTest, StateChangesBeforeTransportReadyOnSetup) {
+    PhysicalDevice pd(QStringLiteral("serial-1"));
+    auto s = makeSession("Bolt", true, "Test");
+    pd.attachTransport(s.get());
+
+    QStringList order;
+    QObject::connect(&pd, &PhysicalDevice::stateChanged, [&order]() { order << "state"; });
+    QObject::connect(&pd, &PhysicalDevice::transportSetupComplete, [&order]() { order << "ready"; });
+    emit s->setupComplete();
+
+    ASSERT_EQ(order.size(), 2);
+    EXPECT_EQ(order, QStringList({"state", "ready"}));
+}

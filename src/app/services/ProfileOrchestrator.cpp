@@ -355,7 +355,12 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
 void ProfileOrchestrator::applyProfileToHardware(const Profile &p)
 {
     auto *session = m_selection ? m_selection->activeSession() : nullptr;
-    if (!session || !m_currentDevice) return;
+    if (!session || !m_currentDevice) {
+        qCWarning(lcApp) << "applyProfileToHardware skipped: session" << (session != nullptr)
+                         << "currentDevice" << (m_currentDevice != nullptr)
+                         << "activeSerial" << (m_selection ? m_selection->activeSerial() : QString());
+        return;
+    }
 
     session->flushCommandProcessor();
 

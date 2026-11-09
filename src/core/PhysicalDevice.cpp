@@ -88,8 +88,12 @@ void PhysicalDevice::connectSessionSignals(DeviceSession *session)
 {
     connect(session, &DeviceSession::setupComplete, this, [this]() {
         promoteBest();
-        emit transportSetupComplete();
+        // stateChanged first: on a reconnect the device model shows and selects the device on it,
+        // and the profile is reapplied to the selected device on transportSetupComplete. In the
+        // other order nothing is selected yet and the profile (button diversions included) is
+        // silently skipped after every suspend or power cycle.
         emit stateChanged();
+        emit transportSetupComplete();
     });
     connect(session, &DeviceSession::disconnected, this, [this]() {
         promoteBest();
