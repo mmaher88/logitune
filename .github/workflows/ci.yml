@@ -52,6 +52,24 @@ jobs:
               libxkbcommon-dev qml6-module-qttest
               libudev-dev libgtest-dev
             run_tests: true
+          - distro: ubuntu-26.04
+            container: ubuntu:26.04
+            pkg_cache_path: /var/cache/apt/archives
+            install: >-
+              rm -f /etc/apt/apt.conf.d/docker-clean &&
+              echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/01keep-debs &&
+              apt-get update -qq && apt-get install -y cmake ninja-build g++ git pkg-config
+              qt6-base-dev qt6-declarative-dev qt6-svg-dev
+              qt6-base-dev-tools qt6-declarative-dev-tools
+              qml6-module-qtquick qml6-module-qtquick-controls
+              qml6-module-qtquick-layouts qml6-module-qtquick-window
+              qml6-module-qtquick-templates qml6-module-qtqml-workerscript
+              qml6-module-qtquick-dialogs
+              qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev
+              libxkbcommon-dev qml6-module-qttest
+              libudev-dev libgtest-dev
+            run_tests: true
+
 
     steps:
       # Restore cached package downloads. Cache key is versioned: bump the
@@ -179,22 +197,24 @@ jobs:
   # Job 3: Debian package
   # --------------------------------------------------------------------------
   deb-pkg:
-    name: Debian Package
-    runs-on: ubuntu-24.04
+    name: Debian Package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Route apt's .deb cache into a user-owned directory so actions/cache
-      # can both read it on save and extract into it on restore. Caching
-      # /var/cache/apt/archives on a native runner fails on restore because
-      # the directory is root-owned and tar runs as the runner user.
+      # Route apt's .deb cache into a user-owned directory.
+      # The cache key now includes the OS so 24.04 and 26.04 don't overwrite each other.
       - name: Cache apt archives
         uses: actions/cache@v4
         with:
           path: ~/.cache/apt-archives
-          key: deb-pkg-apt-v2
+          key: deb-pkg-apt-v2-${{ matrix.os }}
 
       - name: Install dependencies
         run: |
@@ -225,7 +245,6 @@ jobs:
             echo "ERROR: No .deb files produced"
             exit 1
           fi
-
   # --------------------------------------------------------------------------
   # Job 3: Summary gate
   # --------------------------------------------------------------------------
