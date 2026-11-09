@@ -136,9 +136,10 @@ Item {
             }
         }
 
-        // Test crash button
+        // Test crash button — debug builds only. This deliberately throws, so
+        // it must never be reachable in a shipped package (see issue #146).
         Rectangle {
-            visible: SettingsModel.loggingEnabled
+            visible: SettingsModel.debugBuild && SettingsModel.loggingEnabled
             width: 180; height: 40
             radius: 4; color: "transparent"
             border.color: "#ff4444"; border.width: 1

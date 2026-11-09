@@ -136,12 +136,16 @@ TEST(HiResWheel, BuildSetInvertOnly)
     EXPECT_EQ(params[0], 0x04);
 }
 
-TEST(HiResWheel, BuildPreservesDiversionBit)
+TEST(HiResWheel, BuildForcesHardwareTarget)
 {
-    // currentMode has diversion bit set (0x01)
+    // Even when the device reports the wheel already diverted to software
+    // (bit 0 set — e.g. left that way by another host's driver over a KVM),
+    // logitune must clear it: it never consumes software-diverted wheel
+    // movement, so the wheel has to stay in hardware/native mode or the OS
+    // gets no scroll events at all.
     auto params = HiResWheel::buildSetWheelMode(0x01, true, false);
     ASSERT_EQ(params.size(), 1u);
-    EXPECT_EQ(params[0], 0x03); // diversion(0x01) + hiRes(0x02)
+    EXPECT_EQ(params[0], 0x02); // hiRes(0x02) only — diversion bit forced off
 }
 
 TEST(HiResWheel, ConstantValues)

@@ -786,7 +786,9 @@ After the extension is in place, `GnomeDesktop` registers the service `com.logit
 
 ### Generic Desktop Fallback
 
-`GenericDesktop` (`src/core/desktop/GenericDesktop.{h,cpp}`) is the no-op fallback for desktop environments that are neither KDE nor GNOME (XFCE, MATE, Cinnamon, sway, Hyprland, etc.). `start()` does nothing, `available()` returns true unconditionally, `desktopName()` returns `"Generic"`, `detectedCompositors()` returns an empty list, and `blockGlobalShortcuts(bool)` is a no-op. The practical consequence: per-app profile switching is disabled on these environments because there is no focus-tracking signal; the user can still switch profiles manually through the profile tab bar, and every other feature (HID++, button remapping, uinput injection) continues to work.
+`HyprlandDesktop` (`src/core/desktop/HyprlandDesktop.{h,cpp}`) is the Hyprland implementation. It connects to Hyprland's event socket at `$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock`, listens for `activewindow` events, resolves the reported window class through the shared `.desktop` lookup, and emits `activeWindowChanged` for automatic per-app profile switching. Its semantic presets are resolved from the user's live Hyprland binds by querying the command socket with `j/binds`; unsupported or unbound presets are hidden. `blockGlobalShortcuts(bool)` is intentionally a no-op because Hyprland does not expose a stable compositor-wide shortcut-block API.
+
+`GenericDesktop` (`src/core/desktop/GenericDesktop.{h,cpp}`) is the no-op fallback for desktop environments that are neither KDE, GNOME, nor Hyprland (XFCE, MATE, Cinnamon, sway, etc.). `start()` does nothing, `available()` returns true unconditionally, `desktopName()` returns `"Generic"`, `detectedCompositors()` returns an empty list, and `blockGlobalShortcuts(bool)` is a no-op. The practical consequence: per-app profile switching is disabled on these environments because there is no focus-tracking signal; the user can still switch profiles manually through the profile tab bar, and every other feature (HID++, button remapping, uinput injection) continues to work.
 
 ### Input Injection
 
@@ -1278,12 +1280,14 @@ Semantic action presets let the action catalog contain DE-independent entries li
 
 Each `IDesktopIntegration` impl overrides two virtuals:
 
-- `variantKey()` returns the short string key used in `actions.json` (`"kde"`, `"gnome"`, `"generic"`).
+- `variantKey()` returns the short string key used in `actions.json` (`"kde"`, `"gnome"`, `"hyprland"`, `"generic"`).
 - `resolveNamedAction(id)` returns `std::optional<ButtonAction>` - the concrete action the executor can fire, or nullopt if this DE cannot resolve the preset.
 
 **KDE** (`KDeDesktop::resolveNamedAction`) reads the `kde` variant from the registry. For a `kglobalaccel` hint (`{"component": "...", "name": "..."}`), it emits a DBus `ButtonAction` with a 5-field payload: `org.kde.kglobalaccel,/component/<component>,org.kde.kglobalaccel.Component,invokeShortcut,<name>`. kglobalaccel then invokes the action by name, independent of what keystroke the user has bound to it. For `app-launch` hints, it returns an `AppLaunch` ButtonAction directly.
 
 **GNOME** (`GnomeDesktop::resolveNamedAction`) reads the `gnome` variant. For a `gsettings` hint (`{"schema": "...", "key": "..."}`), it shells out to `gsettings get <schema> <key>` via QProcess, parses the GLib variant output (e.g. `['<Super>d']`), and rewrites the modifier tokens into Logitune keystroke format (`<Primary>` -> `Ctrl`, `<Super>`/`<Meta>`/`<Hyper>` -> `Super`, `<AltGr>`/`<ISO_Level3_Shift>` dropped). Returns a `Keystroke` ButtonAction with the resolved combo. Empty binding (user cleared the shortcut) returns nullopt so the picker can grey out the preset. For `app-launch` hints, direct passthrough.
+
+**Hyprland** (`HyprlandDesktop::resolveNamedAction`) reads the `hyprland` variant. For a `hyprland-bind` hint (`{"dispatcher": "...", "arg": "..."}`), it queries Hyprland's live bind list through `j/binds`, finds a matching default-submap keyboard bind, converts supported modifiers (`Ctrl`, `Shift`, `Alt`, `Super`) and keys into Logitune keystroke format, and returns a `Keystroke` ButtonAction. Missing binds, mouse binds, unsupported modifier masks, or unsupported key names return nullopt. For `app-launch` hints, direct passthrough.
 
 **Generic** returns nullopt for every id. No preset has a `"generic"` variant in the shipped catalog.
 

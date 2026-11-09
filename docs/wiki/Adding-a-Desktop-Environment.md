@@ -32,7 +32,7 @@ signals:
 | `available()` | Return true if this DE is detected and usable | Checked before relying on DE features |
 | `desktopName()` | Human-readable name (e.g., "KDE", "GNOME") | Logging and UI |
 | `detectedCompositors()` | List of detected compositor names | Diagnostics |
-| `variantKey()` | Short string key matching a top-level key under `variants` in `actions.json` (e.g. `"kde"`, `"gnome"`, `"generic"`). | Read by `ActionFilterModel` per row, by `ActionPresetRegistry::supportedBy` queries. |
+| `variantKey()` | Short string key matching a top-level key under `variants` in `actions.json` (e.g. `"kde"`, `"gnome"`, `"hyprland"`, `"generic"`). | Read by `ActionFilterModel` per row, by `ActionPresetRegistry::supportedBy` queries. |
 | `resolveNamedAction(id)` | Turn a semantic preset id into a concrete `ButtonAction`, or `nullopt` if this DE cannot resolve it. | Called by `ButtonActionDispatcher` on every button press with a `PresetRef` action, and by `ActionFilterModel` at filter time to grey out presets whose live binding is empty. |
 | `blockGlobalShortcuts(bool)` | Temporarily disable global shortcuts during keystroke capture | During KeystrokeCapture QML component |
 | `runningApplications()` | Return list of installed GUI applications | App profile picker dialog |
@@ -346,7 +346,7 @@ GNOME has no binding-independent invoker for most actions, so the GNOME impl rea
 
 ### Example: Hyprland / Sway / i3
 
-The tiling WMs have IPC-dispatchable actions by name. A `hyprctl` / `swaymsg` / `i3-msg` hint kind could produce `ButtonAction{AppLaunch, "hyprctl dispatch exec ..."}` or similar. Binding-independent like KDE.
+Hyprland support uses IPC for focus tracking and live bind inspection for presets. The C++ integration listens to Hyprland's event socket for `activewindow` events and queries `j/binds` from the command socket when resolving supported semantic presets. A preset only appears when a matching keyboard bind exists in the default submap; unsupported or unbound presets return `nullopt`.
 
 ### If your DE does not support some presets
 
@@ -370,10 +370,11 @@ These could live in a `DesktopUtils` static class or be moved to the `GenericDes
 
 Hyprland is a wlroots-based compositor with a powerful IPC system. Here is a brief outline:
 
-1. **Class**: `HyprlandDesktop` extending `IDesktopIntegration`
+1. **Class**: `HyprlandDesktop` extending `LinuxDesktopBase`
 2. **Focus tracking**: Subscribe to Hyprland IPC socket (`$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock`) for `activewindow>>` events
 3. **Window identity**: Hyprland reports the `class` property, equivalent to X11 `WM_CLASS`. Run through `resolveDesktopFile()`.
-4. **blockGlobalShortcuts**: Use `hyprctl keyword bind` to temporarily unbind all shortcuts, or use `hyprctl dispatch submap` to switch to an empty submap
-5. **Detection**: Check for `HYPRLAND_INSTANCE_SIGNATURE` environment variable
+4. **Preset resolution**: Query `j/binds` from the Hyprland command socket and map matching keyboard binds to Logitune `Keystroke` payloads.
+5. **blockGlobalShortcuts**: Leave as a no-op unless Hyprland gains a stable compositor-wide shortcut-block API.
+6. **Detection**: Check `XDG_CURRENT_DESKTOP` for `Hyprland` or `HYPRLAND_INSTANCE_SIGNATURE`.
 
-The Hyprland IPC approach would be event-driven (no polling), making it more efficient than the GNOME polling fallback.
+The Hyprland IPC approach is event-driven (no polling), making focus tracking efficient and low latency.

@@ -3,9 +3,14 @@ post_install() {
     echo "==> Logitune installed!"
     echo ""
 
+    # Ensure /dev/uinput exists before applying udev rules. Without the
+    # kernel module loaded, udev has no misc/uinput device to tag with uaccess.
+    modprobe uinput 2>/dev/null || true
+
     # Reload udev rules so hidraw/uinput permissions take effect
-    udevadm control --reload-rules 2>/dev/null
-    udevadm trigger 2>/dev/null
+    udevadm control --reload-rules 2>/dev/null || true
+    udevadm trigger --subsystem-match=misc --sysname-match=uinput --action=change 2>/dev/null || true
+    udevadm trigger --subsystem-match=hidraw --action=change 2>/dev/null || true
 
     echo "    1. Unplug and replug your Logitech device (or reboot)"
     echo "    2. Run: logitune"

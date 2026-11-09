@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "desktop/KDeDesktop.h"
 #include "desktop/GnomeDesktop.h"
+#include "desktop/HyprlandDesktop.h"
 #include "desktop/GenericDesktop.h"
 
 using namespace logitune;
@@ -13,6 +14,11 @@ TEST(DesktopFactory, KDeDesktopReportsKDE) {
 TEST(DesktopFactory, GnomeDesktopReportsGNOME) {
     GnomeDesktop gnome;
     EXPECT_EQ(gnome.desktopName(), "GNOME");
+}
+
+TEST(DesktopFactory, HyprlandDesktopReportsHyprland) {
+    HyprlandDesktop hyprland;
+    EXPECT_EQ(hyprland.desktopName(), "Hyprland");
 }
 
 TEST(DesktopFactory, GenericDesktopReportsGeneric) {
@@ -44,6 +50,11 @@ TEST(DesktopFactory, KDeVariantKeyIsKde) {
 TEST(DesktopFactory, GnomeVariantKeyIsGnome) {
     GnomeDesktop d;
     EXPECT_EQ(d.variantKey(), "gnome");
+}
+
+TEST(DesktopFactory, HyprlandVariantKeyIsHyprland) {
+    HyprlandDesktop d;
+    EXPECT_EQ(d.variantKey(), "hyprland");
 }
 
 TEST(DesktopFactory, GenericVariantKeyIsGeneric) {

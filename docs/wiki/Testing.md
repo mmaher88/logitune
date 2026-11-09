@@ -436,6 +436,7 @@ All tests run with `QT_QPA_PLATFORM=offscreen` (no display server required).
 | `test_action_model.cpp` | ActionModel catalog, indexForName, payloadForName |
 | `test_device_model.cpp` | DeviceModel display values, settings relay |
 | `test_wmclass_resolution.cpp` | Desktop file resolution logic |
+| `core/desktop/test_hyprland_desktop_resolve.cpp` | Hyprland focus events and live-bind preset resolution |
 | `test_app_controller.cpp` | AppRoot init, wireSignals, device setup |
 | `test_profile_switching.cpp` | Focus change triggers profile switch |
 | `test_profile_persistence.cpp` | Profile save/load round-trip |

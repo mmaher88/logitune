@@ -3,6 +3,7 @@
 #include "models/EditorModel.h"
 #include "desktop/KDeDesktop.h"
 #include "desktop/GnomeDesktop.h"
+#include "desktop/HyprlandDesktop.h"
 #include "desktop/GenericDesktop.h"
 #include "input/UinputInjector.h"
 #include "logging/LogManager.h"
@@ -15,8 +16,12 @@ namespace logitune {
 std::unique_ptr<IDesktopIntegration> AppRoot::makeOwnedDesktop(IDesktopIntegration *provided)
 {
     if (provided) return {};
-    const QString xdgDesktop = QProcessEnvironment::systemEnvironment()
-                                   .value(QStringLiteral("XDG_CURRENT_DESKTOP"));
+    const QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    const QString xdgDesktop = env.value(QStringLiteral("XDG_CURRENT_DESKTOP"));
+    if (xdgDesktop.contains(QStringLiteral("Hyprland"), Qt::CaseInsensitive)
+        || !env.value(QStringLiteral("HYPRLAND_INSTANCE_SIGNATURE")).isEmpty()) {
+        return std::make_unique<HyprlandDesktop>();
+    }
     if (xdgDesktop.contains(QStringLiteral("KDE"), Qt::CaseInsensitive))
         return std::make_unique<KDeDesktop>();
     if (xdgDesktop.contains(QStringLiteral("GNOME"), Qt::CaseInsensitive))
@@ -67,6 +72,8 @@ AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject
         kde->setPresetRegistry(&m_presetRegistry);
     if (auto *gnome = dynamic_cast<GnomeDesktop *>(m_desktop))
         gnome->setPresetRegistry(&m_presetRegistry);
+    if (auto *hyprland = dynamic_cast<HyprlandDesktop *>(m_desktop))
+        hyprland->setPresetRegistry(&m_presetRegistry);
 }
 
 AppRoot::~AppRoot() = default;
@@ -203,6 +210,14 @@ void AppRoot::wireSignals()
             &m_buttonDispatcher, &ButtonActionDispatcher::onProfileApplied);
     connect(&m_profileOrchestrator, &ProfileOrchestrator::currentDeviceChanged,
             &m_buttonDispatcher, &ButtonActionDispatcher::onCurrentDeviceChanged);
+
+    // Button-initiated device changes persist into the active profile, so a
+    // DPI cycle or SmartShift toggle survives the next profile apply instead
+    // of snapping back to the stored value.
+    connect(&m_buttonDispatcher, &ButtonActionDispatcher::dpiChangedByButton,
+            &m_profileOrchestrator, &ProfileOrchestrator::onDpiChangedByButton);
+    connect(&m_buttonDispatcher, &ButtonActionDispatcher::smartShiftChangedByButton,
+            &m_profileOrchestrator, &ProfileOrchestrator::onSmartShiftChangedByButton);
 
     // DeviceModel *ChangeRequested -> cache + disk + UI + (if active)
     // hardware. The orchestrator owns the guard logic; AppRoot

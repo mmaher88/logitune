@@ -90,4 +90,28 @@ TEST_F(SettingsModelTest, LogFilePathReturnsNonEmpty) {
     SUCCEED();
 }
 
+
+// --- debug-build gating for the test-crash affordance ----------------------
+//
+// The "Test Exception" button deliberately crashes the app. It was gated only
+// on loggingEnabled, which is on by default, so it shipped to end users and
+// produced real crash reports (issue #146). It must be a debug-build-only
+// affordance.
+
+TEST_F(SettingsModelTest, DebugBuildPropertyIsExposedToQml) {
+    SettingsModel m;
+    const QVariant v = m.property("debugBuild");
+    ASSERT_TRUE(v.isValid()) << "debugBuild must be a Q_PROPERTY so QML can gate on it";
+    EXPECT_EQ(v.metaType().id(), QMetaType::Bool);
+}
+
+TEST_F(SettingsModelTest, DebugBuildReflectsBuildConfiguration) {
+    SettingsModel m;
+#ifdef QT_NO_DEBUG
+    EXPECT_FALSE(m.debugBuild()) << "release builds must not expose the crash affordance";
+#else
+    EXPECT_TRUE(m.debugBuild()) << "debug builds keep the crash affordance available";
+#endif
+}
+
 } // namespace logitune::test

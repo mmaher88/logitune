@@ -126,8 +126,10 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     if (ba.type == ButtonAction::SmartShiftToggle) {
         bool current = session->smartShiftEnabled();
         session->setSmartShift(!current, session->smartShiftThreshold());
+        emit smartShiftChangedByButton(!current, session->smartShiftThreshold());
     } else if (ba.type == ButtonAction::DpiCycle) {
         session->cycleDpi();
+        emit dpiChangedByButton(session->currentDPI());
     } else if ((ba.type == ButtonAction::Keystroke || ba.type == ButtonAction::Media)
                && !ba.payload.isEmpty()) {
         m_actionExecutor->injectKeystroke(ba.payload);
