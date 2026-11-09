@@ -469,6 +469,62 @@ TEST_F(AppRootFixture, CarouselSwitchSwapsButtonModel) {
               QStringLiteral("keystroke"));
 }
 
+// ButtonModel is a single shared instance in AppRoot, so switching to a device
+// with fewer controls has to shrink it. Growing worked before; shrinking left
+// the extra rows in place with the previous device's buttonId/controlId.
+TEST_F(AppRootFixture, CarouselSwitchToFewerControlsShrinksButtonModel) {
+    // Fixture primary is the 8-control MX Master layout.
+    deviceModel().setSelectedIndex(0);
+    ASSERT_EQ(buttonModel().rowCount(), 8);
+
+    // Device B: MX Master 4 -- 9 controls, incl. the haptic thumb pad (0x01A0).
+    MockDevice &mx4 = newMockDescriptor();
+    mx4.setupMx4Controls();
+    auto *mx4Device = addMockDevice(QStringLiteral("B"), /*seedDpi=*/1000, &mx4);
+
+    // Device C: 6 controls, the way an MX Anywhere is laid out.
+    MockDevice &anywhere = newMockDescriptor();
+    anywhere.setupMxControls();
+    anywhere.truncateControls(6);
+    auto *anywhereDevice =
+        addMockDevice(QStringLiteral("C"), /*seedDpi=*/1000, &anywhere);
+
+    const int idxMx4 = deviceModel().devices().indexOf(mx4Device);
+    const int idxAnywhere = deviceModel().devices().indexOf(anywhereDevice);
+    ASSERT_GE(idxMx4, 0);
+    ASSERT_GE(idxAnywhere, 0);
+
+    deviceModel().setSelectedIndex(idxMx4);
+    ASSERT_EQ(buttonModel().rowCount(), 9);
+    EXPECT_EQ(buttonModel().actionNameForButton(8),
+              QStringLiteral("Haptic thumb pad"));
+
+    // 9 -> 8: row 8 must be gone, not left holding CID 0x01A0.
+    deviceModel().setSelectedIndex(0);
+    EXPECT_EQ(buttonModel().rowCount(), 8);
+    EXPECT_TRUE(buttonModel().actionNameForButton(8).isEmpty());
+    EXPECT_TRUE(buttonModel().actionTypeForButton(8).isEmpty());
+
+    // 9 -> 6: rows 6..8 must be gone, including the thumb wheel at slot 7.
+    deviceModel().setSelectedIndex(idxMx4);
+    ASSERT_EQ(buttonModel().rowCount(), 9);
+    deviceModel().setSelectedIndex(idxAnywhere);
+    EXPECT_EQ(buttonModel().rowCount(), 6);
+    for (int buttonId = 6; buttonId < 9; ++buttonId) {
+        EXPECT_TRUE(buttonModel().actionNameForButton(buttonId).isEmpty())
+            << "stale row " << buttonId;
+        EXPECT_TRUE(buttonModel().actionTypeForButton(buttonId).isEmpty())
+            << "stale row " << buttonId;
+    }
+    EXPECT_FALSE(buttonModel().isThumbWheel(7));
+
+    // Every surviving row belongs to the device now selected.
+    for (int row = 0; row < buttonModel().rowCount(); ++row) {
+        const QModelIndex idx = buttonModel().index(row);
+        EXPECT_EQ(buttonModel().data(idx, ButtonModel::ButtonIdRole).toInt(), row);
+    }
+}
+
 TEST_F(AppRootFixture, CarouselSwitchSwapsDisplayValues) {
     // Fixture primary has DPI 1000 (seeded in SetUp).
     deviceModel().setSelectedIndex(0);

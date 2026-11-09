@@ -90,6 +90,29 @@ public:
             m_controls.append(cd);
         }
     }
+
+    /// Populates the 9 MX Master 4 control descriptors: the standard MX layout
+    /// plus the haptic thumb pad at CID 0x01A0 (buttonIndex 8).
+    void setupMx4Controls() {
+        setupMxControls();
+        m_deviceName = QStringLiteral("MX Master 4");
+        m_productIds = { 0xb042 };
+
+        ControlDescriptor cd;
+        cd.controlId         = 0x01A0;
+        cd.buttonIndex       = 8;
+        cd.defaultName       = QStringLiteral("Haptic thumb pad");
+        cd.defaultActionType = QStringLiteral("default");
+        cd.configurable      = true;
+        m_controls.append(cd);
+    }
+
+    /// Drops controls past \p count, modelling a device with fewer controls
+    /// than the MX Master layout (an MX Anywhere exposes 6).
+    void truncateControls(int count) {
+        while (m_controls.size() > count)
+            m_controls.removeLast();
+    }
 };
 
 } // namespace logitune::test

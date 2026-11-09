@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QTemporaryDir>
 #include <memory>
+#include <vector>
 
 #include "AppRoot.h"
 #include "DeviceSession.h"
@@ -195,10 +196,22 @@ protected:
         m_ctrl->m_buttonDispatcher.onThumbWheelRotation(delta);
     }
 
+    // Allocates an extra MockDevice descriptor for addMockDevice(). Owned by
+    // the fixture so it outlives the DeviceSession that points at it -- m_ctrl
+    // (which parents the sessions) is destroyed first, both in TearDown and by
+    // member destruction order.
+    MockDevice &newMockDescriptor() {
+        m_extraDescriptors.push_back(std::make_unique<MockDevice>());
+        return *m_extraDescriptors.back();
+    }
+
     // Adds a second mock device and registers it through the normal flow.
+    // Pass \p descriptor to give it a control layout of its own; by default it
+    // reuses the fixture's 8-control MX Master descriptor.
     // Returns the new PhysicalDevice for test-level manipulation.
     PhysicalDevice* addMockDevice(const QString &serialSuffix,
-                                  int seedDpi = 1000) {
+                                  int seedDpi = 1000,
+                                  MockDevice *descriptor = nullptr) {
         const QString serial = QStringLiteral("mock-serial-") + serialSuffix;
         const QString devProfilesDir = m_tmpDir.path()
             + "/" + serial + "/profiles";
@@ -216,7 +229,7 @@ protected:
                                           "Bluetooth", nullptr, m_ctrl.get());
         session->m_connected = true;
         session->m_deviceName = QStringLiteral("Mock Device ") + serialSuffix;
-        session->m_activeDevice = &m_device;  // reuse the fixture's MockDevice descriptor
+        session->m_activeDevice = descriptor ? descriptor : &m_device;
 
         auto *device = new PhysicalDevice(serial, m_ctrl.get());
         device->attachTransport(session);
@@ -287,6 +300,7 @@ protected:
     MockDesktop  *m_desktop  = nullptr;
     MockInjector *m_injector = nullptr;
     MockDevice    m_device;
+    std::vector<std::unique_ptr<MockDevice>> m_extraDescriptors;
     DeviceSession *m_session = nullptr;
     PhysicalDevice *m_physicalDevice = nullptr;
     std::unique_ptr<AppRoot> m_ctrl;
