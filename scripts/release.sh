@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Usage: scripts/release.sh [major|minor|patch]    (default: patch)
 #
 # Derives the next version from the latest stable v*-prefixed tag,
@@ -28,9 +28,13 @@ LATEST=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-*' \
 IFS='.' read -r MAJ MIN PAT <<<"$LATEST"
 
 case "$BUMP" in
-    major) MAJ=$((MAJ + 1)); MIN=0; PAT=0 ;;
-    minor) MIN=$((MIN + 1)); PAT=0 ;;
-    patch) PAT=$((PAT + 1)) ;;
+    major)
+        (( MAJ++ )) || true
+        MIN=0; PAT=0 ;;
+    minor)
+        (( MIN++ )) || true
+        PAT=0 ;;
+    patch) (( PATH++ )) || true ;;
 esac
 NEW="$MAJ.$MIN.$PAT"
 

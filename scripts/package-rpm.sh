@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # Derive version from the tag when the workflow is triggered by a tag push,
 # otherwise fall back to the latest v*-prefixed git tag (same logic
 # CMakeLists.txt uses). rpm 4.10+ treats tilde as a pre-release separator
 # that sorts before digits, so 0.3.0~beta.1 sorts before 0.3.0.
-if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF_NAME" =~ ^v[0-9] ]]; then
+if [[ -n "$GITHUB_REF_NAME" && "$GITHUB_REF_NAME" =~ ^v[0-9] ]]; then
     TAG="${GITHUB_REF_NAME#v}"
 else
     TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed 's/^v//')
@@ -17,7 +17,7 @@ echo "Building .rpm package v$VERSION"
 
 # Build release
 cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -DLOGITUNE_VERSION="$VERSION" -Wno-dev > /dev/null 2>&1
-cmake --build build-release -j$(nproc)
+cmake --build build-release -j "$(nproc)"
 
 # Install to staging dir
 DESTDIR="/tmp/logitune-rpm" cmake --install build-release
