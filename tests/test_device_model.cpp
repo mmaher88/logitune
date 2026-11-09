@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+#include <QDir>
 #include <QSignalSpy>
+#include <QStandardPaths>
 
 #include "ButtonAction.h"
 #include "DeviceModel.h"
@@ -387,4 +389,99 @@ TEST_F(DeviceModelWithDeviceTest, SetDisplayValuesEmitsPerPropertySignals) {
     EXPECT_EQ(threshSpy.count(), 1);
     EXPECT_EQ(scrollSpy.count(), 1);
     EXPECT_EQ(thumbSpy.count(), 1);
+}
+
+// ---------------------------------------------------------------------------
+// Selection must follow the selected device, not its row number. Rows come
+// and go as mice disconnect and reconnect; an index that is not adjusted
+// silently retargets every UI edit at a different mouse.
+// ---------------------------------------------------------------------------
+
+class DeviceModelSelectionTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        logitune::test::ensureApp();
+        logitune::test::clearTestAppConfig();  // no saved device order
+        // saveDeviceOrder() writes into AppConfigLocation without creating
+        // it; in the app the profile folders always create it first.
+        QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
+
+        for (const char *serial : {"serial-A", "serial-B", "serial-C"}) {
+            auto hidraw = std::make_unique<logitune::hidpp::HidrawDevice>("/dev/null");
+            auto session = std::make_unique<logitune::DeviceSession>(
+                std::move(hidraw), 0xFF, QStringLiteral("Bluetooth"), &m_registry);
+            session->setConnectedForTest(true);
+            auto pd = std::make_unique<logitune::PhysicalDevice>(QString::fromLatin1(serial));
+            pd->attachTransport(session.get());
+            model.addPhysicalDevice(pd.get());
+            m_sessions.push_back(std::move(session));
+            m_devices.push_back(std::move(pd));
+        }
+    }
+
+    logitune::PhysicalDevice *dev(int i) { return m_devices[static_cast<size_t>(i)].get(); }
+
+    logitune::PhysicalDevice *selected() const {
+        const int idx = model.selectedIndex();
+        const auto &rows = model.devices();
+        return (idx >= 0 && idx < rows.size()) ? rows[idx] : nullptr;
+    }
+
+    void disconnect(int i) {
+        auto *s = m_sessions[static_cast<size_t>(i)].get();
+        s->setConnectedForTest(false);
+        emit s->disconnected();
+    }
+
+    void reconnect(int i) {
+        auto *s = m_sessions[static_cast<size_t>(i)].get();
+        s->setConnectedForTest(true);
+        emit s->setupComplete();
+    }
+
+    logitune::DeviceRegistry m_registry;
+    // Sessions must outlive the PhysicalDevices that point at them.
+    std::vector<std::unique_ptr<logitune::DeviceSession>> m_sessions;
+    std::vector<std::unique_ptr<logitune::PhysicalDevice>> m_devices;
+    DeviceModel model;
+};
+
+TEST_F(DeviceModelSelectionTest, RemovingRowBeforeSelectionKeepsSameDeviceSelected) {
+    model.setSelectedIndex(1);  // B
+    ASSERT_EQ(selected(), dev(1));
+
+    QSignalSpy spy(&model, &DeviceModel::selectedChanged);
+    disconnect(0);  // A goes offline: rows are now [B, C]
+
+    EXPECT_EQ(selected(), dev(1));
+    EXPECT_EQ(model.selectedIndex(), 0);
+    EXPECT_GE(spy.count(), 1);  // selectedIndex changed, QML must hear it
+}
+
+TEST_F(DeviceModelSelectionTest, InsertingRowBeforeSelectionKeepsSameDeviceSelected) {
+    // Persist the order [A, B, C] so a reconnecting A goes back to the front.
+    model.moveDevice(0, 1);
+    model.moveDevice(1, 0);
+
+    model.setSelectedIndex(1);  // B
+    disconnect(0);              // [B, C]
+    ASSERT_EQ(selected(), dev(1));
+
+    QSignalSpy spy(&model, &DeviceModel::selectedChanged);
+    reconnect(0);               // A re-inserted at the front: [A, B, C]
+
+    EXPECT_EQ(selected(), dev(1));
+    EXPECT_EQ(model.selectedIndex(), 1);
+    EXPECT_GE(spy.count(), 1);
+}
+
+TEST_F(DeviceModelSelectionTest, RemovingRowAfterSelectionLeavesSelectionAlone) {
+    model.setSelectedIndex(0);  // A
+    QSignalSpy spy(&model, &DeviceModel::selectedChanged);
+
+    disconnect(2);  // C goes offline
+
+    EXPECT_EQ(selected(), dev(0));
+    EXPECT_EQ(model.selectedIndex(), 0);
+    EXPECT_EQ(spy.count(), 0);
 }

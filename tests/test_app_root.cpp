@@ -453,20 +453,26 @@ TEST_F(AppRootFixture, CarouselSwitchSwapsButtonModel) {
             serialB, QStringLiteral("default"));
     }
 
-    // Select device A explicitly and confirm ButtonModel reflects A.
-    deviceModel().setSelectedIndex(0);
-    EXPECT_EQ(buttonModel().actionTypeForButton(3),
-              QStringLiteral("keystroke"));
+    // Both buttons surface as type "keystroke" (legacy Media maps to a
+    // keystroke entry), so compare the displayed action names instead.
+    const QString nameA = actionModel().buttonActionToName(
+        {ButtonAction::Keystroke, QStringLiteral("Alt+Left")});
+    const QString nameB = actionModel().buttonActionToName(
+        {ButtonAction::Keystroke, QStringLiteral("Play")});
+    ASSERT_NE(nameA, nameB);
 
-    // Switch carousel to device B.
+    const int idxA = deviceModel().devices().indexOf(m_physicalDevice);
     const int idxB = deviceModel().devices().indexOf(secondary);
+    ASSERT_GE(idxA, 0);
     ASSERT_GE(idxB, 0);
-    deviceModel().setSelectedIndex(idxB);
 
-    // ButtonModel now reflects device B. Legacy ButtonAction::Media now
-    // surfaces in the UI as a regular keystroke entry.
-    EXPECT_EQ(buttonModel().actionTypeForButton(3),
-              QStringLiteral("keystroke"));
+    // The profiles were edited behind the UI's back, so go through real
+    // carousel switches: B, then back to A.
+    deviceModel().setSelectedIndex(idxB);
+    EXPECT_EQ(buttonModel().actionNameForButton(3), nameB);
+
+    deviceModel().setSelectedIndex(idxA);
+    EXPECT_EQ(buttonModel().actionNameForButton(3), nameA);
 }
 
 // ButtonModel is a single shared instance in AppRoot, so switching to a device

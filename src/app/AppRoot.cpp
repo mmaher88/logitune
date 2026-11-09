@@ -50,8 +50,7 @@ AppRoot::AppRoot(IDesktopIntegration *desktop, IInputInjector *injector, QObject
     , m_deviceResolver(&m_deviceModel, this)
     , m_deviceCommandHandler(&m_deviceResolver, this)
     , m_actionExecutor(nullptr)
-    , m_buttonDispatcher(&m_profileEngine, &m_actionExecutor, &m_deviceResolver,
-                         m_desktop, this)
+    , m_buttonDispatcher(&m_profileEngine, &m_actionExecutor, m_desktop, this)
     , m_profileOrchestrator(&m_profileEngine, &m_actionExecutor, &m_deviceResolver,
                             &m_deviceModel, &m_buttonModel, &m_actionModel,
                             &m_profileModel, m_desktop, this)
@@ -204,16 +203,13 @@ void AppRoot::wireSignals()
             &m_profileOrchestrator, &ProfileOrchestrator::saveCurrentProfile);
 
     // Cross-service bridge: after any hardware apply, reset the dispatcher's
-    // thumb accumulator for that serial; when the active IDevice changes,
-    // the dispatcher must refresh its own pointer.
+    // thumb accumulator for that serial.
     connect(&m_profileOrchestrator, &ProfileOrchestrator::profileApplied,
             &m_buttonDispatcher, &ButtonActionDispatcher::onProfileApplied);
-    connect(&m_profileOrchestrator, &ProfileOrchestrator::currentDeviceChanged,
-            &m_buttonDispatcher, &ButtonActionDispatcher::onCurrentDeviceChanged);
 
-    // Button-initiated device changes persist into the active profile, so a
-    // DPI cycle or SmartShift toggle survives the next profile apply instead
-    // of snapping back to the stored value.
+    // Button-initiated device changes persist into the active profile of the
+    // mouse whose button was pressed, so a DPI cycle or SmartShift toggle
+    // survives the next profile apply instead of snapping back.
     connect(&m_buttonDispatcher, &ButtonActionDispatcher::dpiChangedByButton,
             &m_profileOrchestrator, &ProfileOrchestrator::onDpiChangedByButton);
     connect(&m_buttonDispatcher, &ButtonActionDispatcher::smartShiftChangedByButton,
@@ -270,15 +266,23 @@ void AppRoot::onPhysicalDeviceAdded(PhysicalDevice *device)
     const bool wasEmpty = m_deviceModel.count() == 0;
     m_deviceModel.addPhysicalDevice(device);
 
-    // Route per-device input events. PhysicalDevice fans in signals from
-    // all its underlying transports, so we connect once here regardless of
-    // how many hidraws back it.
-    connect(device, &PhysicalDevice::gestureRawXY,
-            &m_buttonDispatcher, &ButtonActionDispatcher::onGestureRaw);
-    connect(device, &PhysicalDevice::divertedButtonPressed,
-            &m_buttonDispatcher, &ButtonActionDispatcher::onDivertedButtonPressed);
-    connect(device, &PhysicalDevice::thumbWheelRotation,
-            &m_buttonDispatcher, &ButtonActionDispatcher::onThumbWheelRotation);
+    // Route per-device input events, tagged with the mouse they came from so
+    // the dispatcher uses that mouse's mappings and transport rather than
+    // the carousel selection. PhysicalDevice fans in signals from all its
+    // underlying transports, so we connect once here regardless of how many
+    // hidraws back it.
+    connect(device, &PhysicalDevice::gestureRawXY, &m_buttonDispatcher,
+            [this, device](int16_t dx, int16_t dy) {
+                m_buttonDispatcher.onGestureRaw(device, dx, dy);
+            });
+    connect(device, &PhysicalDevice::divertedButtonPressed, &m_buttonDispatcher,
+            [this, device](uint16_t controlId, bool pressed) {
+                m_buttonDispatcher.onDivertedButtonPressed(device, controlId, pressed);
+            });
+    connect(device, &PhysicalDevice::thumbWheelRotation, &m_buttonDispatcher,
+            [this, device](int delta) {
+                m_buttonDispatcher.onThumbWheelRotation(device, delta);
+            });
 
     // Re-apply profile whenever any transport finishes (re-)enumeration.
     // PhysicalDevice emits this from its setupComplete fan-in, which
@@ -312,8 +316,7 @@ void AppRoot::onSelectionChanged()
     auto *device = m_deviceResolver.activeDevice();
     if (!device) return;
 
-    // Tell the orchestrator about the new IDevice; it in turn emits
-    // currentDeviceChanged which is wired to the dispatcher in wireSignals().
+    // Tell the orchestrator which descriptor the UI now shows, for UI edits.
     m_profileOrchestrator.onCurrentDeviceChanged(device->descriptor());
 
     const QString serial = device->deviceSerial();

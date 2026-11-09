@@ -46,25 +46,26 @@ QString ProfileOrchestrator::activeSerial() const
 void ProfileOrchestrator::onCurrentDeviceChanged(const IDevice *device)
 {
     m_currentDevice = device;
-    emit currentDeviceChanged(device);
 }
 
 void ProfileOrchestrator::onTransportSetupComplete(PhysicalDevice *device)
 {
     if (!device) return;
-    onCurrentDeviceChanged(device->descriptor());
+    // Do not touch m_currentDevice here: it tracks the mouse shown in the
+    // UI, and the mouse that just reconnected need not be that one.
     const QString serial = device->deviceSerial();
-    Profile &p = m_profileEngine->cachedProfile(serial,
-                                                m_profileEngine->hardwareProfile(serial));
-    qCDebug(lcApp) << "device transport ready, applying profile:"
-                    << m_profileEngine->hardwareProfile(serial);
-    applyProfileToHardware(p);
+    const QString hwName = m_profileEngine->hardwareProfile(serial);
+    Profile &p = m_profileEngine->cachedProfile(serial, hwName);
+    qCDebug(lcApp) << "device transport ready, applying profile:" << hwName
+                   << "to" << serial;
+    applyProfileToHardware(device, p);
 }
 
 void ProfileOrchestrator::setupProfileForDevice(PhysicalDevice *device)
 {
     if (!device) return;
-    onCurrentDeviceChanged(device->descriptor());
+    const IDevice *descriptor = device->descriptor();
+    const bool isSelected = m_selection && m_selection->activeDevice() == device;
 
     const QString serial = device->deviceSerial();
     const QString configBase = QStandardPaths::writableLocation(
@@ -88,8 +89,8 @@ void ProfileOrchestrator::setupProfileForDevice(PhysicalDevice *device)
         seed.scrollDirection     = device->scrollInvert()
             ? QStringLiteral("natural") : QStringLiteral("standard");
         seed.smoothScrolling     = !device->scrollRatchet();
-        if (m_currentDevice) {
-            const auto controls = m_currentDevice->controls();
+        if (descriptor) {
+            const auto controls = descriptor->controls();
             for (int i = 0;
                  i < static_cast<int>(controls.size()) &&
                  i < static_cast<int>(seed.buttons.size()); ++i) {
@@ -101,7 +102,7 @@ void ProfileOrchestrator::setupProfileForDevice(PhysicalDevice *device)
                 else if (ctrl.defaultActionType == "dpi-cycle")
                     seed.buttons[i] = {ButtonAction::DpiCycle, {}};
             }
-            const auto defaultGestures = m_currentDevice->defaultGestures();
+            const auto defaultGestures = descriptor->defaultGestures();
             for (auto it = defaultGestures.begin();
                  it != defaultGestures.end(); ++it) {
                 seed.gestures[it.key()] = it.value();
@@ -134,15 +135,18 @@ void ProfileOrchestrator::setupProfileForDevice(PhysicalDevice *device)
     bool isFirstConnect = hwName.isEmpty();
     if (isFirstConnect) {
         hwName = QStringLiteral("default");
-        m_profileModel->setHwActiveIndex(0);
+        // The profile tab bar shows the selected mouse; a second mouse
+        // connecting must not move its "active on device" marker.
+        if (isSelected)
+            m_profileModel->setHwActiveIndex(0);
         m_profileEngine->setHardwareProfile(serial, hwName);
         m_profileEngine->setDisplayProfile(serial, hwName);
     }
 
     Profile &p = m_profileEngine->cachedProfile(serial, hwName);
     qCDebug(lcApp) << "setupProfileForDevice: applying profile" << hwName
-                   << "thumbWheelMode=" << p.thumbWheelMode;
-    applyProfileToHardware(p);
+                   << "thumbWheelMode=" << p.thumbWheelMode << "to" << serial;
+    applyProfileToHardware(device, p);
 }
 
 void ProfileOrchestrator::onUserButtonChanged(int buttonId,
@@ -174,14 +178,15 @@ void ProfileOrchestrator::onUserButtonChanged(int buttonId,
     }
 }
 
-void ProfileOrchestrator::onDpiChangedByButton(int dpi)
+void ProfileOrchestrator::onDpiChangedByButton(const QString &serial, int dpi)
 {
-    applyHardwareChange([dpi](Profile &p) { p.dpi = dpi; });
+    applyHardwareChange(serial, [dpi](Profile &p) { p.dpi = dpi; });
 }
 
-void ProfileOrchestrator::onSmartShiftChangedByButton(bool enabled, int threshold)
+void ProfileOrchestrator::onSmartShiftChangedByButton(const QString &serial,
+                                                      bool enabled, int threshold)
 {
-    applyHardwareChange([enabled, threshold](Profile &p) {
+    applyHardwareChange(serial, [enabled, threshold](Profile &p) {
         p.smartShiftEnabled   = enabled;
         p.smartShiftThreshold = threshold;
     });
@@ -229,17 +234,22 @@ void ProfileOrchestrator::onWindowFocusChanged(const QString &wmClass, const QSt
 
     m_deviceModel->setActiveWmClass(wmClass);
 
-    const QString serial = activeSerial();
-    if (serial.isEmpty()) return;
+    // Every connected mouse follows focus with its own app profiles, not
+    // just the one shown in the UI.
+    const QString selectedSerial = activeSerial();
+    const QList<PhysicalDevice *> devices = m_deviceModel->devices();
+    for (PhysicalDevice *device : devices) {
+        const QString serial = device->deviceSerial();
+        const QString profileName = m_profileEngine->profileForApp(serial, wmClass);
+        if (profileName == m_profileEngine->hardwareProfile(serial))
+            continue;
 
-    QString profileName = m_profileEngine->profileForApp(serial, wmClass);
-    if (profileName == m_profileEngine->hardwareProfile(serial))
-        return;
-
-    Profile &p = m_profileEngine->cachedProfile(serial, profileName);
-    m_profileEngine->setHardwareProfile(serial, profileName);
-    applyProfileToHardware(p);
-    m_profileModel->setHwActiveByProfileName(profileName);
+        Profile &p = m_profileEngine->cachedProfile(serial, profileName);
+        m_profileEngine->setHardwareProfile(serial, profileName);
+        applyProfileToHardware(device, p);
+        if (serial == selectedSerial)
+            m_profileModel->setHwActiveByProfileName(profileName);
+    }
 }
 
 void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
@@ -329,15 +339,23 @@ void ProfileOrchestrator::restoreButtonModelFromProfile(const Profile &p)
     m_deviceModel->loadGesturesFromProfile(gestureMap);
 }
 
-void ProfileOrchestrator::applyProfileToHardware(const Profile &p)
+void ProfileOrchestrator::applyProfileToHardware(PhysicalDevice *device, const Profile &p)
 {
-    auto *session = m_selection ? m_selection->activeSession() : nullptr;
-    if (!session || !m_currentDevice) return;
+    DeviceSession *session = device ? device->primary() : nullptr;
+    const IDevice *descriptor = device ? device->descriptor() : nullptr;
+    if (!session || !descriptor) {
+        // Never bail silently: a skipped apply leaves the mouse in its
+        // firmware defaults, and without this line the log looks healthy.
+        qCDebug(lcApp) << "cannot apply profile" << p.name << "to"
+                       << (device ? device->deviceSerial() : QStringLiteral("<none>"))
+                       << "- no transport or descriptor";
+        return;
+    }
 
     session->flushCommandProcessor();
 
     session->touchResponseTime();
-    const auto controls = m_currentDevice->controls();
+    const auto controls = descriptor->controls();
     const int buttonCount = controls.size();
 
     session->setDPI(p.dpi);
@@ -360,7 +378,7 @@ void ProfileOrchestrator::applyProfileToHardware(const Profile &p)
         session->divertButton(ctrl.controlId, needsDivert, needsRawXY);
     }
 
-    emit profileApplied(session->deviceId());
+    emit profileApplied(device->deviceSerial());
 }
 
 void ProfileOrchestrator::saveCurrentProfile()

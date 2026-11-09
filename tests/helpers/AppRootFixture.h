@@ -181,19 +181,19 @@ protected:
     }
 
     void pressButton(uint16_t controlId) {
-        m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(controlId, true);
+        m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(m_physicalDevice, controlId, true);
     }
 
     void releaseButton(uint16_t controlId) {
-        m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(controlId, false);
+        m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(m_physicalDevice, controlId, false);
     }
 
     void gestureXY(int16_t dx, int16_t dy) {
-        m_ctrl->m_buttonDispatcher.onGestureRaw(dx, dy);
+        m_ctrl->m_buttonDispatcher.onGestureRaw(m_physicalDevice, dx, dy);
     }
 
     void thumbWheel(int delta) {
-        m_ctrl->m_buttonDispatcher.onThumbWheelRotation(delta);
+        m_ctrl->m_buttonDispatcher.onThumbWheelRotation(m_physicalDevice, delta);
     }
 
     // Allocates an extra MockDevice descriptor for addMockDevice(). Owned by
@@ -261,28 +261,28 @@ protected:
     ActionExecutor &actionExecutor() { return m_ctrl->m_actionExecutor; }
 
     int gestureTotalDx() const {
-        if (!m_session) return 0;
+        if (!m_physicalDevice) return 0;
         auto &state = m_ctrl->m_buttonDispatcher.m_state;
-        auto it = state.find(m_session->deviceId());
+        auto it = state.find(m_physicalDevice->deviceSerial());
         return it != state.end() ? it->gestureAccumX : 0;
     }
     int gestureTotalDy() const {
-        if (!m_session) return 0;
+        if (!m_physicalDevice) return 0;
         auto &state = m_ctrl->m_buttonDispatcher.m_state;
-        auto it = state.find(m_session->deviceId());
+        auto it = state.find(m_physicalDevice->deviceSerial());
         return it != state.end() ? it->gestureAccumY : 0;
     }
     bool gestureActive() const {
-        if (!m_session) return false;
+        if (!m_physicalDevice) return false;
         auto &state = m_ctrl->m_buttonDispatcher.m_state;
-        auto it = state.find(m_session->deviceId());
+        auto it = state.find(m_physicalDevice->deviceSerial());
         return it != state.end() ? it->gestureActive : false;
     }
 
     int thumbAccum() const {
-        if (!m_session) return 0;
+        if (!m_physicalDevice) return 0;
         auto &state = m_ctrl->m_buttonDispatcher.m_state;
-        auto it = state.find(m_session->deviceId());
+        auto it = state.find(m_physicalDevice->deviceSerial());
         return it != state.end() ? it->thumbAccum : 0;
     }
 

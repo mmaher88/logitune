@@ -35,8 +35,7 @@ protected:
         m_executor      = std::make_unique<ActionExecutor>(m_injector.get());
         m_desktop       = std::make_unique<MockDesktop>();
         m_dispatcher    = std::make_unique<ButtonActionDispatcher>(
-            m_profileEngine.get(), m_executor.get(), m_selection.get(),
-            m_desktop.get());
+            m_profileEngine.get(), m_executor.get(), m_desktop.get());
     }
 
     void TearDown() override {
@@ -55,8 +54,8 @@ protected:
     /// Attach a MockDevice-backed PhysicalDevice/DeviceSession so the
     /// dispatcher sees an active session. Uses the same applySimulation
     /// entry point as --simulate-all so we avoid touching private session
-    /// internals. Also points the dispatcher's m_currentDevice at the
-    /// MockDevice descriptor.
+    /// internals. Tests pass m_physical to the dispatcher as the source
+    /// of each input event.
     void attachMockSession() {
         m_device.setupMxControls();
         auto hidraw = std::make_unique<hidpp::HidrawDevice>("/dev/null");
@@ -67,8 +66,6 @@ protected:
         m_physical->attachTransport(m_session);
         m_deviceModel->addPhysicalDevice(m_physical);
         m_deviceModel->setSelectedIndex(0);
-
-        m_dispatcher->onCurrentDeviceChanged(&m_device);
 
         // Register a profile dir so the engine returns a real cached profile
         // when the dispatcher looks up the active hardware profile.

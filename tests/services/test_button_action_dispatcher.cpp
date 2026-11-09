@@ -23,8 +23,8 @@ void setProfileButton(Profile &p, int idx, ButtonAction ba) {
 // --- Gesture accumulation + resolution --------------------------------------
 
 TEST_F(ButtonActionDispatcherFixture, NullSessionGestureIsNoOp) {
-    // No attach — no session. onGestureRaw must not crash or insert state.
-    m_dispatcher->onGestureRaw(10, 20);
+    // No attach — no device. onGestureRaw must not crash or insert state.
+    m_dispatcher->onGestureRaw(m_physical, 10, 20);
     EXPECT_FALSE(hasStateFor(QStringLiteral("mock-serial")));
 }
 
@@ -33,18 +33,18 @@ TEST_F(ButtonActionDispatcherFixture, GestureStartAccumulatesXY) {
     setProfileButton(hwProfile(), 5,
         ButtonAction{ButtonAction::GestureTrigger, {}});
 
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, true);
     EXPECT_TRUE(gestureActive());
 
-    m_dispatcher->onGestureRaw(10, 20);
-    m_dispatcher->onGestureRaw(5, -5);
+    m_dispatcher->onGestureRaw(m_physical, 10, 20);
+    m_dispatcher->onGestureRaw(m_physical, 5, -5);
     EXPECT_EQ(gestureAccumX(), 15);
     EXPECT_EQ(gestureAccumY(), 15);
 }
 
 TEST_F(ButtonActionDispatcherFixture, GestureAccumulationIgnoredWhenNotActive) {
     attachMockSession();
-    m_dispatcher->onGestureRaw(100, 100);
+    m_dispatcher->onGestureRaw(m_physical, 100, 100);
     EXPECT_EQ(gestureAccumX(), 0);
     EXPECT_EQ(gestureAccumY(), 0);
 }
@@ -56,9 +56,9 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseBelowThresholdDispatchesClic
     hwProfile().gestures["click"] = ButtonAction{ButtonAction::Keystroke,
                                                  QStringLiteral("Super+W")};
 
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
-    m_dispatcher->onGestureRaw(5, 5); // well under kGestureThreshold (50)
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, true);
+    m_dispatcher->onGestureRaw(m_physical, 5, 5); // well under kGestureThreshold (50)
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, false);
 
     EXPECT_FALSE(gestureActive());
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Super+W"));
@@ -71,9 +71,9 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseRightDispatchesRightKeystrok
     hwProfile().gestures["right"] = ButtonAction{ButtonAction::Keystroke,
                                                  QStringLiteral("Ctrl+Super+Right")};
 
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
-    m_dispatcher->onGestureRaw(80, 5);   // dx dominant, over threshold
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, true);
+    m_dispatcher->onGestureRaw(m_physical, 80, 5);   // dx dominant, over threshold
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, false);
 
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"),
               QStringLiteral("Ctrl+Super+Right"));
@@ -86,9 +86,9 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseLeftDispatchesLeftKeystroke)
     hwProfile().gestures["left"] = ButtonAction{ButtonAction::Keystroke,
                                                 QStringLiteral("Ctrl+Super+Left")};
 
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
-    m_dispatcher->onGestureRaw(-80, 3);
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, true);
+    m_dispatcher->onGestureRaw(m_physical, -80, 3);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, false);
 
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"),
               QStringLiteral("Ctrl+Super+Left"));
@@ -101,9 +101,9 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseDownDispatchesDownKeystroke)
     hwProfile().gestures["down"] = ButtonAction{ButtonAction::Keystroke,
                                                 QStringLiteral("Super+D")};
 
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
-    m_dispatcher->onGestureRaw(5, 80);
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, true);
+    m_dispatcher->onGestureRaw(m_physical, 5, 80);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, false);
 
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Super+D"));
 }
@@ -115,9 +115,9 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseUpDispatchesUpKeystroke) {
     hwProfile().gestures["up"] = ButtonAction{ButtonAction::Keystroke,
                                               QStringLiteral("Super+Up")};
 
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
-    m_dispatcher->onGestureRaw(-3, -80);
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, true);
+    m_dispatcher->onGestureRaw(m_physical, -3, -80);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, false);
 
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Super+Up"));
 }
@@ -128,9 +128,9 @@ TEST_F(ButtonActionDispatcherFixture, GestureReleaseMissingDirectionDoesNotInjec
         ButtonAction{ButtonAction::GestureTrigger, {}});
     // no gestures map entries
 
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
-    m_dispatcher->onGestureRaw(80, 0);
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, true);
+    m_dispatcher->onGestureRaw(m_physical, 80, 0);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, false);
 
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
@@ -142,8 +142,8 @@ TEST_F(ButtonActionDispatcherFixture, ThumbWheelAccumulatesBelowThreshold) {
     m_session->setThumbWheelMode(QStringLiteral("scroll"), false);
     m_injector->clear();
 
-    m_dispatcher->onThumbWheelRotation(5);
-    m_dispatcher->onThumbWheelRotation(5);
+    m_dispatcher->onThumbWheelRotation(m_physical, 5);
+    m_dispatcher->onThumbWheelRotation(m_physical, 5);
     // 10 total, under kThumbThreshold (15)
 
     EXPECT_EQ(thumbAccum(), 10);
@@ -155,7 +155,7 @@ TEST_F(ButtonActionDispatcherFixture, ThumbWheelEmitsHorizontalScrollAtThreshold
     m_session->setThumbWheelMode(QStringLiteral("scroll"), false);
     m_injector->clear();
 
-    m_dispatcher->onThumbWheelRotation(15);
+    m_dispatcher->onThumbWheelRotation(m_physical, 15);
     EXPECT_TRUE(m_injector->hasCalled("injectHorizontalScroll"));
     EXPECT_EQ(m_injector->lastArg("injectHorizontalScroll"),
               QStringLiteral("1"));
@@ -167,11 +167,11 @@ TEST_F(ButtonActionDispatcherFixture, ThumbWheelEmitsVolumeKeystrokeInVolumeMode
     m_session->setThumbWheelMode(QStringLiteral("volume"), false);
     m_injector->clear();
 
-    m_dispatcher->onThumbWheelRotation(15);
+    m_dispatcher->onThumbWheelRotation(m_physical, 15);
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"),
               QStringLiteral("VolumeUp"));
 
-    m_dispatcher->onThumbWheelRotation(-15);
+    m_dispatcher->onThumbWheelRotation(m_physical, -15);
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"),
               QStringLiteral("VolumeDown"));
 }
@@ -181,7 +181,7 @@ TEST_F(ButtonActionDispatcherFixture, ThumbWheelEmitsCtrlScrollInZoomMode) {
     m_session->setThumbWheelMode(QStringLiteral("zoom"), false);
     m_injector->clear();
 
-    m_dispatcher->onThumbWheelRotation(15);
+    m_dispatcher->onThumbWheelRotation(m_physical, 15);
     EXPECT_TRUE(m_injector->hasCalled("injectCtrlScroll"));
     EXPECT_EQ(m_injector->lastArg("injectCtrlScroll"), QStringLiteral("1"));
 }
@@ -191,7 +191,7 @@ TEST_F(ButtonActionDispatcherFixture, ThumbWheelEmitsCtrlScrollInZoomMode) {
 TEST_F(ButtonActionDispatcherFixture, OnProfileAppliedClearsThumbAccum) {
     attachMockSession();
     m_session->setThumbWheelMode(QStringLiteral("scroll"), false);
-    m_dispatcher->onThumbWheelRotation(5);
+    m_dispatcher->onThumbWheelRotation(m_physical, 5);
     ASSERT_EQ(thumbAccum(), 5);
 
     m_dispatcher->onProfileApplied(QStringLiteral("mock-serial"));
@@ -208,7 +208,7 @@ TEST_F(ButtonActionDispatcherFixture, OnProfileAppliedForUnknownSerialIsNoOp) {
 TEST_F(ButtonActionDispatcherFixture, OnDeviceRemovedDropsEntry) {
     attachMockSession();
     m_session->setThumbWheelMode(QStringLiteral("scroll"), false);
-    m_dispatcher->onThumbWheelRotation(5);
+    m_dispatcher->onThumbWheelRotation(m_physical, 5);
     ASSERT_TRUE(hasStateFor(QStringLiteral("mock-serial")));
 
     m_dispatcher->onDeviceRemoved(QStringLiteral("mock-serial"));
@@ -224,7 +224,7 @@ TEST_F(ButtonActionDispatcherFixture, SmartShiftButtonTogglesSession) {
     // DeviceSession::setSmartShift bails without a SmartShift dispatcher,
     // which requires enumeration we don't do in tests. We verify the
     // dispatch reached session by checking it did NOT reach the executor.
-    m_dispatcher->onDivertedButtonPressed(kMiddleCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kMiddleCid, true);
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
 
@@ -234,7 +234,7 @@ TEST_F(ButtonActionDispatcherFixture, DpiCycleButtonDoesNotInjectKeystroke) {
         ButtonAction{ButtonAction::DpiCycle, {}});
     // cycleDpi() writes to the session; no executor path. Verify we didn't
     // accidentally fall into the keystroke branch.
-    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, true);
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
 
@@ -243,7 +243,7 @@ TEST_F(ButtonActionDispatcherFixture, KeystrokeActionInjectsViaExecutor) {
     setProfileButton(hwProfile(), 3,
         ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+C")});
 
-    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, true);
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Ctrl+C"));
 }
 
@@ -252,7 +252,7 @@ TEST_F(ButtonActionDispatcherFixture, MediaActionInjectsViaExecutor) {
     setProfileButton(hwProfile(), 4,
         ButtonAction{ButtonAction::Media, QStringLiteral("Play")});
 
-    m_dispatcher->onDivertedButtonPressed(kForwardCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kForwardCid, true);
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Play"));
 }
 
@@ -261,7 +261,7 @@ TEST_F(ButtonActionDispatcherFixture, AppLaunchActionInvokesExecutor) {
     setProfileButton(hwProfile(), 3,
         ButtonAction{ButtonAction::AppLaunch, QStringLiteral("firefox")});
 
-    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, true);
     EXPECT_EQ(m_injector->lastArg("launchApp"), QStringLiteral("firefox"));
 }
 
@@ -273,14 +273,14 @@ TEST_F(ButtonActionDispatcherFixture, ReleaseWithoutGestureActiveIsNoOp) {
     // Release of the same button as pressed. Dispatcher only dispatches on
     // press (the only exception is the gesture-release path which checks
     // gestureActive first).
-    m_dispatcher->onDivertedButtonPressed(kBackCid, false);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, false);
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
 
 TEST_F(ButtonActionDispatcherFixture, DefaultButtonIsNoOp) {
     attachMockSession();
     // button 3 stays default in the profile
-    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, true);
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
     EXPECT_FALSE(m_injector->hasCalled("launchApp"));
 }
@@ -288,19 +288,24 @@ TEST_F(ButtonActionDispatcherFixture, DefaultButtonIsNoOp) {
 TEST_F(ButtonActionDispatcherFixture, UnknownControlIdIsIgnored) {
     attachMockSession();
     // CID 0xFFFF does not appear in MockDevice controls — idx stays -1.
-    m_dispatcher->onDivertedButtonPressed(0xFFFF, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, 0xFFFF, true);
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
 
-TEST_F(ButtonActionDispatcherFixture, OnCurrentDeviceChangedUpdatesPointer) {
+TEST_F(ButtonActionDispatcherFixture, DeviceWithoutDescriptorIgnoresButtons) {
     attachMockSession();
-    // Clear descriptor — next press should early-out since idx lookup
-    // requires m_currentDevice.
-    m_dispatcher->onCurrentDeviceChanged(nullptr);
     setProfileButton(hwProfile(), 3,
         ButtonAction{ButtonAction::Keystroke, QStringLiteral("Ctrl+C")});
 
-    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    // Same serial (so the profile above is found), but its transport has no
+    // descriptor: control IDs cannot be mapped to button slots, so the
+    // press must be ignored rather than guessed.
+    DeviceSession session(std::make_unique<hidpp::HidrawDevice>("/dev/null"),
+                          0xFF, QStringLiteral("Bluetooth"), nullptr);
+    PhysicalDevice unknown(QStringLiteral("mock-serial"));
+    unknown.attachTransport(&session);
+
+    m_dispatcher->onDivertedButtonPressed(&unknown, kBackCid, true);
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
 }
 
@@ -315,7 +320,7 @@ TEST_F(ButtonActionDispatcherFixture, PresetRefResolvesViaDesktopAndFiresKeystro
     setProfileButton(hwProfile(), 3,
         ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")});
 
-    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, true);
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Super+D"));
 }
 
@@ -327,7 +332,7 @@ TEST_F(ButtonActionDispatcherFixture, PresetRefResolvedToDBusFiresDBus) {
     setProfileButton(hwProfile(), 3,
         ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")});
 
-    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, true);
     EXPECT_EQ(m_injector->lastArg("sendDBusCall"),
               QStringLiteral("org.x,/path,org.x.Iface,method"));
 }
@@ -339,7 +344,7 @@ TEST_F(ButtonActionDispatcherFixture, PresetRefResolvedToAppLaunchFiresLaunch) {
     setProfileButton(hwProfile(), 3,
         ButtonAction{ButtonAction::PresetRef, QStringLiteral("calculator")});
 
-    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, true);
     EXPECT_EQ(m_injector->lastArg("launchApp"), QStringLiteral("gnome-calculator"));
 }
 
@@ -349,7 +354,7 @@ TEST_F(ButtonActionDispatcherFixture, PresetRefUnresolvedLogsAndFiresNothing) {
     setProfileButton(hwProfile(), 3,
         ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")});
 
-    m_dispatcher->onDivertedButtonPressed(kBackCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, true);
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
     EXPECT_FALSE(m_injector->hasCalled("sendDBusCall"));
     EXPECT_FALSE(m_injector->hasCalled("launchApp"));
@@ -373,10 +378,10 @@ TEST_F(ButtonActionDispatcherFixture, GesturePresetResolvesViaDesktopAndFiresKey
     // dy past kGestureThreshold, release. Direction should resolve to "down"
     // and the preset should be resolved via the desktop integration before
     // firing.
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, true);
     for (int i = 0; i < 10; ++i)
-        m_dispatcher->onGestureRaw(0, 20);
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+        m_dispatcher->onGestureRaw(m_physical, 0, 20);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, false);
 
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Super+D"));
 }
@@ -391,10 +396,10 @@ TEST_F(ButtonActionDispatcherFixture, GesturePresetResolvedToDBusFiresDBus) {
     hwProfile().gestures["down"] =
         ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")};
 
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, true);
     for (int i = 0; i < 10; ++i)
-        m_dispatcher->onGestureRaw(0, 20);
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+        m_dispatcher->onGestureRaw(m_physical, 0, 20);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, false);
 
     EXPECT_EQ(m_injector->lastArg("sendDBusCall"),
               QStringLiteral("org.x,/path,org.x.Iface,method"));
@@ -408,10 +413,10 @@ TEST_F(ButtonActionDispatcherFixture, GesturePresetUnresolvedFiresNothing) {
     hwProfile().gestures["down"] =
         ButtonAction{ButtonAction::PresetRef, QStringLiteral("show-desktop")};
 
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, true);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, true);
     for (int i = 0; i < 10; ++i)
-        m_dispatcher->onGestureRaw(0, 20);
-    m_dispatcher->onDivertedButtonPressed(kGestureCid, false);
+        m_dispatcher->onGestureRaw(m_physical, 0, 20);
+    m_dispatcher->onDivertedButtonPressed(m_physical, kGestureCid, false);
 
     EXPECT_FALSE(m_injector->hasCalled("injectKeystroke"));
     EXPECT_FALSE(m_injector->hasCalled("sendDBusCall"));
