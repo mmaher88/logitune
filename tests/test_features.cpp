@@ -3,6 +3,9 @@
 #include "hidpp/features/AdjustableDPI.h"
 #include "hidpp/features/DeviceName.h"
 
+#include <QByteArray>
+#include <vector>
+
 using namespace logitune::hidpp;
 using namespace logitune::hidpp::features;
 
@@ -211,6 +214,63 @@ TEST(DeviceName, ParseNameLengthZero) {
     r.params[0] = 0;
     r.paramLength = 1;
     EXPECT_EQ(DeviceName::parseNameLength(r), 0);
+}
+
+namespace {
+
+// Stands in for a device answering getName (0x0005 fn 0x01): the single
+// parameter byte is the index of the first character to return, and each
+// long-report reply carries up to 16 characters from there (zero padded).
+struct FakeNameDevice {
+    QByteArray name;
+    std::vector<std::vector<uint8_t>> requests;
+
+    std::optional<Report> operator()(std::span<const uint8_t> params) {
+        requests.emplace_back(params.begin(), params.end());
+        Report r;
+        r.reportId = kLongReportId;
+        r.paramLength = 16;
+        const int index = params.empty() ? 0 : params[0];
+        const QByteArray fragment = name.mid(index, 16);
+        for (int i = 0; i < fragment.size(); ++i)
+            r.params[i] = static_cast<uint8_t>(fragment[i]);
+        return r;
+    }
+};
+
+} // namespace
+
+TEST(DeviceName, ReadNameLongerThanOneFragment) {
+    // 25 characters: needs two getName calls. Each call sends the index of
+    // the next unread character as a single byte (Solaar get_name()).
+    FakeNameDevice dev{QByteArrayLiteral("MX Master 3S For Business"), {}};
+    const QString name = DeviceName::readName(
+        25, [&](std::span<const uint8_t> p) { return dev(p); });
+
+    EXPECT_EQ(name, QStringLiteral("MX Master 3S For Business"));
+    const std::vector<std::vector<uint8_t>> expected = {{0x00}, {0x10}};
+    EXPECT_EQ(dev.requests, expected);
+}
+
+TEST(DeviceName, ReadNameFitsInOneFragment) {
+    FakeNameDevice dev{QByteArrayLiteral("MX Master 3S"), {}};
+    const QString name = DeviceName::readName(
+        12, [&](std::span<const uint8_t> p) { return dev(p); });
+
+    EXPECT_EQ(name, QStringLiteral("MX Master 3S"));
+    EXPECT_EQ(dev.requests.size(), 1u);
+}
+
+TEST(DeviceName, ReadNameStopsWhenAFragmentFails) {
+    int calls = 0;
+    const QString name = DeviceName::readName(
+        25, [&](std::span<const uint8_t>) -> std::optional<Report> {
+            ++calls;
+            return std::nullopt;
+        });
+
+    EXPECT_TRUE(name.isEmpty());
+    EXPECT_EQ(calls, 1);
 }
 
 TEST(DeviceName, ParseSerialReturnsASCII) {

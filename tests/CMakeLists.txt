@@ -9,6 +9,7 @@ add_executable(logitune-tests
     test_capability_dispatch.cpp
     test_scroll_features.cpp
     test_features.cpp
+    test_receiver_info.cpp
     test_button_features.cpp
     test_profile_engine.cpp
     test_device_discovery.cpp

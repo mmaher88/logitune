@@ -33,16 +33,53 @@ const IDevice* DeviceRegistry::findByPid(uint16_t pid) const {
     return nullptr;
 }
 
-const IDevice* DeviceRegistry::findByName(const QString &name) const {
-    for (const auto &dev : m_devices) {
+namespace {
+
+// Exact (case-insensitive) name match first. Otherwise the candidate with the
+// longest name contained in `name`, so "MX Master 3S For Business" prefers
+// "MX Master 3S" over "MX Master 3" regardless of load order.
+const IDevice* bestNameMatch(const std::vector<const IDevice*> &candidates,
+                             const QString &name) {
+    if (name.isEmpty())
+        return nullptr;
+    for (const IDevice *dev : candidates) {
         if (name.compare(dev->deviceName(), Qt::CaseInsensitive) == 0)
-            return dev.get();
+            return dev;
     }
+    const IDevice *best = nullptr;
+    for (const IDevice *dev : candidates) {
+        const QString devName = dev->deviceName();
+        if (devName.isEmpty() || !name.contains(devName, Qt::CaseInsensitive))
+            continue;
+        if (!best || devName.size() > best->deviceName().size())
+            best = dev;
+    }
+    return best;
+}
+
+} // namespace
+
+const IDevice* DeviceRegistry::findByName(const QString &name) const {
+    std::vector<const IDevice*> all;
+    all.reserve(m_devices.size());
+    for (const auto &dev : m_devices)
+        all.push_back(dev.get());
+    return bestNameMatch(all, name);
+}
+
+const IDevice* DeviceRegistry::findByPidAndName(uint16_t pid, const QString &name) const {
+    std::vector<const IDevice*> byPid;
     for (const auto &dev : m_devices) {
-        if (name.contains(dev->deviceName(), Qt::CaseInsensitive))
-            return dev.get();
+        if (dev->matchesPid(pid))
+            byPid.push_back(dev.get());
     }
-    return nullptr;
+    if (byPid.empty())
+        return findByName(name);
+    if (byPid.size() == 1)
+        return byPid.front();
+    if (const IDevice *named = bestNameMatch(byPid, name))
+        return named;
+    return byPid.front();
 }
 
 void DeviceRegistry::registerDevice(std::unique_ptr<IDevice> device) {
