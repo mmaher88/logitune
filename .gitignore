@@ -2,6 +2,7 @@
 build/
 build-release/
 build-*/
+result
 .cache/
 *.o
 *.a
@@ -31,6 +32,8 @@ PKGBUILD
 .claude/
 .vscode/
 .idea/
+.envrc
+.direnv/
 
 # Reference material (not to ship)
 reference/

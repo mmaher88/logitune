@@ -86,6 +86,47 @@ sudo dnf install logitune
 yay -S logitune
 ```
 
+**NixOS:**
+
+Try it without installing:
+```bash
+nix run github:mmaher88/logitune
+```
+
+<details>
+
+<summary> To install: </summary>
+
+In a traditional config, add the following to your `configuration.nix`:
+```nix
+{
+  environment.systemPackages = [
+    (builtins.getFlake "github:mmaher88/logitune").packages.${pkgs.system}.default
+  ];
+
+  services.udev.packages = [
+    (builtins.getFlake "github:mmaher88/logitune").packages.${pkgs.system}.default
+  ];
+}
+```
+*Note: the `services.udev.packages` line is required for the app to open the hidraw device.*
+
+Or with a flake-based NixOS config, add the input and reference it directly:
+```nix
+# flake.nix
+inputs.logitune.url = "github:mmaher88/logitune";
+
+# configuration.nix
+{ inputs, pkgs, ... }: {
+  environment.systemPackages = [ inputs.logitune.packages.${pkgs.system}.default ];
+  services.udev.packages     = [ inputs.logitune.packages.${pkgs.system}.default ];
+}
+```
+
+*Note: after adding the udev rules for the first time, you may have to log out and back in (or run `sudo udevadm control --reload-rules && sudo udevadm trigger`) for device access to take effect.*
+
+</details>
+
 **From source:**
 ```bash
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
@@ -93,6 +134,22 @@ cmake --build build
 sudo cmake --install build
 logitune
 ```
+
+<details>
+
+<summary> Or, if you're using nix: </summary>
+
+You can build it with:
+```bash
+nix build .\#default
+```
+
+And if you want to build it using `cmake` like above, you can run:
+```bash
+nix develop .
+```
+
+</details>
 
 ## 📚 Documentation
 
