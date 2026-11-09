@@ -8,6 +8,7 @@
 #include "hidpp/features/HiResWheel.h"
 #include "hidpp/features/ReprogControls.h"
 #include "hidpp/features/ThumbWheel.h"
+#include "hidpp/ReceiverInfo.h"
 #include "hidpp/capabilities/Capabilities.h"
 #include "logging/LogManager.h"
 
@@ -84,6 +85,27 @@ void DeviceSession::cycleDpi()
     const int next = nextDpiInRing(ring, m_currentDPI);
     qCDebug(lcDevice) << "cycleDpi: current" << m_currentDPI << "-> next" << next;
     setDPI(next);
+}
+
+// ---------------------------------------------------------------------------
+// Descriptor lookup
+// ---------------------------------------------------------------------------
+
+const IDevice *DeviceSession::resolveDescriptor(const DeviceRegistry *registry,
+                                                uint16_t hidrawPid,
+                                                std::optional<uint16_t> receiverWpid,
+                                                const QString &name)
+{
+    if (!registry)
+        return nullptr;
+    // A receiver's hidraw node reports the receiver's PID, which says nothing
+    // about the paired device; its own PID is the WPID from the receiver.
+    const std::optional<uint16_t> pid =
+        hidpp::ReceiverInfo::isReceiver(hidrawPid) ? receiverWpid
+                                                   : std::optional<uint16_t>(hidrawPid);
+    if (pid)
+        return registry->findByPidAndName(*pid, name);
+    return registry->findByName(name);
 }
 
 // ---------------------------------------------------------------------------
@@ -166,19 +188,13 @@ void DeviceSession::enumerateAndSetup()
                                      hidpp::features::DeviceName::kFnGetNameLength);
         if (resp.has_value()) {
             int nameLen = hidpp::features::DeviceName::parseNameLength(*resp);
-            for (int offset = 0; offset < nameLen; offset += 13) {
-                uint8_t params[2] = {
-                    static_cast<uint8_t>((offset >> 8) & 0xFF),
-                    static_cast<uint8_t>(offset & 0xFF)
-                };
-                auto chunkResp = m_features->call(m_transport.get(), m_deviceIndex,
-                                                  hidpp::FeatureId::DeviceName,
-                                                  hidpp::features::DeviceName::kFnGetName,
-                                                  params);
-                if (chunkResp.has_value())
-                    name += hidpp::features::DeviceName::parseNameChunk(*chunkResp);
-            }
-            name = name.left(nameLen);
+            name = hidpp::features::DeviceName::readName(
+                nameLen, [this](std::span<const uint8_t> params) {
+                    return m_features->call(m_transport.get(), m_deviceIndex,
+                                            hidpp::FeatureId::DeviceName,
+                                            hidpp::features::DeviceName::kFnGetName,
+                                            params);
+                });
         }
     }
 
@@ -359,19 +375,28 @@ void DeviceSession::enumerateAndSetup()
         }
     }
 
-    // Look up device descriptor
-    m_activeDevice = nullptr;
-    if (m_registry) {
-        m_activeDevice = m_registry->findByPid(m_device->info().productId);
-        if (!m_activeDevice && !name.isEmpty())
-            m_activeDevice = m_registry->findByName(name);
+    // Look up device descriptor. On a receiver the hidraw PID is the
+    // receiver's, so ask the receiver for the paired device's WPID.
+    const uint16_t hidrawPid = m_device->info().productId;
+    std::optional<uint16_t> receiverWpid;
+    if (auto req = hidpp::ReceiverInfo::buildPairingInfoRequest(hidrawPid, m_deviceIndex)) {
+        if (auto reply = m_transport->sendRequest(*req, 500))
+            receiverWpid = hidpp::ReceiverInfo::parseWpid(hidrawPid, m_deviceIndex, *reply);
+        if (receiverWpid)
+            qCDebug(lcDevice) << "receiver slot" << static_cast<int>(m_deviceIndex)
+                              << "WPID:" << Qt::hex << *receiverWpid << Qt::dec;
+        else
+            qCWarning(lcDevice) << "could not read WPID for receiver slot"
+                                << static_cast<int>(m_deviceIndex) << "- matching by name only";
     }
+    m_activeDevice = resolveDescriptor(m_registry, hidrawPid, receiverWpid, name);
     if (m_activeDevice)
         qCDebug(lcDevice) << "matched device descriptor:" << m_activeDevice->deviceName();
     else {
+        const uint16_t lookupPid = receiverWpid.value_or(hidrawPid);
         qCDebug(lcDevice) << "no device descriptor found for PID"
-                          << Qt::hex << m_device->info().productId << "name:" << name;
-        emit unknownDeviceDetected(m_device->info().productId);
+                          << Qt::hex << lookupPid << Qt::dec << "name:" << name;
+        emit unknownDeviceDetected(lookupPid);
     }
 
     // Undivert ALL buttons for clean native state on startup.

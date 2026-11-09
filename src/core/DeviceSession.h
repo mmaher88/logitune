@@ -70,6 +70,14 @@ public:
                                              int minDpi, int maxDpi, int step);
     static int nextDpiInRing(const std::vector<int> &ring, int currentDpi);
 
+    // Picks the descriptor for a device. hidrawPid is the PID of the hidraw
+    // node; receiverWpid is the paired device's wireless PID when the node
+    // is a receiver. See tests/test_device_session.cpp.
+    static const IDevice *resolveDescriptor(const DeviceRegistry *registry,
+                                            uint16_t hidrawPid,
+                                            std::optional<uint16_t> receiverWpid,
+                                            const QString &name);
+
     Q_INVOKABLE void cycleDpi();
 
     // Setters (write to device via command processor)

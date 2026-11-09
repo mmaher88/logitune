@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "DeviceRegistry.h"
 #include "devices/JsonDevice.h"
+#include "hidpp/HidppTypes.h"
 #include <QTemporaryDir>
 #include <QFile>
 #include <QFileInfo>
@@ -54,7 +55,22 @@ static const DeviceSpec kDevices[] = {
         .gestureUpType = ButtonAction::Default,
     },
     {
-        .pid = 0xc52b,
+        .pid = 0xb035,
+        .name = "MX Master 3S For Business",
+        .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
+        .buttonHotspots = 6, .scrollHotspots = 3,
+        .minControls = 7,
+        .control0Cid = 0x0050, .control5Cid = 0x00C3,
+        .control5ActionType = "gesture-trigger",
+        .control6ActionType = "smartshift-toggle",
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Keystroke,
+        .gestureDownPayload = "Super+D",
+        .gestureUpType = ButtonAction::Default,
+    },
+    {
+        .pid = 0x4082,
         .name = "MX Master 3",
         .minDpi = 200, .maxDpi = 4000, .dpiStep = 50,
         .buttonHotspots = 6, .scrollHotspots = 3,
@@ -322,6 +338,41 @@ TEST(DeviceRegistry, MxVerticalDpiButtonIsNotConfigurable) {
         ASSERT_EQ(dev->controls().size(), 6u) << slug;
         EXPECT_EQ(dev->controls()[5].controlId, 0x00C3) << slug;
         EXPECT_FALSE(dev->controls()[5].configurable) << slug;
+    }
+}
+
+// Descriptors load in folder order (mx-master-3 before mx-master-3s), so a
+// first-hit contains() match resolved every 3S variant to "MX Master 3".
+TEST(DeviceRegistry, FindByNamePrefersLongestContainedName) {
+    logitune::DeviceRegistry reg;
+    const auto *dev = reg.findByName(QStringLiteral("Wireless Mouse MX Master 3S"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3S"));
+
+    dev = reg.findByName(QStringLiteral("MX Anywhere 3S Wireless Mouse"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Anywhere 3S"));
+}
+
+TEST(DeviceRegistry, FindByNamePrefersExactMatch) {
+    logitune::DeviceRegistry reg;
+    const auto *dev = reg.findByName(QStringLiteral("mx master 3s for business"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3S For Business"));
+}
+
+// A receiver's USB PID identifies the receiver, not the device paired to it,
+// so no shipped descriptor may list one. Receiver-attached devices are
+// matched by their WPID instead.
+TEST(DeviceRegistry, NoDescriptorClaimsAReceiverPid) {
+    const QDir devicesDir(QStringLiteral(SOURCE_ROOT "/devices"));
+    const auto slugs = devicesDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    ASSERT_FALSE(slugs.isEmpty());
+    for (const QString &slug : slugs) {
+        auto dev = logitune::JsonDevice::load(devicesDir.filePath(slug));
+        ASSERT_NE(dev, nullptr) << slug.toStdString();
+        EXPECT_FALSE(dev->matchesPid(logitune::hidpp::kPidBoltReceiver)) << slug.toStdString();
+        EXPECT_FALSE(dev->matchesPid(logitune::hidpp::kPidUnifyReceiver)) << slug.toStdString();
     }
 }
 
