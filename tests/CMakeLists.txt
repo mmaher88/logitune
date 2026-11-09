@@ -14,6 +14,7 @@ add_executable(logitune-tests
     test_profile_engine.cpp
     test_device_discovery.cpp
     test_action_executor.cpp
+    test_app_launch.cpp
     test_action_filter_model.cpp
     test_device_registry.cpp
     test_descriptor_writer.cpp
