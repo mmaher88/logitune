@@ -581,7 +581,7 @@ void DeviceSession::handleNotification(const hidpp::Report &report)
         return;
     }
 
-    qCDebug(lcDevice) << "notification: featureIndex=" << Qt::hex << report.featureIndex
+    qCDebug(lcHidppRaw) << "notification: featureIndex=" << Qt::hex << report.featureIndex
                       << "functionId=" << report.functionId;
 
     // HID++ 1.0 DeviceConnection notification from Bolt/Unifying receiver

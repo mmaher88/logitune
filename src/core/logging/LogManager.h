@@ -10,6 +10,7 @@ Q_DECLARE_LOGGING_CATEGORY(lcApp)
 Q_DECLARE_LOGGING_CATEGORY(lcProfile)
 Q_DECLARE_LOGGING_CATEGORY(lcDevice)
 Q_DECLARE_LOGGING_CATEGORY(lcHidpp)
+Q_DECLARE_LOGGING_CATEGORY(lcHidppRaw)
 Q_DECLARE_LOGGING_CATEGORY(lcInput)
 Q_DECLARE_LOGGING_CATEGORY(lcFocus)
 Q_DECLARE_LOGGING_CATEGORY(lcUi)
@@ -46,6 +47,12 @@ public:
     /// Write a pre-formatted line to the log file (thread-safe).
     /// Public so CrashHandler can write directly during signal handling.
     void writeToFile(const QString &formatted);
+
+    /// Whether a message of this type is echoed to stderr. Warnings and above
+    /// always are; debug and info only when stderr is a terminal. Under a
+    /// desktop session stderr lands in the journal, and the log file already
+    /// keeps the full trace.
+    static bool echoesToStderr(QtMsgType type, bool stderrIsTerminal);
 
 private:
     LogManager() = default;

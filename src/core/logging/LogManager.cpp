@@ -3,12 +3,16 @@
 #include <QStandardPaths>
 #include <QTextStream>
 #include <QFileInfo>
+#include <unistd.h>
 
 // Define logging categories — disabled by default except warnings
 Q_LOGGING_CATEGORY(lcApp,     "logitune.app",     QtWarningMsg)
 Q_LOGGING_CATEGORY(lcProfile, "logitune.profile", QtWarningMsg)
 Q_LOGGING_CATEGORY(lcDevice,  "logitune.device",  QtWarningMsg)
 Q_LOGGING_CATEGORY(lcHidpp,   "logitune.hidpp",   QtWarningMsg)
+// Every incoming HID report and notification, one line each. Left out of the debug preset below;
+// enable with QT_LOGGING_RULES="logitune.hidpp.raw.debug=true".
+Q_LOGGING_CATEGORY(lcHidppRaw, "logitune.hidpp.raw", QtWarningMsg)
 Q_LOGGING_CATEGORY(lcInput,   "logitune.input",   QtWarningMsg)
 Q_LOGGING_CATEGORY(lcFocus,   "logitune.focus",   QtWarningMsg)
 Q_LOGGING_CATEGORY(lcUi,      "logitune.ui",      QtWarningMsg)
@@ -123,14 +127,23 @@ void LogManager::messageHandler(QtMsgType type, const QMessageLogContext &ctx, c
     QString formatted = QStringLiteral("[%1] [%2] [%3] %4")
         .arg(timestamp, category.leftJustified(18), QString::fromUtf8(level).leftJustified(5), msg);
 
-    // Always write to stderr
-    fprintf(stderr, "%s\n", qPrintable(formatted));
+    static const bool stderrIsTerminal = isatty(STDERR_FILENO);
+    if (echoesToStderr(type, stderrIsTerminal))
+        fprintf(stderr, "%s\n", qPrintable(formatted));
 
     // Write to file if enabled (or always for warnings+)
     auto &mgr = instance();
     if (mgr.m_enabled || type >= QtWarningMsg) {
         mgr.writeToFile(formatted);
     }
+}
+
+bool LogManager::echoesToStderr(QtMsgType type, bool stderrIsTerminal)
+{
+    // QtInfoMsg sorts after QtFatalMsg in the enum, so compare by name.
+    if (type == QtDebugMsg || type == QtInfoMsg)
+        return stderrIsTerminal;
+    return true;
 }
 
 void LogManager::writeToFile(const QString &formatted)

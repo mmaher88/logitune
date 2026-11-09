@@ -488,10 +488,12 @@ void DeviceManager::probeDevice(const QString &devNode)
         auto bytes = sessionPtr->device()->readReport(0);
         if (bytes.empty())
             return;
-        QString hex;
-        for (size_t i = 0; i < bytes.size() && i < 20; ++i)
-            hex += QString("%1 ").arg(bytes[i], 2, 16, QChar('0'));
-        qCDebug(lcHidpp) << "raw hidraw:" << hex.trimmed();
+        if (lcHidppRaw().isDebugEnabled()) {
+            QString hex;
+            for (size_t i = 0; i < bytes.size() && i < 20; ++i)
+                hex += QString("%1 ").arg(bytes[i], 2, 16, QChar('0'));
+            qCDebug(lcHidppRaw) << "raw hidraw:" << hex.trimmed();
+        }
 
         auto report = hidpp::Report::parse(bytes);
         if (!report)
