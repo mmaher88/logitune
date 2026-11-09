@@ -174,19 +174,25 @@ void KDeDesktop::pollActiveWindow()
 void KDeDesktop::focusChanged(const QString &resourceClass, const QString &title,
                               const QString &desktopFileName)
 {
-    // Resolve to canonical app ID: the .desktop file completeBaseName.
-    // 1. desktopFileName from KWin (most reliable, set by well-behaved apps)
-    // 2. Look up .desktop file by resourceClass match (handles apps like Zoom
-    //    where resourceClass="zoom" but .desktop is "us.zoom.Zoom.desktop")
-    // 3. resourceClass as final fallback
-    QString appId;
-    if (!desktopFileName.isEmpty()) {
-        appId = desktopFileName;
-    } else {
-        appId = resolveDesktopFile(resourceClass);
-    }
+    // Resolve to canonical app ID: the .desktop file completeBaseName, which is
+    // what the "add profile" picker records (runningApplications()).
+    // KWin's desktopFileName is the Wayland app_id and is not always a .desktop
+    // ID: flatpak Chrome reports "google-chrome" but ships
+    // com.google.Chrome.desktop with StartupWMClass=google-chrome.
+    // 1. desktopFileName when it names an installed .desktop file
+    // 2. the .desktop file claiming desktopFileName / resourceClass through
+    //    StartupWMClass or its reverse-DNS tail ("zoom" -> "us.zoom.Zoom")
+    // 3. KWin's own name when no installed .desktop file claims the window
+    const QString kwinId = desktopFileName.isEmpty() ? resourceClass : desktopFileName;
+    QString appId = findDesktopFile(kwinId);
+    if (appId.isEmpty() && kwinId != resourceClass)
+        appId = findDesktopFile(resourceClass);
+    if (appId.isEmpty())
+        appId = kwinId;
 
     if (appId == m_lastWmClass) return;
+    if (appId != kwinId)
+        qCDebug(lcFocus) << "KWin window" << kwinId << "resolved to desktop file" << appId;
     m_lastWmClass = appId;
     emit activeWindowChanged(appId, title);
 }
