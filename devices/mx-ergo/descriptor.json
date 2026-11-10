@@ -1,0 +1,181 @@
+{
+    "$schema": "../schema.json",
+    "controls": [
+        {
+            "buttonIndex": 0,
+            "configurable": false,
+            "controlId": "0x0050",
+            "defaultActionType": "default",
+            "defaultName": "Left click"
+        },
+        {
+            "buttonIndex": 1,
+            "configurable": false,
+            "controlId": "0x0051",
+            "defaultActionType": "default",
+            "defaultName": "Right click"
+        },
+        {
+            "buttonIndex": 2,
+            "configurable": true,
+            "controlId": "0x0052",
+            "defaultActionType": "default",
+            "defaultName": "Middle click"
+        },
+        {
+            "buttonIndex": 3,
+            "configurable": true,
+            "controlId": "0x0053",
+            "defaultActionType": "default",
+            "defaultName": "Back"
+        },
+        {
+            "buttonIndex": 4,
+            "configurable": true,
+            "controlId": "0x0056",
+            "defaultActionType": "default",
+            "defaultName": "Forward"
+        },
+        {
+            "buttonIndex": 5,
+            "configurable": true,
+            "controlId": "0x005B",
+            "defaultActionType": "default",
+            "defaultName": "Tilt left"
+        },
+        {
+            "buttonIndex": 6,
+            "configurable": true,
+            "controlId": "0x005D",
+            "defaultActionType": "default",
+            "defaultName": "Tilt right"
+        },
+        {
+            "buttonIndex": 7,
+            "configurable": true,
+            "controlId": "0x00ED",
+            "defaultActionType": "default",
+            "defaultName": "Precision mode"
+        }
+    ],
+    "defaultGestures": {},
+    "dpi": {
+        "max": 4000,
+        "min": 200,
+        "step": 50
+    },
+    "easySwitchSlots": [
+        {
+            "xPct": 0.533,
+            "yPct": 0.404
+        },
+        {
+            "xPct": 0.533,
+            "yPct": 0.438
+        }
+    ],
+    "features": {
+        "adjustableDpi": true,
+        "angleSnapping": false,
+        "battery": true,
+        "colorLedEffects": false,
+        "crown": false,
+        "extendedDpi": false,
+        "extendedReportRate": false,
+        "forceSensingButton": false,
+        "gestureV2": false,
+        "gkey": false,
+        "hapticFeedback": false,
+        "hiResScrolling": false,
+        "hiResWheel": true,
+        "leftRightSwap": false,
+        "lowResWheel": false,
+        "mkeys": false,
+        "mouseGesture": false,
+        "onboardProfiles": false,
+        "persistentRemappableAction": false,
+        "pointerSpeed": false,
+        "reportRate": false,
+        "reprogControls": true,
+        "rgbEffects": false,
+        "smartShift": false,
+        "smoothScroll": true,
+        "surfaceTuning": false,
+        "thumbWheel": false
+    },
+    "hotspots": {
+        "buttons": [
+            {
+                "buttonIndex": 2,
+                "labelOffsetYPct": -0.08,
+                "side": "right",
+                "xPct": 0.53,
+                "yPct": 0.18
+            },
+            {
+                "buttonIndex": 3,
+                "labelOffsetYPct": 0.105,
+                "side": "left",
+                "xPct": 0.265,
+                "yPct": 0.235
+            },
+            {
+                "buttonIndex": 4,
+                "labelOffsetYPct": -0.115,
+                "side": "left",
+                "xPct": 0.265,
+                "yPct": 0.115
+            },
+            {
+                "buttonIndex": 5,
+                "labelOffsetYPct": -0.013,
+                "side": "left",
+                "xPct": 0.455,
+                "yPct": 0.183
+            },
+            {
+                "buttonIndex": 6,
+                "labelOffsetYPct": 0.09,
+                "side": "right",
+                "xPct": 0.605,
+                "yPct": 0.183
+            },
+            {
+                "buttonIndex": 7,
+                "labelOffsetYPct": 0,
+                "side": "left",
+                "xPct": 0.24,
+                "yPct": 0.553
+            }
+        ],
+        "scroll": [
+            {
+                "buttonIndex": -1,
+                "kind": "scrollwheel",
+                "labelOffsetYPct": 0,
+                "side": "right",
+                "xPct": 0.53,
+                "yPct": 0.18
+            },
+            {
+                "buttonIndex": -3,
+                "kind": "pointer",
+                "labelOffsetYPct": 0,
+                "side": "right",
+                "xPct": 0.11,
+                "yPct": 0.4
+            }
+        ]
+    },
+    "images": {
+        "back": "back.png",
+        "front": "front.png",
+        "side": "side.png"
+    },
+    "name": "MX Ergo",
+    "productIds": [
+        "0xb01d",
+        "0x406f"
+    ],
+    "status": "beta"
+}
