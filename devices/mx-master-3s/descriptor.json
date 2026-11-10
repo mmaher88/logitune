@@ -2,7 +2,7 @@
   "$schema": "../schema.json",
   "name": "MX Master 3S",
   "status": "verified",
-  "productIds": ["0xb034"],
+  "productIds": ["0xb034", "0xb043"],
   "features": {
     "battery": true,
     "adjustableDpi": true,
