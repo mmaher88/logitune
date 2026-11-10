@@ -26,6 +26,26 @@ TEST_F(ProfileOrchestratorFixture, SaveCurrentProfilePersistsButtonAssignments) 
     EXPECT_EQ(reloaded.buttons[3].type, ButtonAction::DpiCycle);
 }
 
+TEST_F(ProfileOrchestratorFixture, SaveCurrentProfilePersistsActionRingEditorState) {
+    attachMockSession();
+    const QVariantList items{
+        QVariantMap{{QStringLiteral("label"), QStringLiteral("Back")},
+                    {QStringLiteral("action"), QStringLiteral("keystroke:Alt+Left")}},
+        QVariantMap{{QStringLiteral("label"), QStringLiteral("Terminal")},
+                    {QStringLiteral("action"), QStringLiteral("app-launch:konsole")}},
+    };
+    ASSERT_TRUE(m_deviceModel->saveRadialMenu(items));
+
+    m_orchestrator->saveCurrentProfile();
+
+    const Profile reloaded = ProfileEngine::loadProfile(
+        m_profilesDir + QStringLiteral("/default.conf"));
+    ASSERT_EQ(reloaded.radialMenu.items.size(), 2);
+    EXPECT_EQ(reloaded.radialMenu.items.at(0).label, QStringLiteral("Back"));
+    EXPECT_EQ(reloaded.radialMenu.items.at(1).action.type, ButtonAction::AppLaunch);
+    EXPECT_EQ(reloaded.radialMenu.items.at(1).action.payload, QStringLiteral("konsole"));
+}
+
 // --- applyProfileToHardware -----------------------------------------------
 
 TEST_F(ProfileOrchestratorFixture, ApplyProfileToHardwareEmitsProfileApplied) {
@@ -128,6 +148,23 @@ TEST_F(ProfileOrchestratorFixture, DisplayProfileChangedPushesToModels) {
     EXPECT_EQ(m_deviceModel->currentDPI(), 2400);
     EXPECT_EQ(m_deviceModel->thumbWheelMode(), QStringLiteral("volume"));
     EXPECT_EQ(m_deviceModel->activeProfileName(), QStringLiteral("test"));
+}
+
+TEST_F(ProfileOrchestratorFixture, DisplayProfileChangedLoadsActionRingEditorState) {
+    attachMockSession();
+    Profile p = cached();
+    p.radialMenu.items = {
+        {QStringLiteral("Copy"), {ButtonAction::Keystroke, QStringLiteral("Ctrl+C")}},
+        {QStringLiteral("Mute"), {ButtonAction::Keystroke, QStringLiteral("Mute")}},
+        {QStringLiteral("Calculator"), {ButtonAction::PresetRef, QStringLiteral("calculator")}},
+    };
+
+    m_orchestrator->onDisplayProfileChanged(QStringLiteral("mock-serial"), p);
+
+    const QVariantList items = m_deviceModel->radialItems();
+    ASSERT_EQ(items.size(), 3);
+    EXPECT_EQ(items.at(2).toMap().value(QStringLiteral("action")).toString(),
+              QStringLiteral("preset:calculator"));
 }
 
 // --- Setup for new device -------------------------------------------------

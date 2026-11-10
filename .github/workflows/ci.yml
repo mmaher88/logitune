@@ -25,12 +25,12 @@ jobs:
           - distro: archlinux
             container: archlinux:latest
             pkg_cache_path: /var/cache/pacman/pkg
-            install: pacman -Syu --noconfirm --needed cmake ninja gcc git pkgconf qt6-base qt6-declarative qt6-svg systemd-libs gtest
+            install: pacman -Syu --noconfirm --needed cmake ninja gcc git pkgconf qt6-base qt6-declarative qt6-svg systemd-libs gtest layer-shell-qt glib2
             run_tests: false
           - distro: fedora-42
             container: fedora:42
             pkg_cache_path: /var/cache/dnf
-            install: dnf install -y --setopt=keepcache=1 cmake ninja-build gcc-c++ git pkgconf-pkg-config qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtsvg-devel qt6-qtshadertools systemd-devel gtest-devel
+            install: dnf install -y --setopt=keepcache=1 cmake ninja-build gcc-c++ git pkgconf-pkg-config qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtsvg-devel qt6-qtshadertools systemd-devel gtest-devel layer-shell-qt-devel glib2
             run_tests: false
           - distro: ubuntu-24.04
             container: ubuntu:24.04
@@ -181,7 +181,11 @@ jobs:
   deb-pkg:
     name: Debian Package
     runs-on: ubuntu-24.04
+    container: debian:trixie
     steps:
+      - name: Install checkout prerequisites
+        run: apt-get update -qq && apt-get install -y git ca-certificates
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -199,8 +203,8 @@ jobs:
       - name: Install dependencies
         run: |
           mkdir -p ~/.cache/apt-archives/partial
-          sudo apt-get update
-          sudo apt-get -o Dir::Cache::archives="$HOME/.cache/apt-archives" install -y \
+          apt-get update
+          apt-get -o Dir::Cache::archives="$HOME/.cache/apt-archives" install -y \
             build-essential cmake ninja-build pkg-config dpkg-dev \
             qt6-base-dev qt6-declarative-dev qt6-svg-dev \
             qt6-tools-dev qt6-tools-dev-tools \
@@ -209,9 +213,9 @@ jobs:
             qml6-module-qtquick-templates qml6-module-qtqml-workerscript \
             qml6-module-qtquick-dialogs \
             qt6-qpa-plugins libqt6opengl6-dev libqt6svg6-dev \
-            libxkbcommon-dev libudev-dev
+            libxkbcommon-dev libudev-dev liblayershellqtinterface-dev libglib2.0-bin
           # Ensure the cache dir is owned by the runner user before save.
-          sudo chown -R "$(id -u):$(id -g)" ~/.cache/apt-archives
+          chown -R "$(id -u):$(id -g)" ~/.cache/apt-archives
 
       - name: Build .deb
         run: bash scripts/package-deb.sh

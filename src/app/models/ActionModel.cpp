@@ -10,6 +10,7 @@ ActionModel::ActionModel(QObject *parent)
         // Device
         { "DPI cycle",             "Step through the device's DPI preset list",  "dpi-cycle",         "",                  "Device" },
         { "Gestures",              "Trigger gesture recognition",                "gesture-trigger",   "",                  "Device" },
+        { "Action ring",           "Open the circular action overlay",            "radial-menu",       "",                  "Device" },
         { "Shift wheel mode",      "Toggle scroll wheel ratchet/freespin",       "smartshift-toggle", "",                  "Device" },
 
         // Edit
@@ -125,6 +126,8 @@ QString ActionModel::buttonActionToName(const ButtonAction &ba) const
         return QString();
     if (ba.type == ButtonAction::GestureTrigger)
         return QStringLiteral("Gestures");
+    if (ba.type == ButtonAction::RadialMenu)
+        return QStringLiteral("Action ring");
     if (ba.type == ButtonAction::PresetRef) {
         for (const auto &a : m_actions) {
             if (a.actionType == QStringLiteral("preset") && a.payload == ba.payload)
@@ -148,6 +151,8 @@ ButtonAction ActionModel::buttonEntryToAction(const QString &actionType, const Q
         return {ButtonAction::Default, {}};
     if (actionType == QStringLiteral("gesture-trigger"))
         return {ButtonAction::GestureTrigger, {}};
+    if (actionType == QStringLiteral("radial-menu"))
+        return {ButtonAction::RadialMenu, {}};
     if (actionType == QStringLiteral("smartshift-toggle"))
         return {ButtonAction::SmartShiftToggle, {}};
     if (actionType == QStringLiteral("dpi-cycle"))

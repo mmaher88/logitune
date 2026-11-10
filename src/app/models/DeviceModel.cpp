@@ -791,6 +791,48 @@ void DeviceModel::setThumbWheelInvert(bool invert)
     emit thumbWheelInvertChangeRequested(invert);
 }
 
+QVariantList DeviceModel::radialItems() const
+{
+    QVariantList result;
+    result.reserve(m_radialMenu.items.size());
+    for (const RadialMenuItem &item : m_radialMenu.items) {
+        result.append(QVariantMap{
+            {QStringLiteral("label"), item.label},
+            {QStringLiteral("action"), item.action.serialize()},
+        });
+    }
+    return result;
+}
+
+void DeviceModel::loadRadialMenu(const RadialMenuConfig &config)
+{
+    m_radialMenu = config;
+    emit radialMenuChanged();
+}
+
+bool DeviceModel::saveRadialMenu(const QVariantList &items)
+{
+    RadialMenuConfig config;
+    config.items.clear();
+    config.items.reserve(items.size());
+
+    for (const QVariant &value : items) {
+        const QVariantMap map = value.toMap();
+        const QString label = map.value(QStringLiteral("label")).toString().trimmed();
+        const QString serialized = map.value(QStringLiteral("action")).toString();
+        const ButtonAction action = ButtonAction::parse(serialized);
+        if (label.isEmpty() || action.serialize() != serialized
+            || !RadialMenuConfig::validAction(action))
+            return false;
+        config.items.append({label, action});
+    }
+
+    if (!config.isValid()) return false;
+    loadRadialMenu(config);
+    emit userRadialMenuChanged();
+    return true;
+}
+
 void DeviceModel::setGestureAction(const QString &direction,
                                    const QString &actionName,
                                    const QString &actionType,

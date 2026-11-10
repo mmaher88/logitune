@@ -2,19 +2,187 @@
 #include "logging/LogManager.h"
 #include "actions/ActionPresetRegistry.h"
 #include <optional>
+#include <algorithm>
+#include <memory>
+#include <QCoreApplication>
+#include <QCursor>
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
 #include <QDBusReply>
 #include <QDir>
 #include <QFile>
+#include <QGuiApplication>
 #include <QJsonObject>
 #include <QProcessEnvironment>
+#include <QScreen>
+#include <QTemporaryFile>
 
 namespace logitune {
+namespace {
+
+QDBusMessage scriptingCall(const QString &method)
+{
+    return QDBusMessage::createMethodCall(QStringLiteral("org.kde.KWin"),
+                                          QStringLiteral("/Scripting"),
+                                          QStringLiteral("org.kde.kwin.Scripting"),
+                                          method);
+}
+
+void unloadScript(const QString &name)
+{
+    if (name.isEmpty()) return;
+    QDBusMessage message = scriptingCall(QStringLiteral("unloadScript"));
+    message << name;
+    QDBusConnection::sessionBus().asyncCall(message);
+}
+
+} // namespace
 
 KDeDesktop::KDeDesktop(QObject *parent)
     : LinuxDesktopBase(parent)
 {
+    static int instance = 0;
+    m_actionRingObjectPath = QStringLiteral("/Logitune/KDeDesktop%1").arg(++instance);
+    m_actionRingTimeout.setSingleShot(true);
+    m_actionRingTimeout.setInterval(200);
+    connect(&m_actionRingTimeout, &QTimer::timeout,
+            this, &KDeDesktop::actionRingRequestFailed);
+}
+
+KDeDesktop::~KDeDesktop()
+{
+    if (m_actionRingRequest >= 0)
+        cancelActionRingPlacement(m_actionRingRequest);
+    if (m_actionRingObjectRegistered)
+        QDBusConnection::sessionBus().unregisterObject(m_actionRingObjectPath);
+}
+
+QPoint KDeDesktop::actionRingPlacement(const QPoint &cursor, const QRect &available,
+                                       const QSize &windowSize, const QPoint &anchor)
+{
+    const QPoint desired = cursor - anchor;
+    const int maxX = std::max(available.left(), available.x() + available.width()
+                                                    - windowSize.width());
+    const int maxY = std::max(available.top(), available.y() + available.height()
+                                                   - windowSize.height());
+    return {std::clamp(desired.x(), available.left(), maxX),
+            std::clamp(desired.y(), available.top(), maxY)};
+}
+
+void KDeDesktop::cancelActionRingPlacement(int requestId)
+{
+    if (requestId != m_actionRingRequest) return;
+    m_actionRingTimeout.stop();
+    m_actionRingRequest = -1;
+    unloadScript(m_actionRingScriptName);
+    m_actionRingScriptName.clear();
+}
+
+void KDeDesktop::actionRingRequestFailed()
+{
+    if (m_actionRingRequest < 0) return;
+    const int requestId = m_actionRingRequest;
+    cancelActionRingPlacement(requestId);
+    emit actionRingPlacementFailed(requestId);
+}
+
+void KDeDesktop::actionRingCursorPosition(int requestId, int x, int y)
+{
+    if (requestId != m_actionRingRequest) return;
+    const QPoint cursor(x, y);
+    QScreen *screen = QGuiApplication::screenAt(cursor);
+    if (!screen) screen = QGuiApplication::primaryScreen();
+    if (!screen) {
+        actionRingRequestFailed();
+        return;
+    }
+    const QRect geometry = screen->availableGeometry();
+    const QPoint position = actionRingPlacement(cursor, geometry, m_actionRingSize,
+                                                m_actionRingAnchor);
+    cancelActionRingPlacement(requestId);
+    emit actionRingPlacementReady(requestId, position, geometry, cursor);
+}
+
+void KDeDesktop::requestActionRingPlacement(int requestId, const QSize &windowSize,
+                                            const QPoint &anchor)
+{
+    if (m_actionRingRequest >= 0)
+        cancelActionRingPlacement(m_actionRingRequest);
+    m_actionRingRequest = requestId;
+    m_actionRingSize = windowSize;
+    m_actionRingAnchor = anchor;
+
+    if (!QGuiApplication::platformName().startsWith(QStringLiteral("wayland"))) {
+        const QPoint cursor = QCursor::pos();
+        actionRingCursorPosition(requestId, cursor.x(), cursor.y());
+        return;
+    }
+
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    if (!m_actionRingObjectRegistered) {
+        m_actionRingObjectRegistered = bus.registerObject(
+            m_actionRingObjectPath, this, QDBusConnection::ExportAllSlots);
+    }
+    if (!m_actionRingObjectRegistered) {
+        actionRingRequestFailed();
+        return;
+    }
+
+    m_actionRingScriptName = QStringLiteral("logitune_action_ring_%1_%2_%3")
+        .arg(QCoreApplication::applicationPid())
+        .arg(m_actionRingObjectPath.section('/', -1))
+        .arg(requestId);
+    const QString scriptName = m_actionRingScriptName;
+    auto script = std::make_shared<QTemporaryFile>(
+        QDir::tempPath() + QStringLiteral("/logitune-action-ring-XXXXXX.js"));
+    if (!script->open()) {
+        actionRingRequestFailed();
+        return;
+    }
+    const QByteArray source = QStringLiteral(
+        "var p = workspace.cursorPos;\n"
+        "callDBus('%1', '%2', 'com.logitune.KDeDesktop', "
+        "'actionRingCursorPosition', %3, p.x, p.y);\n")
+        .arg(bus.baseService(), m_actionRingObjectPath)
+        .arg(requestId)
+        .toUtf8();
+    if (script->write(source) != source.size() || !script->flush()) {
+        actionRingRequestFailed();
+        return;
+    }
+
+    QDBusMessage load = scriptingCall(QStringLiteral("loadScript"));
+    load << script->fileName() << scriptName;
+    m_actionRingTimeout.start();
+    auto *watcher = new QDBusPendingCallWatcher(bus.asyncCall(load, 200), this);
+    connect(watcher, &QDBusPendingCallWatcher::finished, watcher,
+            [this, watcher, requestId, scriptName, script]() {
+        const QDBusPendingReply<int> reply = *watcher;
+        watcher->deleteLater();
+        if (requestId != m_actionRingRequest) {
+            unloadScript(scriptName);
+            return;
+        }
+        if (reply.isError() || reply.value() < 0) {
+            actionRingRequestFailed();
+            return;
+        }
+        QDBusMessage run = QDBusMessage::createMethodCall(
+            QStringLiteral("org.kde.KWin"),
+            QStringLiteral("/Scripting/Script%1").arg(reply.value()),
+            QStringLiteral("org.kde.kwin.Script"), QStringLiteral("run"));
+        auto *running = new QDBusPendingCallWatcher(
+            QDBusConnection::sessionBus().asyncCall(run, 200), this);
+        connect(running, &QDBusPendingCallWatcher::finished, running,
+                [this, running, requestId, script]() {
+            const QDBusPendingReply<> result = *running;
+            running->deleteLater();
+            if (requestId == m_actionRingRequest && result.isError())
+                actionRingRequestFailed();
+        });
+    });
 }
 
 void KDeDesktop::start()

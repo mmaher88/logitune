@@ -1,5 +1,6 @@
 #pragma once
 #include "ButtonAction.h"
+#include "RadialMenuConfig.h"
 #include <QObject>
 #include <QString>
 #include <QMap>
@@ -23,6 +24,7 @@ struct Profile {
     std::map<QString, ButtonAction> gestures;  // "up","down","left","right","click"
     QString thumbWheelMode = "scroll";  // "scroll", "zoom", "volume", "none"
     bool thumbWheelInvert = false;
+    RadialMenuConfig radialMenu;
 };
 
 struct ProfileDelta {
