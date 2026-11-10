@@ -68,6 +68,7 @@ public:
     ProfileModel   *profileModel()   { return &m_profileModel; }
     SettingsModel  *settingsModel()  { return &m_settingsModel; }
     EditorModel    *editorModel() const { return m_editorModel.get(); }
+    RadialMenuController *radialMenu() { return m_buttonDispatcher.radialMenu(); }
 
 private slots:
     void onPhysicalDeviceAdded(PhysicalDevice *device);

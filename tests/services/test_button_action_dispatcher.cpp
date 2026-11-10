@@ -247,6 +247,22 @@ TEST_F(ButtonActionDispatcherFixture, KeystrokeActionInjectsViaExecutor) {
     EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Ctrl+C"));
 }
 
+TEST_F(ButtonActionDispatcherFixture, RadialMenuReleaseLeavesOverlayOpenAndActivatesItem) {
+    attachMockSession();
+    m_desktop->setSupportsActionRing(true);
+    setProfileButton(hwProfile(), 3, {ButtonAction::RadialMenu, {}});
+
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, true);
+    ASSERT_TRUE(m_dispatcher->radialMenu()->visible());
+
+    m_dispatcher->onDivertedButtonPressed(m_physical, kBackCid, false);
+    EXPECT_TRUE(m_dispatcher->radialMenu()->visible());
+
+    m_dispatcher->radialMenu()->activate(0);
+    EXPECT_FALSE(m_dispatcher->radialMenu()->visible());
+    EXPECT_EQ(m_injector->lastArg("injectKeystroke"), QStringLiteral("Ctrl+C"));
+}
+
 TEST_F(ButtonActionDispatcherFixture, MediaActionInjectsViaExecutor) {
     attachMockSession();
     setProfileButton(hwProfile(), 4,

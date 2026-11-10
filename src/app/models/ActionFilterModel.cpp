@@ -42,7 +42,8 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
     // stay in the list; the dispatcher currently no-ops on them and
     // can be extended later to handle them as gesture actions.
     if (m_gestureMode) {
-        if (type == QLatin1String("gesture-trigger")) return false;
+        if (type == QLatin1String("gesture-trigger")
+            || type == QLatin1String("radial-menu")) return false;
         if (type == QLatin1String("none")) return false;
     }
 
@@ -58,6 +59,9 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
         // Second gate: live resolution (catches empty user bindings on GNOME etc.)
         return m_desktop->resolveNamedAction(id).has_value();
     }
+
+    if (type == QLatin1String("radial-menu"))
+        return m_desktop && m_desktop->supportsActionRing();
 
     // Capability filtering (unchanged): hide actions whose required device
     // capability is absent on the current device.

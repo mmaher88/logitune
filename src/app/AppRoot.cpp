@@ -283,6 +283,8 @@ void AppRoot::onPhysicalDeviceAdded(PhysicalDevice *device)
             [this, device](int delta) {
                 m_buttonDispatcher.onThumbWheelRotation(device, delta);
             });
+    connect(device, &PhysicalDevice::stateChanged, &m_buttonDispatcher,
+            [this, device]() { m_buttonDispatcher.onDeviceStateChanged(device); });
 
     // Re-apply profile whenever any transport finishes (re-)enumeration.
     // PhysicalDevice emits this from its setupComplete fan-in, which
