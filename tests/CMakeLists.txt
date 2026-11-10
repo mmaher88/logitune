@@ -4,6 +4,8 @@ include(GoogleTest)
 add_executable(logitune-tests
     test_main.cpp
     test_smoke.cpp
+    test_single_instance.cpp
+    test_main_window.cpp
     test_transport.cpp
     test_feature_dispatcher.cpp
     test_capability_dispatch.cpp
@@ -61,7 +63,9 @@ add_executable(logitune-tests
 )
 target_include_directories(logitune-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(logitune-tests PRIVATE SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
-target_link_libraries(logitune-tests PRIVATE logitune-core logitune-app-lib Qt6::Test Qt6::Widgets GTest::gtest)
+target_compile_definitions(logitune-tests PRIVATE LOGITUNE_BINARY="$<TARGET_FILE:logitune>")
+add_dependencies(logitune-tests logitune)
+target_link_libraries(logitune-tests PRIVATE logitune-core logitune-app-lib logitune-app-libplugin Qt6::Test Qt6::Widgets GTest::gtest)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/logitune)
 file(CREATE_LINK ${CMAKE_SOURCE_DIR}/devices ${CMAKE_BINARY_DIR}/logitune/devices SYMBOLIC)
 

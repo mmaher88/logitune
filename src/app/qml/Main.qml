@@ -74,11 +74,6 @@ ApplicationWindow {
     color: Theme.background
     flags: Qt.FramelessWindowHint | Qt.Window
 
-    onClosing: function(close) {
-        close.accepted = false
-        hide()
-    }
-
     // ── Custom title bar ────────────────────────────────────────────────
     Rectangle {
         id: titleBar
@@ -268,7 +263,10 @@ ApplicationWindow {
         }
     }
     Component { id: deviceViewComponent; DeviceView {} }
-    Component { id: appSettingsComponent; AppSettingsView {} }
+    Component {
+        id: appSettingsComponent
+        AppSettingsView { onQuitRequested: Qt.quit() }
+    }
 
     // Permission error overlay
     Rectangle {

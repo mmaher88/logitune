@@ -15,6 +15,8 @@ add_library(logitune-app-lib STATIC
     dialogs/GitHubIssueBuilder.cpp
     dialogs/CrashReportDialog.cpp
     TrayManager.cpp
+    SingleInstance.cpp
+    MainWindowController.cpp
 )
 
 target_include_directories(logitune-app-lib PUBLIC
@@ -23,7 +25,7 @@ target_include_directories(logitune-app-lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/services
 )
 
-target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widgets)
+target_link_libraries(logitune-app-lib PUBLIC logitune-core Qt6::Quick Qt6::Widgets Qt6::Network)
 target_compile_definitions(logitune-app-lib PUBLIC
     PROJECT_VERSION="${PROJECT_VERSION}"
     PROJECT_VERSION_FULL="${LOGITUNE_DISPLAY_VERSION}"

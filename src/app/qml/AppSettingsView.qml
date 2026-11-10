@@ -5,6 +5,7 @@ import Logitune
 
 Item {
     id: root
+    signal quitRequested()
 
     RowLayout {
         id: header
@@ -42,6 +43,30 @@ Item {
         }
 
         Item { Layout.fillWidth: true }
+
+        Rectangle {
+            Layout.preferredWidth: 140
+            Layout.preferredHeight: 40
+            radius: 4
+            color: quitHover.hovered ? Theme.hoverBg : "transparent"
+            border.color: Theme.border; border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "Quit Logitune"
+                font.pixelSize: 13; color: Theme.textSecondary
+            }
+
+            HoverHandler { id: quitHover }
+            MouseArea {
+                objectName: "quitButton"
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.quitRequested()
+            }
+        }
+
+        Item { width: 16 }
     }
 
     Column {
