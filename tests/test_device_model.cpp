@@ -10,6 +10,7 @@
 #include "PhysicalDevice.h"
 #include "hidpp/HidrawDevice.h"
 #include "helpers/TestFixtures.h"
+#include "mocks/MockDevice.h"
 
 using logitune::ButtonAction;
 using logitune::DeviceModel;
@@ -372,6 +373,33 @@ TEST_F(DeviceModelWithDeviceTest, DPIHardwareChangeEmitsProperty) {
     emit m_pd->currentDPIChanged();
 
     EXPECT_EQ(spy.count(), 1);
+}
+
+// The card shows the variant the mouse reports (issue #106): its name, and
+// its images where it has them, with the descriptor filling in the rest.
+TEST_F(DeviceModelWithDeviceTest, NameAndImagesFollowTheDeviceVariant) {
+    logitune::test::MockDevice dev;
+    dev.m_deviceName = QStringLiteral("Mock Mouse");
+    dev.m_frontImagePath = QStringLiteral("/base/front.png");
+    dev.m_sideImagePath = QStringLiteral("/base/side.png");
+    dev.m_backImagePath = QStringLiteral("/base/back.png");
+    logitune::DeviceVariant graphite;
+    graphite.extendedModelId = 7;
+    graphite.name = QStringLiteral("Mock Mouse Graphite");
+    graphite.frontImagePath = QStringLiteral("/graphite/front.png");
+    graphite.backImagePath = QStringLiteral("/graphite/back.png");
+    dev.m_variants = { graphite };
+
+    m_session->applyDescriptor(&dev, 7, QString());
+
+    EXPECT_EQ(model.deviceName(), QStringLiteral("Mock Mouse Graphite"));
+    EXPECT_EQ(model.frontImage(), QStringLiteral("file:///graphite/front.png"));
+    EXPECT_EQ(model.sideImage(), QStringLiteral("file:///base/side.png"));
+    EXPECT_EQ(model.backImage(), QStringLiteral("file:///graphite/back.png"));
+    EXPECT_EQ(model.data(model.index(0), DeviceModel::FrontImageRole).toString(),
+              QStringLiteral("file:///graphite/front.png"));
+
+    m_session->applyDescriptor(nullptr, std::nullopt, QString());
 }
 
 TEST_F(DeviceModelWithDeviceTest, SetDisplayValuesEmitsPerPropertySignals) {

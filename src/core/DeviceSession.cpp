@@ -3,6 +3,7 @@
 #include "interfaces/IDevice.h"
 #include "hidpp/features/Battery.h"
 #include "hidpp/features/DeviceName.h"
+#include "hidpp/features/DeviceInfo.h"
 #include "hidpp/features/AdjustableDPI.h"
 #include "hidpp/features/SmartShift.h"
 #include "hidpp/features/HiResWheel.h"
@@ -108,6 +109,31 @@ const IDevice *DeviceSession::resolveDescriptor(const DeviceRegistry *registry,
     return registry->findByName(name);
 }
 
+std::optional<DeviceVariant> DeviceSession::resolveVariant(const IDevice *descriptor,
+                                                           std::optional<uint8_t> extendedModelId)
+{
+    if (!descriptor || !extendedModelId)
+        return std::nullopt;
+    for (const DeviceVariant &v : descriptor->variants()) {
+        if (v.extendedModelId == *extendedModelId)
+            return v;
+    }
+    return std::nullopt;
+}
+
+void DeviceSession::applyDescriptor(const IDevice *descriptor,
+                                    std::optional<uint8_t> extendedModelId,
+                                    const QString &reportedName)
+{
+    m_activeDevice = descriptor;
+    m_extendedModelId = extendedModelId;
+    m_variant = resolveVariant(descriptor, extendedModelId);
+    if (m_variant && !m_variant->name.isEmpty())
+        m_deviceName = m_variant->name;
+    else
+        m_deviceName = descriptor ? descriptor->deviceName() : reportedName;
+}
+
 // ---------------------------------------------------------------------------
 // Construction / destruction
 // ---------------------------------------------------------------------------
@@ -203,9 +229,11 @@ void DeviceSession::enumerateAndSetup()
     if (name.isEmpty())
         name = QStringLiteral("Logitech Device");
 
-    // Read serial number and firmware version from DeviceInfo (0x0003).
+    // Read serial number, firmware version and extended model ID from
+    // DeviceInfo (0x0003).
     QString serial;
     QString firmwareVersion;
+    std::optional<uint8_t> extendedModelId;
     qCDebug(lcDevice) << "hasDeviceInfo:" << m_features->hasFeature(hidpp::FeatureId::DeviceInfo)
                       << "hasFeatureSet:" << m_features->hasFeature(hidpp::FeatureId::FeatureSet);
     if (!m_features->hasFeature(hidpp::FeatureId::DeviceInfo)) {
@@ -230,9 +258,21 @@ void DeviceSession::enumerateAndSetup()
         }
     }
     if (m_features->hasFeature(hidpp::FeatureId::DeviceInfo)) {
-        auto countResp = m_features->call(m_transport.get(), m_deviceIndex,
-                                           hidpp::FeatureId::DeviceInfo, 0x00);
-        int entityCount = countResp.has_value() ? countResp->params[0] : 3;
+        auto infoResp = m_features->call(m_transport.get(), m_deviceIndex,
+                                          hidpp::FeatureId::DeviceInfo,
+                                          hidpp::features::DeviceInfo::kFnGetDeviceInfo);
+        int entityCount = 3;
+        if (infoResp.has_value()) {
+            const auto ids = hidpp::features::DeviceInfo::parseDeviceInfo(*infoResp);
+            entityCount = ids.entityCount;
+            extendedModelId = ids.extendedModelId;
+            qCDebug(lcDevice).nospace().noquote()
+                << "DeviceInfo: transports=0x" << Qt::hex << ids.transports
+                << " modelIds=" << ids.modelIds[0] << "," << ids.modelIds[1]
+                << "," << ids.modelIds[2] << Qt::dec << " extendedModelId="
+                << (extendedModelId ? QString::number(*extendedModelId)
+                                    : QStringLiteral("none"));
+        }
 
         for (int entity = 0; entity < entityCount; ++entity) {
             uint8_t entityParam[1] = {static_cast<uint8_t>(entity)};
@@ -261,12 +301,12 @@ void DeviceSession::enumerateAndSetup()
                 firmwareVersion = ver;
         }
 
-        auto infoResp = m_features->call(m_transport.get(), m_deviceIndex,
-                                          hidpp::FeatureId::DeviceInfo, 0x02);
-        if (infoResp.has_value()) {
+        auto serialResp = m_features->call(m_transport.get(), m_deviceIndex,
+                                            hidpp::FeatureId::DeviceInfo, 0x02);
+        if (serialResp.has_value()) {
             QByteArray unitIdBytes;
-            for (int i = 0; i < infoResp->paramLength; ++i) {
-                char c = static_cast<char>(infoResp->params[i]);
+            for (int i = 0; i < serialResp->paramLength; ++i) {
+                char c = static_cast<char>(serialResp->params[i]);
                 if (!c) break;
                 unitIdBytes += c;
             }
@@ -389,10 +429,14 @@ void DeviceSession::enumerateAndSetup()
             qCWarning(lcDevice) << "could not read WPID for receiver slot"
                                 << static_cast<int>(m_deviceIndex) << "- matching by name only";
     }
-    m_activeDevice = resolveDescriptor(m_registry, hidrawPid, receiverWpid, name);
-    if (m_activeDevice)
+    applyDescriptor(resolveDescriptor(m_registry, hidrawPid, receiverWpid, name),
+                    extendedModelId, name);
+    if (m_activeDevice) {
         qCDebug(lcDevice) << "matched device descriptor:" << m_activeDevice->deviceName();
-    else {
+        if (m_variant)
+            qCDebug(lcDevice) << "variant for extended model"
+                              << static_cast<int>(*m_extendedModelId) << ":" << m_deviceName;
+    } else {
         const uint16_t lookupPid = receiverWpid.value_or(hidrawPid);
         qCDebug(lcDevice) << "no device descriptor found for PID"
                           << Qt::hex << lookupPid << Qt::dec << "name:" << name;
@@ -463,7 +507,6 @@ void DeviceSession::enumerateAndSetup()
     m_currentHost = currentHost;
     m_hostCount = hostCount;
 
-    m_deviceName     = m_activeDevice ? m_activeDevice->deviceName() : name;
     m_deviceSerial   = serial;
     m_firmwareVersion = firmwareVersion;
     m_deviceVid      = m_device->info().vendorId;
@@ -515,8 +558,7 @@ void DeviceSession::enumerateAndSetup()
 
 void DeviceSession::applySimulation(const IDevice *dev, const QString &fakeSerial)
 {
-    m_activeDevice = dev;
-    m_deviceName = dev ? dev->deviceName() : QStringLiteral("Simulated");
+    applyDescriptor(dev, std::nullopt, QStringLiteral("Simulated"));
     m_deviceSerial = fakeSerial;
     m_connected = true;
 
@@ -547,6 +589,8 @@ void DeviceSession::disconnectCleanup()
         m_commandProcessor.reset();
     }
     m_activeDevice = nullptr;
+    m_extendedModelId.reset();
+    m_variant.reset();
     m_batteryDispatch.reset();
     m_smartShiftDispatch.reset();
     m_reprogControlsDispatch.reset();
@@ -756,6 +800,28 @@ hidpp::Transport *DeviceSession::transport() const { return m_transport.get(); }
 uint8_t DeviceSession::deviceIndex() const { return m_deviceIndex; }
 hidpp::HidrawDevice *DeviceSession::device() const { return m_device.get(); }
 QString DeviceSession::deviceSerial() const { return m_deviceSerial; }
+std::optional<uint8_t> DeviceSession::extendedModelId() const { return m_extendedModelId; }
+
+QString DeviceSession::frontImagePath() const
+{
+    if (m_variant && !m_variant->frontImagePath.isEmpty())
+        return m_variant->frontImagePath;
+    return m_activeDevice ? m_activeDevice->frontImagePath() : QString();
+}
+
+QString DeviceSession::sideImagePath() const
+{
+    if (m_variant && !m_variant->sideImagePath.isEmpty())
+        return m_variant->sideImagePath;
+    return m_activeDevice ? m_activeDevice->sideImagePath() : QString();
+}
+
+QString DeviceSession::backImagePath() const
+{
+    if (m_variant && !m_variant->backImagePath.isEmpty())
+        return m_variant->backImagePath;
+    return m_activeDevice ? m_activeDevice->backImagePath() : QString();
+}
 QString DeviceSession::firmwareVersion() const { return m_firmwareVersion; }
 uint16_t DeviceSession::deviceVid() const { return m_deviceVid; }
 uint16_t DeviceSession::devicePid() const { return m_devicePid; }

@@ -8,6 +8,8 @@
 #include <QDir>
 #include <QFileInfo>
 
+#include <algorithm>
+
 namespace logitune {
 
 bool JsonDevice::matchesPid(uint16_t pid) const
@@ -116,6 +118,41 @@ static QList<HotspotDescriptor> parseHotspots(const QJsonArray& arr)
         hd.labelOffsetYPct = obj.value(QStringLiteral("labelOffsetYPct")).toDouble(0.0);
         hd.kind = obj.value(QStringLiteral("kind")).toString();
         result.append(hd);
+    }
+    return result;
+}
+
+static QList<DeviceVariant> parseVariants(const QJsonArray& arr, const QDir& dir)
+{
+    QList<DeviceVariant> result;
+    for (const auto& val : arr) {
+        const QJsonObject obj = val.toObject();
+        const QJsonValue idVal = obj.value(QStringLiteral("extendedModel"));
+        const int id = idVal.toInt(-1);
+        if (!idVal.isDouble() || id < 0 || id > 0xFF) {
+            qCWarning(lcDevice) << "JsonDevice: variant needs an extendedModel of 0-255 in"
+                                << dir.absolutePath() << ", dropped:" << obj;
+            continue;
+        }
+        const auto sameId = [id](const DeviceVariant& v) { return v.extendedModelId == id; };
+        if (std::any_of(result.cbegin(), result.cend(), sameId)) {
+            qCWarning(lcDevice) << "JsonDevice: duplicate variant extendedModel" << id
+                                << "in" << dir.absolutePath() << ", dropped";
+            continue;
+        }
+
+        DeviceVariant v;
+        v.extendedModelId = static_cast<uint8_t>(id);
+        v.name = obj.value(QStringLiteral("name")).toString();
+        const QJsonObject images = obj.value(QStringLiteral("images")).toObject();
+        const auto imagePath = [&](const QString& key) {
+            const QString rel = images.value(key).toString();
+            return rel.isEmpty() ? QString() : dir.absoluteFilePath(rel);
+        };
+        v.frontImagePath = imagePath(QStringLiteral("front"));
+        v.sideImagePath  = imagePath(QStringLiteral("side"));
+        v.backImagePath  = imagePath(QStringLiteral("back"));
+        result.append(v);
     }
     return result;
 }
@@ -237,6 +274,8 @@ bool JsonDevice::parseFromObject(const QJsonObject& root, const QString& dirPath
     m_defaultGestures = parseDefaultGestures(
         root.value(QStringLiteral("defaultGestures")).toObject());
 
+    m_variants = parseVariants(root.value(QStringLiteral("variants")).toArray(), dir);
+
     const bool strictGate = strict && (m_status == Status::Verified);
 
     if (strict && m_name.isEmpty()) {
@@ -290,6 +329,7 @@ bool JsonDevice::refresh()
     m_scrollHotspots.clear();
     m_easySwitchSlots.clear();
     m_defaultGestures.clear();
+    m_variants.clear();
     m_frontImage.clear();
     m_sideImage.clear();
     m_backImage.clear();
@@ -315,6 +355,7 @@ bool JsonDevice::refreshFromObject(const QJsonObject &root)
     m_scrollHotspots.clear();
     m_easySwitchSlots.clear();
     m_defaultGestures.clear();
+    m_variants.clear();
     m_frontImage.clear();
     m_sideImage.clear();
     m_backImage.clear();

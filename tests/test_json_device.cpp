@@ -543,3 +543,99 @@ TEST(JsonDevice, OldStatusStringsStillParse) {
     ASSERT_NE(dev, nullptr);
     EXPECT_EQ(dev->status(), logitune::JsonDevice::Status::Verified);
 }
+
+// ---------------------------------------------------------------------------
+// Variants (models sharing PIDs, told apart by the extended model ID)
+// ---------------------------------------------------------------------------
+
+static QJsonObject makeVariant(int extendedModel, const QString &name = QString())
+{
+    QJsonObject v{{QStringLiteral("extendedModel"), extendedModel}};
+    if (!name.isEmpty())
+        v[QStringLiteral("name")] = name;
+    return v;
+}
+
+TEST(JsonDevice, ParsesVariants) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    auto root = makeMinimalVerified();
+    auto mac = makeVariant(3, QStringLiteral("Test Device for Mac"));
+    mac[QStringLiteral("images")] = QJsonObject{
+        {QStringLiteral("front"), QStringLiteral("mac_front.png")},
+    };
+    root[QStringLiteral("variants")] = QJsonArray{ mac, makeVariant(4) };
+    writeJson(tmp.path(), root);
+    writeDummyImage(tmp.path(), QStringLiteral("front.png"));
+
+    auto dev = JsonDevice::load(tmp.path());
+    ASSERT_NE(dev, nullptr);
+    const auto variants = dev->variants();
+    ASSERT_EQ(variants.size(), 2);
+
+    EXPECT_EQ(variants[0].extendedModelId, 3);
+    EXPECT_EQ(variants[0].name, QStringLiteral("Test Device for Mac"));
+    EXPECT_TRUE(QDir::isAbsolutePath(variants[0].frontImagePath));
+    EXPECT_TRUE(variants[0].frontImagePath.endsWith(QStringLiteral("/mac_front.png")));
+    EXPECT_TRUE(variants[0].sideImagePath.isEmpty());
+    EXPECT_TRUE(variants[0].backImagePath.isEmpty());
+
+    EXPECT_EQ(variants[1].extendedModelId, 4);
+    EXPECT_TRUE(variants[1].name.isEmpty());
+}
+
+TEST(JsonDevice, VariantsEmptyWhenAbsent) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    writeJson(tmp.path(), makeMinimalVerified());
+    writeDummyImage(tmp.path(), QStringLiteral("front.png"));
+    auto dev = JsonDevice::load(tmp.path());
+    ASSERT_NE(dev, nullptr);
+    EXPECT_TRUE(dev->variants().isEmpty());
+}
+
+// A bad entry is dropped on its own; the descriptor still loads.
+TEST(JsonDevice, SkipsInvalidAndDuplicateVariants) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    auto root = makeMinimalVerified();
+    root[QStringLiteral("variants")] = QJsonArray{
+        QJsonObject{{QStringLiteral("name"), QStringLiteral("No ID")}},
+        makeVariant(256, QStringLiteral("Too big")),
+        makeVariant(-1, QStringLiteral("Negative")),
+        QJsonObject{{QStringLiteral("extendedModel"), QStringLiteral("3")}},
+        makeVariant(3, QStringLiteral("First")),
+        makeVariant(3, QStringLiteral("Duplicate")),
+    };
+    writeJson(tmp.path(), root);
+    writeDummyImage(tmp.path(), QStringLiteral("front.png"));
+
+    auto dev = JsonDevice::load(tmp.path());
+    ASSERT_NE(dev, nullptr);
+    const auto variants = dev->variants();
+    ASSERT_EQ(variants.size(), 1);
+    EXPECT_EQ(variants[0].extendedModelId, 3);
+    EXPECT_EQ(variants[0].name, QStringLiteral("First"));
+}
+
+TEST(JsonDevice, RefreshDropsRemovedVariants) {
+    QTemporaryDir tmp;
+    ASSERT_TRUE(tmp.isValid());
+    auto root = makeMinimalVerified();
+    root[QStringLiteral("variants")] = QJsonArray{ makeVariant(3, QStringLiteral("Mac")) };
+    writeJson(tmp.path(), root);
+    writeDummyImage(tmp.path(), QStringLiteral("front.png"));
+    auto dev = JsonDevice::load(tmp.path());
+    ASSERT_NE(dev, nullptr);
+    ASSERT_EQ(dev->variants().size(), 1);
+
+    root.remove(QStringLiteral("variants"));
+    writeJson(tmp.path(), root);
+    ASSERT_TRUE(dev->refresh());
+    EXPECT_TRUE(dev->variants().isEmpty());
+
+    root[QStringLiteral("variants")] = QJsonArray{ makeVariant(4, QStringLiteral("Mac")) };
+    ASSERT_TRUE(dev->refreshFromObject(root));
+    ASSERT_EQ(dev->variants().size(), 1);
+    EXPECT_EQ(dev->variants()[0].extendedModelId, 4);
+}

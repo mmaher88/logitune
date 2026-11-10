@@ -59,6 +59,9 @@
     ]
   },
   "images": { "front": "front.png", "side": "side.png", "back": "back.png" },
+  "variants": [
+    { "extendedModel": 3, "name": "MX Master 3 for Mac" }
+  ],
   "easySwitchSlots": [
     { "xPct": 0.325, "yPct": 0.658 },
     { "xPct": 0.384, "yPct": 0.642 },
