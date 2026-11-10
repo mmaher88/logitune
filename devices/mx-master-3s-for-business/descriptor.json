@@ -2,7 +2,7 @@
   "$schema": "../schema.json",
   "name": "MX Master 3S For Business",
   "status": "beta",
-  "productIds": ["0xb035"],
+  "productIds": ["0xb035", "0xb044"],
   "features": {
     "battery": true,
     "adjustableDpi": true,
