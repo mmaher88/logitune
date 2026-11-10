@@ -15,6 +15,7 @@ struct udev_monitor;
 namespace logitune {
 
 class DeviceRegistry;
+namespace test { class IdleReceiverFixture; }
 
 class DeviceManager : public QObject {
     Q_OBJECT
@@ -63,10 +64,17 @@ private slots:
     void onUdevReady();
 
 private:
+    friend class test::IdleReceiverFixture;
+
     void scanExistingDevices();
     void onUdevEvent(const QString &action, const QString &devNode);
     void probeDevice(const QString &devNode);
     void removeSessionByDevNode(const QString &devNode);
+
+    void watchIdleReceiver(const QString &devNode,
+                           std::unique_ptr<hidpp::HidrawDevice> device);
+    void stopWatchingReceiver(const QString &devNode);
+    void onIdleReceiverReadable(const QString &devNode);
 
     DeviceRegistry *m_registry = nullptr;
     std::vector<std::unique_ptr<DeviceSession>> m_sessions;
@@ -83,9 +91,15 @@ private:
     // Transport failover
     QStringList m_availableTransports;
 
-    // Receiver monitoring (when no device on slots)
-    std::unique_ptr<hidpp::HidrawDevice> m_receiverDevice;
-    QSocketNotifier *m_receiverNotifier = nullptr;
+    // Receivers with no mouse linked (every slot ping failed), kept open by
+    // devNode until a mouse links up on them: KVM switch-back, wake,
+    // power-on. Several can be idle at once, e.g. two receivers that come
+    // back together after a KVM switch.
+    struct IdleReceiver {
+        std::unique_ptr<hidpp::HidrawDevice> device;
+        QSocketNotifier *notifier = nullptr;  // child of this
+    };
+    std::map<QString, IdleReceiver> m_idleReceivers;
 
     struct udev *m_udev = nullptr;
     struct udev_monitor *m_udevMon = nullptr;

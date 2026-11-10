@@ -4,6 +4,8 @@
 #include <vector>
 #include <cstdint>
 
+namespace logitune::test { class IdleReceiverFixture; }
+
 namespace logitune::hidpp {
 
 class HidrawDevice {
@@ -31,6 +33,9 @@ public:
     std::vector<uint8_t> readReport(int timeoutMs = 2000); // uses poll() with timeout
 
 private:
+    // Feeds a pipe in as the fd, standing in for a receiver's hidraw node.
+    friend class logitune::test::IdleReceiverFixture;
+
     QString m_path;
     int m_fd = -1;
     DeviceInfo m_info{};

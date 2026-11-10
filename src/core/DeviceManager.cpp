@@ -52,12 +52,11 @@ DeviceManager::~DeviceManager()
 {
     m_sessions.clear();
 
-    if (m_receiverNotifier) {
-        m_receiverNotifier->setEnabled(false);
-        delete m_receiverNotifier;
-        m_receiverNotifier = nullptr;
+    for (auto &[devNode, idle] : m_idleReceivers) {
+        idle.notifier->setEnabled(false);
+        delete idle.notifier;
     }
-    m_receiverDevice.reset();
+    m_idleReceivers.clear();
 
     if (m_udevNotifier) {
         m_udevNotifier->setEnabled(false);
@@ -292,7 +291,63 @@ void DeviceManager::onUdevEvent(const QString &action, const QString &devNode)
         });
     } else if (action == QLatin1String("remove")) {
         m_availableTransports.removeAll(devNode);
+        stopWatchingReceiver(devNode);
         removeSessionByDevNode(devNode);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Idle receivers: open, but no mouse linked on any slot yet
+// ---------------------------------------------------------------------------
+
+void DeviceManager::watchIdleReceiver(const QString &devNode,
+                                      std::unique_ptr<hidpp::HidrawDevice> device)
+{
+    stopWatchingReceiver(devNode);  // a re-probed node replaces its old watch
+
+    auto *notifier = new QSocketNotifier(device->fd(), QSocketNotifier::Read, this);
+    connect(notifier, &QSocketNotifier::activated, this, [this, devNode]() {
+        onIdleReceiverReadable(devNode);
+    });
+    m_idleReceivers[devNode] = IdleReceiver{std::move(device), notifier};
+
+    qCDebug(lcDevice) << "watching" << m_idleReceivers.size() << "idle receiver(s)";
+}
+
+void DeviceManager::stopWatchingReceiver(const QString &devNode)
+{
+    auto it = m_idleReceivers.find(devNode);
+    if (it == m_idleReceivers.end())
+        return;
+
+    // Can run inside this notifier's own activated(): disable it before
+    // the fd closes, and delete it once the signal has returned.
+    it->second.notifier->setEnabled(false);
+    it->second.notifier->deleteLater();
+    m_idleReceivers.erase(it);
+}
+
+void DeviceManager::onIdleReceiverReadable(const QString &devNode)
+{
+    auto it = m_idleReceivers.find(devNode);
+    if (it == m_idleReceivers.end())
+        return;
+
+    const auto bytes = it->second.device->readReport(0);
+    if (bytes.empty()) {
+        // Readable but nothing to read: the receiver went away.
+        stopWatchingReceiver(devNode);
+        return;
+    }
+
+    if (bytes.size() >= 3 && bytes[1] >= 1 && bytes[1] <= 6) {
+        const int slot = bytes[1];
+        qCDebug(lcDevice) << "receiver" << devNode << "got data from slot" << slot
+                          << "— device arrived on receiver";
+        stopWatchingReceiver(devNode);
+        QTimer::singleShot(500, this, [this, devNode]() {
+            probeDevice(devNode);
+        });
     }
 }
 
@@ -428,40 +483,7 @@ void DeviceManager::probeDevice(const QString &devNode)
 
         if (!found) {
             qCDebug(lcDevice) << "no device on any slot of" << devNode << "— keeping receiver open for DJ notifications";
-            m_receiverDevice = std::move(device);
-            if (m_receiverNotifier) {
-                delete m_receiverNotifier;
-                m_receiverNotifier = nullptr;
-            }
-            m_receiverNotifier = new QSocketNotifier(m_receiverDevice->fd(), QSocketNotifier::Read, this);
-            connect(m_receiverNotifier, &QSocketNotifier::activated, this, [this, devNode]() {
-                if (!m_receiverDevice) return;
-                auto bytes = m_receiverDevice->readReport(0);
-                if (bytes.empty()) {
-                    if (m_receiverNotifier) {
-                        m_receiverNotifier->setEnabled(false);
-                        delete m_receiverNotifier;
-                        m_receiverNotifier = nullptr;
-                    }
-                    m_receiverDevice.reset();
-                    return;
-                }
-
-                if (bytes.size() >= 3 && bytes[1] >= 1 && bytes[1] <= 6) {
-                    uint8_t slot = bytes[1];
-                    qCDebug(lcDevice) << "receiver got data from slot" << slot
-                                      << "— device arrived on receiver";
-                    if (m_receiverNotifier) {
-                        m_receiverNotifier->setEnabled(false);
-                        delete m_receiverNotifier;
-                        m_receiverNotifier = nullptr;
-                    }
-                    m_receiverDevice.reset();
-                    QTimer::singleShot(500, this, [this, devNode]() {
-                        probeDevice(devNode);
-                    });
-                }
-            });
+            watchIdleReceiver(devNode, std::move(device));
             return;
         }
     } else {
