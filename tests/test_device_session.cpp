@@ -5,6 +5,7 @@
 #include "hidpp/HidrawDevice.h"
 #include "hidpp/HidppTypes.h"
 #include "interfaces/IDevice.h"
+#include "mocks/MockDevice.h"
 
 using namespace logitune;
 using namespace logitune::hidpp;
@@ -279,4 +280,61 @@ TEST_F(DeviceSessionTest, SharedPidResolvedByName) {
         &registry, kPidBoltReceiver, 0xB020, QStringLiteral("MX Vertical for Business"));
     ASSERT_NE(onBolt, nullptr);
     EXPECT_EQ(onBolt->deviceName(), QStringLiteral("MX Vertical for Business"));
+}
+
+// ---------------------------------------------------------------------------
+// Variants: MX Master 3 and MX Master 3 for Mac share every PID (issue #106);
+// the extended model ID from DeviceInfo (0x0003) tells them apart.
+// ---------------------------------------------------------------------------
+
+TEST_F(DeviceSessionTest, MacVariantRenamesMxMaster3) {
+    auto session = makeSession();
+    session->applyDescriptor(registry.findByPid(0xb023), 3, QStringLiteral("MX Master 3"));
+    EXPECT_EQ(session->deviceName(), QStringLiteral("MX Master 3 for Mac"));
+    ASSERT_TRUE(session->extendedModelId().has_value());
+    EXPECT_EQ(*session->extendedModelId(), 3);
+}
+
+TEST_F(DeviceSessionTest, RetailExtendedModelKeepsDescriptorName) {
+    auto session = makeSession();
+    session->applyDescriptor(registry.findByPid(0xb023), 1, QStringLiteral("MX Master 3"));
+    EXPECT_EQ(session->deviceName(), QStringLiteral("MX Master 3"));
+}
+
+TEST_F(DeviceSessionTest, NoExtendedModelKeepsDescriptorName) {
+    auto session = makeSession();
+    session->applyDescriptor(registry.findByPid(0xb023), std::nullopt, QStringLiteral("whatever"));
+    EXPECT_EQ(session->deviceName(), QStringLiteral("MX Master 3"));
+    EXPECT_FALSE(session->extendedModelId().has_value());
+}
+
+TEST_F(DeviceSessionTest, UnknownDeviceKeepsReportedName) {
+    auto session = makeSession();
+    session->applyDescriptor(nullptr, 3, QStringLiteral("Some Logitech Mouse"));
+    EXPECT_EQ(session->deviceName(), QStringLiteral("Some Logitech Mouse"));
+    EXPECT_EQ(session->descriptor(), nullptr);
+}
+
+// A variant's images replace the descriptor's view by view; views it leaves
+// out, and its name when it has none, come from the descriptor.
+TEST_F(DeviceSessionTest, VariantImagesOverrideDescriptorPerView) {
+    logitune::test::MockDevice dev;
+    dev.m_deviceName = QStringLiteral("Mock Mouse");
+    dev.m_frontImagePath = QStringLiteral("/base/front.png");
+    dev.m_sideImagePath = QStringLiteral("/base/side.png");
+    dev.m_backImagePath = QStringLiteral("/base/back.png");
+    DeviceVariant grey;
+    grey.extendedModelId = 7;
+    grey.frontImagePath = QStringLiteral("/grey/front.png");
+    dev.m_variants = { grey };
+
+    auto session = makeSession();
+    session->applyDescriptor(&dev, 7, QString());
+    EXPECT_EQ(session->deviceName(), QStringLiteral("Mock Mouse"));
+    EXPECT_EQ(session->frontImagePath(), QStringLiteral("/grey/front.png"));
+    EXPECT_EQ(session->sideImagePath(), QStringLiteral("/base/side.png"));
+    EXPECT_EQ(session->backImagePath(), QStringLiteral("/base/back.png"));
+
+    session->applyDescriptor(&dev, 1, QString());
+    EXPECT_EQ(session->frontImagePath(), QStringLiteral("/base/front.png"));
 }

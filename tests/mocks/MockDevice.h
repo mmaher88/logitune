@@ -28,6 +28,7 @@ public:
     int m_dpiStep      = 200;
     std::vector<int> m_dpiCycleRing;
     QList<EasySwitchSlotPosition> m_easySwitchSlotPositions;
+    QList<DeviceVariant> m_variants;
 
     // --- IDevice implementation ---
 
@@ -51,6 +52,7 @@ public:
     int dpiStep() const override { return m_dpiStep; }
     std::vector<int> dpiCycleRing() const override { return m_dpiCycleRing; }
     QList<EasySwitchSlotPosition> easySwitchSlotPositions() const override { return m_easySwitchSlotPositions; }
+    QList<DeviceVariant> variants() const override { return m_variants; }
 
     // --- Test helpers ---
 

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "DeviceRegistry.h"
+#include "DeviceSession.h"
 #include "devices/JsonDevice.h"
 #include "hidpp/HidppTypes.h"
 #include <QTemporaryDir>
@@ -325,6 +326,78 @@ INSTANTIATE_TEST_SUITE_P(
         return name + pid;
     }
 );
+
+// ---------------------------------------------------------------------------
+// Variants: models that share a PID, told apart by the extended model ID from
+// DeviceInfo (0x0003). Mappings come from Logitech Options+'s device catalogue
+// ("derivatives" keyed by "extendedModel"). variantName == nullptr means the
+// extended model ID is a plain retail unit with no variant entry.
+// ---------------------------------------------------------------------------
+
+struct VariantSpec {
+    uint16_t pid;
+    uint8_t extendedModelId;
+    const char *variantName;
+};
+
+static const VariantSpec kVariants[] = {
+    { 0xb023,  1, nullptr },
+    { 0xb023,  2, nullptr },
+    { 0xb023,  3, "MX Master 3 for Mac" },
+    { 0x4082,  3, "MX Master 3 for Mac" },   // same descriptor over Unifying
+    { 0xb034,  1, nullptr },
+    { 0xb034,  2, nullptr },
+    { 0xb034,  3, "MX Master 3S for Mac" },
+    { 0xb034,  4, "MX Master 3S for Mac" },
+    { 0xb034, 10, nullptr },
+    { 0xb034, 11, "MX Master 3S for Mac" },
+    { 0xb034, 12, nullptr },
+    { 0xb034, 13, nullptr },
+    { 0xb025,  1, nullptr },
+    { 0xb025,  3, nullptr },
+    { 0xb025,  4, "MX Anywhere 3 for Mac" },
+    { 0x4090,  4, "MX Anywhere 3 for Mac" },
+};
+
+class DeviceVariantTest : public testing::TestWithParam<VariantSpec> {
+protected:
+    DeviceRegistry reg;
+};
+
+TEST_P(DeviceVariantTest, ExtendedModelIdSelectsVariant) {
+    const auto &s = GetParam();
+    const IDevice *dev = reg.findByPid(s.pid);
+    ASSERT_NE(dev, nullptr);
+    const auto variant = DeviceSession::resolveVariant(dev, s.extendedModelId);
+    if (!s.variantName) {
+        EXPECT_FALSE(variant.has_value());
+        return;
+    }
+    ASSERT_TRUE(variant.has_value());
+    EXPECT_EQ(variant->name, QString::fromUtf8(s.variantName));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ShippedDescriptors,
+    DeviceVariantTest,
+    testing::ValuesIn(kVariants),
+    [](const auto &info) {
+        // e.g. "ShippedDescriptors/DeviceVariantTest/pid_b023_ext_3"
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "pid_%04x_ext_%d",
+                      info.param.pid, info.param.extendedModelId);
+        return std::string(buf);
+    }
+);
+
+TEST(DeviceVariant, NoExtendedModelIdMeansNoVariant) {
+    DeviceRegistry reg;
+    EXPECT_FALSE(DeviceSession::resolveVariant(reg.findByPid(0xb023), std::nullopt).has_value());
+}
+
+TEST(DeviceVariant, NoDescriptorMeansNoVariant) {
+    EXPECT_FALSE(DeviceSession::resolveVariant(nullptr, 3).has_value());
+}
 
 TEST(DeviceRegistry, ReturnsNullForUnknownPid) {
     DeviceRegistry reg;
