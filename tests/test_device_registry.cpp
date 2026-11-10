@@ -41,6 +41,22 @@ static const DeviceSpec kDevices[] = {
         .gestureDownPayload = "Super+D",
         .gestureUpType = ButtonAction::Default,
     },
+    // Unifying WPID of the MX Master 2S.
+    {
+        .pid = 0x4069,
+        .name = "MX Master 2S",
+        .minDpi = 200, .maxDpi = 4000, .dpiStep = 50,
+        .buttonHotspots = 6, .scrollHotspots = 3,
+        .minControls = 7,
+        .control0Cid = 0x0050, .control5Cid = 0x00C3,
+        .control5ActionType = "gesture-trigger",
+        .control6ActionType = "smartshift-toggle",
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Keystroke,
+        .gestureDownPayload = "Super+D",
+        .gestureUpType = ButtonAction::Default,
+    },
     {
         .pid = 0xb034,
         .name = "MX Master 3S",
@@ -56,8 +72,40 @@ static const DeviceSpec kDevices[] = {
         .gestureDownPayload = "Super+D",
         .gestureUpType = ButtonAction::Default,
     },
+    // Second MX Master 3S hardware revision (Options+ model 2b043).
+    {
+        .pid = 0xb043,
+        .name = "MX Master 3S",
+        .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
+        .buttonHotspots = 6, .scrollHotspots = 3,
+        .minControls = 7,
+        .control0Cid = 0x0050, .control5Cid = 0x00C3,
+        .control5ActionType = "gesture-trigger",
+        .control6ActionType = "smartshift-toggle",
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Keystroke,
+        .gestureDownPayload = "Super+D",
+        .gestureUpType = ButtonAction::Default,
+    },
     {
         .pid = 0xb035,
+        .name = "MX Master 3S For Business",
+        .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
+        .buttonHotspots = 6, .scrollHotspots = 3,
+        .minControls = 7,
+        .control0Cid = 0x0050, .control5Cid = 0x00C3,
+        .control5ActionType = "gesture-trigger",
+        .control6ActionType = "smartshift-toggle",
+        .battery = true, .adjustableDpi = true, .smartShift = true,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Keystroke,
+        .gestureDownPayload = "Super+D",
+        .gestureUpType = ButtonAction::Default,
+    },
+    // Second MX Master 3S For Business revision (Options+ model 2b044).
+    {
+        .pid = 0xb044,
         .name = "MX Master 3S For Business",
         .minDpi = 200, .maxDpi = 8000, .dpiStep = 50,
         .buttonHotspots = 6, .scrollHotspots = 3,
@@ -176,6 +224,22 @@ static const DeviceSpec kDevices[] = {
         .gestureDownPayload = nullptr,
         .gestureUpType = ButtonAction::Default,
     },
+    // MX Vertical over its USB cable.
+    {
+        .pid = 0xc08a,
+        .name = "MX Vertical",
+        .minDpi = 400, .maxDpi = 4000, .dpiStep = 50,
+        .buttonHotspots = 4, .scrollHotspots = 2,
+        .minControls = 6,
+        .control0Cid = 0x0050, .control5Cid = 0x00C3,
+        .control5ActionType = "dpi-cycle",
+        .control6ActionType = nullptr,
+        .battery = true, .adjustableDpi = true, .smartShift = false,
+        .reprogControls = true, .gestureV2 = false,
+        .gestureDownType = ButtonAction::Default,
+        .gestureDownPayload = nullptr,
+        .gestureUpType = ButtonAction::Default,
+    },
 };
 
 class DeviceRegistryTest : public testing::TestWithParam<DeviceSpec> {
@@ -253,10 +317,13 @@ INSTANTIATE_TEST_SUITE_P(
     DeviceRegistryTest,
     testing::ValuesIn(kDevices),
     [](const auto& info) {
-        // Makes test names like "AllDevices/DeviceRegistryTest/MX_Master_3S"
+        // Makes test names like "AllDevices/DeviceRegistryTest/MX_Master_3S_b034".
+        // The PID suffix keeps names unique when one descriptor has several PIDs.
         std::string name = info.param.name;
         std::replace(name.begin(), name.end(), ' ', '_');
-        return name;
+        char pid[8];
+        std::snprintf(pid, sizeof(pid), "_%04x", info.param.pid);
+        return name + pid;
     }
 );
 
@@ -433,6 +500,28 @@ TEST(DeviceRegistry, FindByNamePrefersExactMatch) {
     const auto *dev = reg.findByName(QStringLiteral("mx master 3s for business"));
     ASSERT_NE(dev, nullptr);
     EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3S For Business"));
+}
+
+// MX Master 3S and 3S For Business each ship under two PIDs (b034/b043 and
+// b035/b044). Every one of those PIDs belongs to exactly one descriptor, so the
+// PID decides, even when the reported name would match the sibling descriptor.
+TEST(DeviceRegistry, FindByPidAndNameResolvesMxMaster3sRevisions) {
+    logitune::DeviceRegistry reg;
+    struct Case { uint16_t pid; const char *reportedName; const char *expected; };
+    const Case cases[] = {
+        {0xb034, "Wireless Mouse MX Master 3S", "MX Master 3S"},
+        {0xb043, "Wireless Mouse MX Master 3S", "MX Master 3S"},
+        {0xb035, "MX Master 3S For Business",   "MX Master 3S For Business"},
+        {0xb044, "MX Master 3S For Business",   "MX Master 3S For Business"},
+        {0xb043, "MX Master 3S For Business",   "MX Master 3S"},
+        {0xb044, "Wireless Mouse MX Master 3S", "MX Master 3S For Business"},
+    };
+    for (const auto &c : cases) {
+        const auto *dev = reg.findByPidAndName(c.pid, QString::fromUtf8(c.reportedName));
+        ASSERT_NE(dev, nullptr) << std::hex << c.pid;
+        EXPECT_EQ(dev->deviceName(), QString::fromUtf8(c.expected))
+            << std::hex << c.pid << " reported as " << c.reportedName;
+    }
 }
 
 // A receiver's USB PID identifies the receiver, not the device paired to it,
