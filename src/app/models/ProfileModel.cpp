@@ -7,9 +7,11 @@ ProfileModel::ProfileModel(QObject *parent)
 {
     // Seed with the always-present default entry
     // Name matches the profile file basename ("default.conf")
+    // No theme icon: AppProfileBar draws its own "all applications" mark for
+    // this entry, since no icon-theme name covers it on every desktop.
     m_profiles.append(ProfileEntry{
         QStringLiteral("Defaults"),
-        QStringLiteral("\u229E"),
+        QString(),
         QStringLiteral("default")  // wmClass doubles as profile key for default
     });
 }

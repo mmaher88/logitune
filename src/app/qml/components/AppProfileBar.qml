@@ -47,7 +47,15 @@ Item {
                     model: ProfileModel
 
                     delegate: Rectangle {
-                        width: chipLabel.implicitWidth + (model.icon ? 46 : 24)
+                        id: chip
+                        objectName: "profileChip_" + model.index
+                        // ProfileModel always keeps Defaults at row 0.
+                        readonly property bool isDefaults: model.index === 0
+                        readonly property color contentColor: model.isActive ? Theme.activeTabText
+                                                                             : Theme.text
+                        // Row skips hidden children, so a theme icon that fails
+                        // to load doesn't leave an empty gap.
+                        width: chipContent.implicitWidth + 24
                         height: 32
                         radius: 6
                         color: model.isActive ? Theme.accent
@@ -60,10 +68,36 @@ Item {
                         HoverHandler { id: chipHover }
 
                         Row {
+                            id: chipContent
                             anchors.centerIn: parent
                             spacing: 6
 
+                            // "All applications" mark for Defaults: a 2x2 grid
+                            // in the label colour, so it follows the theme and
+                            // the active-chip colours.
+                            Item {
+                                objectName: "defaultsIcon"
+                                width: 16; height: 16
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: chip.isDefaults
+
+                                Grid {
+                                    anchors.centerIn: parent
+                                    columns: 2
+                                    spacing: 2
+
+                                    Repeater {
+                                        model: 4
+                                        Rectangle {
+                                            width: 6; height: 6; radius: 1.5
+                                            color: chip.contentColor
+                                        }
+                                    }
+                                }
+                            }
+
                             Image {
+                                objectName: "appIcon"
                                 width: 16; height: 16
                                 anchors.verticalCenter: parent.verticalCenter
                                 source: model.icon ? "image://icon/" + model.icon : ""
@@ -73,10 +107,11 @@ Item {
 
                             Text {
                                 id: chipLabel
+                                objectName: "chipLabel"
                                 text: model.name
                                 font.pixelSize: 12
                                 font.bold: model.isActive
-                                color: model.isActive ? Theme.activeTabText : Theme.text
+                                color: chip.contentColor
                                 elide: Text.ElideRight
                                 anchors.verticalCenter: parent.verticalCenter
                             }

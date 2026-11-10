@@ -31,6 +31,9 @@ TEST_F(ProfileModelTest, DefaultEntry) {
     QModelIndex idx = model.index(0);
     EXPECT_EQ(model.data(idx, ProfileModel::NameRole).toString(), QStringLiteral("Defaults"));
     EXPECT_TRUE(model.data(idx, ProfileModel::IsActiveRole).toBool());
+    // No icon-theme name: AppProfileBar draws the Defaults mark itself, and a
+    // non-name here (it used to be "⊞") made the theme lookup fail.
+    EXPECT_TRUE(model.data(idx, ProfileModel::IconRole).toString().isEmpty());
 }
 
 // ---------------------------------------------------------------------------
