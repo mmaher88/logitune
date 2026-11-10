@@ -6,6 +6,8 @@
 #include <QTemporaryDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QScopeGuard>
+#include <QStandardPaths>
 #include <algorithm>
 #include <cstdio>
 using namespace logitune;
@@ -472,6 +474,14 @@ TEST(DeviceRegistry, ReturnsNullForUnknownPid) {
 TEST(DeviceRegistry, ReloadByPathRefreshesSingleDevice) {
     QTemporaryDir tmp;
     ASSERT_TRUE(tmp.isValid());
+    // XDG_DATA_HOME only takes effect with QStandardPaths test mode off,
+    // and ensureApp() in any earlier test leaves it on for the whole run.
+    const bool wasTestMode = QStandardPaths::isTestModeEnabled();
+    QStandardPaths::setTestModeEnabled(false);
+    const auto restore = qScopeGuard([wasTestMode] {
+        qunsetenv("XDG_DATA_HOME");
+        QStandardPaths::setTestModeEnabled(wasTestMode);
+    });
     qputenv("XDG_DATA_HOME", tmp.path().toUtf8());
     QDir().mkpath(tmp.path() + QStringLiteral("/logitune/devices/test"));
     const QString descPath = tmp.path() + QStringLiteral("/logitune/devices/test/descriptor.json");
@@ -498,8 +508,6 @@ TEST(DeviceRegistry, ReloadByPathRefreshesSingleDevice) {
 
     EXPECT_EQ(jdev->deviceName(), QStringLiteral("Mutated"));
     EXPECT_EQ(reg.findBySourcePath(srcPath), dev);
-
-    qunsetenv("XDG_DATA_HOME");
 }
 
 TEST(DeviceRegistry, ReloadUnknownPathReturnsFalse) {

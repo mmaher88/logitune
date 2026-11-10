@@ -15,10 +15,8 @@
 using namespace logitune;
 using namespace logitune::test;
 
-// These tests deliberately avoid ensureApp() so they don't enable
-// QStandardPaths test mode before DeviceRegistry.ReloadByPathRefreshesSingleDevice
-// runs; that test fiddles with XDG_DATA_HOME, which test mode overrides.
-// The proxy + model constructors don't need a running event loop.
+// The proxy + model constructors don't need a running event loop, so
+// these tests don't call ensureApp().
 
 namespace {
 

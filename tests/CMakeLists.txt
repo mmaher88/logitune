@@ -13,6 +13,7 @@ add_executable(logitune-tests
     test_button_features.cpp
     test_profile_engine.cpp
     test_device_discovery.cpp
+    test_idle_receivers.cpp
     test_action_executor.cpp
     test_action_filter_model.cpp
     test_device_registry.cpp
