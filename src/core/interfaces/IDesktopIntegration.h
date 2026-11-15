@@ -1,6 +1,9 @@
 #pragma once
 #include "ButtonAction.h"
 #include <QObject>
+#include <QPoint>
+#include <QRect>
+#include <QSize>
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
@@ -37,8 +40,21 @@ public:
     /// Each entry is a QVariantMap with keys "wmClass" and "title".
     virtual QVariantList runningApplications() const = 0;
 
+    /// Whether this backend can reliably place a pointer-driven overlay.
+    virtual bool supportsActionRing() const { return false; }
+
+    /// Resolve the current pointer position and a clamped overlay position.
+    /// Backends that do not support the action ring report failure.
+    virtual void requestActionRingPlacement(int requestId, const QSize &windowSize,
+                                            const QPoint &anchor);
+    virtual void cancelActionRingPlacement(int requestId);
+
 signals:
     void activeWindowChanged(const QString &wmClass, const QString &title);
+    void actionRingPlacementReady(int requestId, const QPoint &position,
+                                  const QRect &screenGeometry,
+                                  const QPoint &cursorPosition);
+    void actionRingPlacementFailed(int requestId);
 };
 
 } // namespace logitune

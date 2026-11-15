@@ -17,6 +17,7 @@ BuildRequires:  qt6-declarative-devel
 BuildRequires:  qt6-svg-devel
 BuildRequires:  qt6-shadertools-devel
 BuildRequires:  systemd-devel
+BuildRequires:  layer-shell-qt6-devel
 %else
 BuildRequires:  ninja-build
 BuildRequires:  qt6-qtbase-devel
@@ -24,6 +25,7 @@ BuildRequires:  qt6-qtdeclarative-devel
 BuildRequires:  qt6-qtsvg-devel
 BuildRequires:  qt6-qtshadertools
 BuildRequires:  systemd-devel
+BuildRequires:  layer-shell-qt-devel
 %endif
 
 %if 0%{?suse_version}
@@ -34,6 +36,8 @@ Requires:       qt6-svg
 Requires:       qt6-qtbase
 Requires:       qt6-qtdeclarative
 Requires:       qt6-qtsvg
+Requires:       layer-shell-qt
+Requires:       glib2
 %endif
 
 %description
@@ -47,7 +51,7 @@ DPI, SmartShift, scroll, gesture, and thumb wheel settings.
 %build
 # OBS builds from a source tarball with no .git, so feed the version
 # through -DLOGITUNE_VERSION; CMakeLists.txt refuses to guess.
-%cmake -DBUILD_TESTING=OFF -DLOGITUNE_VERSION=%{version}
+%cmake -DBUILD_TESTING=OFF -DLOGITUNE_REQUIRE_LAYER_SHELL=ON -DLOGITUNE_VERSION=%{version}
 %cmake_build
 
 %install

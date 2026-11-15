@@ -19,7 +19,7 @@ echo "Building .deb package v$VERSION ($ARCH)"
 
 # Build release (offscreen for headless gtest_discover_tests)
 export QT_QPA_PLATFORM=offscreen
-cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -DLOGITUNE_VERSION="$VERSION" -Wno-dev > /dev/null 2>&1
+cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -DLOGITUNE_REQUIRE_LAYER_SHELL=ON -DLOGITUNE_VERSION="$VERSION" -Wno-dev > /dev/null 2>&1
 cmake --build build-release -j$(nproc)
 
 # Create package structure
@@ -34,7 +34,7 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Depends: libqt6core6 (>= 6.4), libqt6qml6, libqt6quick6, libqt6svg6, libqt6dbus6, libqt6widgets6, libudev1, qml6-module-qtqml, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-dialogs, qml6-module-qtquick-layouts, qml6-module-qtquick-templates, qml6-module-qtquick-window
+Depends: libqt6core6 (>= 6.4), libqt6qml6, libqt6quick6, libqt6svg6, libqt6dbus6, libqt6widgets6, liblayershellqtinterface6, libudev1, libglib2.0-bin, qml6-module-qtqml, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-dialogs, qml6-module-qtquick-layouts, qml6-module-qtquick-templates, qml6-module-qtquick-window
 Recommends: gnome-shell-extension-appindicator
 Maintainer: Mina Maher <mina.maher88@hotmail.com>
 Description: Logitech device configurator for Linux

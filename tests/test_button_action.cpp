@@ -38,6 +38,13 @@ TEST(ButtonAction, ParseDpiCycleKeyword) {
     EXPECT_TRUE(a.payload.isEmpty());
 }
 
+TEST(ButtonAction, ParseRadialMenuKeyword) {
+    const ButtonAction action = ButtonAction::parse(QStringLiteral("radial-menu"));
+    EXPECT_EQ(action.type, ButtonAction::RadialMenu);
+    EXPECT_TRUE(action.payload.isEmpty());
+    EXPECT_EQ(action.serialize(), QStringLiteral("radial-menu"));
+}
+
 TEST(ButtonAction, SerializeDpiCycleType) {
     ButtonAction a{ButtonAction::DpiCycle, {}};
     EXPECT_EQ(a.serialize(), "dpi-cycle");

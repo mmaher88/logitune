@@ -151,6 +151,25 @@ TEST_F(DeviceRoutingTest, GestureUsesTheGestureMapOfTheMouseItCameFrom) {
     EXPECT_EQ(m_injector->lastArg(QStringLiteral("injectKeystroke")), QStringLiteral("Alt+Tab"));
 }
 
+TEST_F(DeviceRoutingTest, ActionRingUsesTheProfileOfItsOriginatingMouse) {
+    PhysicalDevice *b = addSecondMouseAndSelectFirst();
+    m_desktop->setSupportsActionRing(true);
+    hwProfile(kSerialA).buttons[3] = {ButtonAction::RadialMenu, {}};
+    hwProfile(kSerialA).radialMenu.items[0].action =
+        {ButtonAction::Keystroke, QStringLiteral("Alt+Left")};
+    hwProfile(kSerialB).buttons[3] = {ButtonAction::RadialMenu, {}};
+    hwProfile(kSerialB).radialMenu.items[0].action =
+        {ButtonAction::Keystroke, QStringLiteral("Ctrl+Z")};
+    m_injector->clear();
+
+    emit b->divertedButtonPressed(kBackCid, true);
+    ASSERT_TRUE(m_ctrl->radialMenu()->visible());
+    m_ctrl->radialMenu()->activate(0);
+
+    EXPECT_EQ(m_injector->lastArg(QStringLiteral("injectKeystroke")),
+              QStringLiteral("Ctrl+Z"));
+}
+
 TEST_F(DeviceRoutingTest, GestureOnOneMouseDoesNotLeakIntoTheOther) {
     PhysicalDevice *b = addSecondMouseAndSelectFirst();
     hwProfile(kSerialA).buttons[5] = {ButtonAction::GestureTrigger, {}};

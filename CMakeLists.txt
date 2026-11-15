@@ -97,6 +97,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 6.4 REQUIRED COMPONENTS Core Quick Svg DBus Widgets Concurrent Test QuickTest Network)
+option(LOGITUNE_REQUIRE_LAYER_SHELL
+       "Fail configuration when LayerShellQt is unavailable" OFF)
+find_package(LayerShellQt QUIET)
+if(LOGITUNE_REQUIRE_LAYER_SHELL AND NOT TARGET LayerShellQt::Interface)
+    message(FATAL_ERROR "LayerShellQt is required for package builds")
+elseif(NOT TARGET LayerShellQt::Interface)
+    message(WARNING "LayerShellQt not found: KDE action-ring overlay is disabled")
+endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(UDEV REQUIRED libudev)
 

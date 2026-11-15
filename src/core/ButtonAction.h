@@ -14,6 +14,7 @@ struct ButtonAction {
         DBus,
         Media,
         PresetRef,
+        RadialMenu,
     };
 
     Type type = Default;

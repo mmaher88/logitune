@@ -18,15 +18,41 @@ ButtonActionDispatcher::ButtonActionDispatcher(ProfileEngine *profileEngine,
     , m_profileEngine(profileEngine)
     , m_actionExecutor(actionExecutor)
     , m_desktop(desktop)
-{}
+    , m_radialMenu(desktop, this)
+{
+    connect(&m_radialMenu, &RadialMenuController::triggered,
+            this, &ButtonActionDispatcher::executeRadialAction);
+    connect(&m_radialMenu, &RadialMenuController::dismissed, this, [this]() {
+        m_radialDevice.clear();
+        m_radialSerial.clear();
+        m_radialControl = 0;
+    });
+}
+
+void ButtonActionDispatcher::cancelRadialMenu()
+{
+    m_radialMenu.cancel();
+    m_radialDevice.clear();
+    m_radialSerial.clear();
+    m_radialControl = 0;
+}
 
 void ButtonActionDispatcher::onDeviceRemoved(const QString &serial)
 {
+    if (serial == m_radialSerial) cancelRadialMenu();
     m_state.remove(serial);
+}
+
+void ButtonActionDispatcher::onDeviceStateChanged(PhysicalDevice *device)
+{
+    if (device != m_radialDevice) return;
+    DeviceSession *session = device ? device->primary() : nullptr;
+    if (!session || !session->isConnected()) cancelRadialMenu();
 }
 
 void ButtonActionDispatcher::onProfileApplied(const QString &serial)
 {
+    if (serial == m_radialSerial) cancelRadialMenu();
     auto it = m_state.find(serial);
     if (it != m_state.end()) it->thumbAccum = 0;
 }
@@ -49,6 +75,12 @@ void ButtonActionDispatcher::onDivertedButtonPressed(PhysicalDevice *device,
     const QString serial = device->deviceSerial();
     if (serial.isEmpty()) return;
     auto &state = m_state[serial];
+
+    if (!pressed && serial == m_radialSerial
+        && (controlId == 0 || controlId == m_radialControl)) {
+        m_radialControl = 0;
+        return;
+    }
 
     const Profile &hwProfile = m_profileEngine->cachedProfile(
         serial, m_profileEngine->hardwareProfile(serial));
@@ -117,6 +149,24 @@ void ButtonActionDispatcher::onDivertedButtonPressed(PhysicalDevice *device,
 
     if (ba.type == ButtonAction::Default) return;
 
+    if (ba.type == ButtonAction::RadialMenu) {
+        if (!m_desktop || !m_desktop->supportsActionRing()) return;
+        if (m_radialMenu.isActive()) {
+            if (m_radialDevice == device && m_radialControl == controlId) return;
+            cancelRadialMenu();
+            return;
+        }
+        state.gestureActive = false;
+        state.gestureAccumX = 0;
+        state.gestureAccumY = 0;
+        m_radialDevice = device;
+        m_radialSerial = serial;
+        m_radialControl = controlId;
+        m_radialMenu.begin(hwProfile.radialMenu);
+        if (!m_radialMenu.isActive()) cancelRadialMenu();
+        return;
+    }
+
     if (ba.type == ButtonAction::SmartShiftToggle) {
         bool current = session->smartShiftEnabled();
         session->setSmartShift(!current, session->smartShiftThreshold());
@@ -148,6 +198,36 @@ void ButtonActionDispatcher::onDivertedButtonPressed(PhysicalDevice *device,
         }
         m_actionExecutor->executeAction(*resolved);
     }
+}
+
+void ButtonActionDispatcher::executeRadialAction(const ButtonAction &action)
+{
+    QPointer<PhysicalDevice> device = m_radialDevice;
+    const QString serial = m_radialSerial;
+    cancelRadialMenu();
+    DeviceSession *session = device ? device->primary() : nullptr;
+    if (!session) return;
+
+    if (action.type == ButtonAction::SmartShiftToggle) {
+        const bool enabled = !session->smartShiftEnabled();
+        session->setSmartShift(enabled, session->smartShiftThreshold());
+        emit smartShiftChangedByButton(serial, enabled, session->smartShiftThreshold());
+        return;
+    }
+    if (action.type == ButtonAction::DpiCycle) {
+        session->cycleDpi();
+        emit dpiChangedByButton(serial, session->currentDPI());
+        return;
+    }
+
+    ButtonAction toFire = action;
+    if (toFire.type == ButtonAction::PresetRef) {
+        if (!m_desktop) return;
+        const auto resolved = m_desktop->resolveNamedAction(toFire.payload);
+        if (!resolved.has_value()) return;
+        toFire = *resolved;
+    }
+    m_actionExecutor->executeAction(toFire);
 }
 
 void ButtonActionDispatcher::onThumbWheelRotation(PhysicalDevice *device, int delta)

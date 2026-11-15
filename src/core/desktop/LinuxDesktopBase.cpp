@@ -8,6 +8,13 @@
 
 namespace logitune {
 
+QString LinuxDesktopBase::launchCommand(const QString &desktopFile)
+{
+    QString quoted = desktopFile;
+    quoted.replace(QLatin1Char('"'), QStringLiteral("\"\"\""));
+    return QStringLiteral("gio launch \"") + quoted + QLatin1Char('"');
+}
+
 QStringList LinuxDesktopBase::desktopDirs() const
 {
     if (!m_desktopDirsOverride.isEmpty())
@@ -124,6 +131,9 @@ QVariantList LinuxDesktopBase::runningApplications() const
             entry[QStringLiteral("wmClass")] = wmClass;
             entry[QStringLiteral("title")] = name;
             entry[QStringLiteral("icon")] = icon;
+            const QString desktopFile = QFileInfo(d.filePath(file)).absoluteFilePath();
+            entry[QStringLiteral("desktopFile")] = desktopFile;
+            entry[QStringLiteral("command")] = launchCommand(desktopFile);
             result.append(entry);
         }
     }

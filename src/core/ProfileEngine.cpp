@@ -26,6 +26,9 @@ ButtonAction ButtonAction::parse(const QString &str)
     if (str == "dpi-cycle")
         return {DpiCycle, {}};
 
+    if (str == "radial-menu")
+        return {RadialMenu, {}};
+
     // Prefixed forms: "type:payload"
     const int colon = str.indexOf(':');
     if (colon == -1)
@@ -59,6 +62,7 @@ QString ButtonAction::serialize() const
     case DBus:          return "dbus:" + payload;
     case AppLaunch:     return "app-launch:" + payload;
     case PresetRef:     return "preset:" + payload;
+    case RadialMenu:    return "radial-menu";
     }
     return "default";
 }
@@ -88,6 +92,7 @@ Profile ProfileEngine::loadProfile(const QString &path)
 
     p.thumbWheelMode      = s.value("ThumbWheel/mode", "scroll").toString();
     p.thumbWheelInvert    = s.value("ThumbWheel/invert", false).toBool();
+    p.radialMenu          = RadialMenuConfig::load(s);
 
     s.beginGroup("Buttons");
     const QStringList buttonKeys = s.childKeys();
@@ -128,6 +133,8 @@ void ProfileEngine::saveProfile(const QString &path, const Profile &profile)
 
     s.setValue("ThumbWheel/mode",  profile.thumbWheelMode);
     s.setValue("ThumbWheel/invert", profile.thumbWheelInvert);
+
+    profile.radialMenu.save(s);
 
     s.beginGroup("Buttons");
     for (std::size_t i = 0; i < profile.buttons.size(); ++i)

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <QDir>
 #include <QFile>
+#include <QProcess>
 #include <QSignalSpy>
 #include "ProfileEngine.h"
 #include "desktop/KDeDesktop.h"
@@ -186,6 +187,17 @@ protected:
         return {};
     }
 
+    QVariantMap pickerEntry(const QString &title) const {
+        KDeDesktop kde;
+        kde.setDesktopDirsForTest(dirs());
+        for (const QVariant &value : kde.runningApplications()) {
+            const QVariantMap entry = value.toMap();
+            if (entry.value(QStringLiteral("title")).toString() == title)
+                return entry;
+        }
+        return {};
+    }
+
     // App ID KDeDesktop emits when KWin reports a focused window.
     QString focusedAppId(const QString &resourceClass, const QString &desktopFileName,
                          const QStringList &desktopDirs) const {
@@ -201,6 +213,21 @@ protected:
     QString m_flatpakDir;
     const QString kSerial = QStringLiteral("test-serial");
 };
+
+TEST_F(KdeFocusWmClassTest, ApplicationCatalogReusesDesktopScanForGioLaunch) {
+    const QVariantMap entry = pickerEntry(QStringLiteral("Google Chrome"));
+    ASSERT_FALSE(entry.isEmpty());
+    EXPECT_EQ(entry.value(QStringLiteral("desktopFile")).toString(),
+              QDir(m_flatpakDir).filePath(QStringLiteral("com.google.Chrome.desktop")));
+    EXPECT_EQ(entry.value(QStringLiteral("command")).toString(),
+              QStringLiteral("gio launch \"")
+                  + QDir(m_flatpakDir).filePath(QStringLiteral("com.google.Chrome.desktop"))
+                  + QStringLiteral("\""));
+    EXPECT_EQ(QProcess::splitCommand(entry.value(QStringLiteral("command")).toString()),
+              QStringList({QStringLiteral("gio"), QStringLiteral("launch"),
+                           QDir(m_flatpakDir).filePath(
+                               QStringLiteral("com.google.Chrome.desktop"))}));
+}
 
 // Regression: flatpak Chrome picked from the "add profile" list must activate.
 // KWin reports resourceClass = desktopFileName = "google-chrome" (the Wayland

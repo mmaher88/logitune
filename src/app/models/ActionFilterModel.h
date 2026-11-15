@@ -19,6 +19,7 @@ public:
                                QObject *parent = nullptr);
 
     void setGestureMode(bool mode);
+    void setRadialMode(bool mode);
 
 protected:
     bool filterAcceptsRow(int sourceRow,
@@ -29,6 +30,7 @@ private:
     IDesktopIntegration *m_desktop;
     const ActionPresetRegistry *m_registry;
     bool m_gestureMode = false;
+    bool m_radialMode = false;
 };
 
 } // namespace logitune

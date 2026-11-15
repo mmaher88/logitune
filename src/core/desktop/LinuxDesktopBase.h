@@ -30,6 +30,7 @@ protected:
     mutable QHash<QString, QString> m_resolveCache;
 
 private:
+    static QString launchCommand(const QString &desktopFile);
     QStringList m_desktopDirsOverride;
 };
 

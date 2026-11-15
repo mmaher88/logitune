@@ -26,15 +26,15 @@ pkgdesc="Logitech device configurator for Linux — per-app profiles, button rem
 arch=('x86_64')
 url="https://github.com/mmaher88/logitune"
 license=('GPL-3.0-or-later')
-depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-5compat' 'systemd-libs')
-makedepends=('cmake' 'ninja' 'qt6-tools')
+depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-5compat' 'systemd-libs' 'layer-shell-qt' 'glib2')
+makedepends=('cmake' 'ninja' 'qt6-tools' 'layer-shell-qt')
 optdepends=('gnome-shell: per-app profile switching on GNOME'
             'gnome-shell-extension-appindicator: system tray icon on GNOME')
 source=()
 
 build() {
     cd "$startdir"
-    cmake -B build-pkg -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -DLOGITUNE_VERSION=VERSION_PLACEHOLDER -Wno-dev
+    cmake -B build-pkg -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF -DLOGITUNE_REQUIRE_LAYER_SHELL=ON -DLOGITUNE_VERSION=VERSION_PLACEHOLDER -Wno-dev
     cmake --build build-pkg -j$(nproc)
 }
 

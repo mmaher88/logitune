@@ -28,6 +28,13 @@ void ActionFilterModel::setGestureMode(bool mode)
     invalidateFilter();
 }
 
+void ActionFilterModel::setRadialMode(bool mode)
+{
+    if (m_radialMode == mode) return;
+    m_radialMode = mode;
+    invalidateFilter();
+}
+
 bool ActionFilterModel::filterAcceptsRow(int sourceRow,
                                          const QModelIndex &sourceParent) const
 {
@@ -42,9 +49,17 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
     // stay in the list; the dispatcher currently no-ops on them and
     // can be extended later to handle them as gesture actions.
     if (m_gestureMode) {
-        if (type == QLatin1String("gesture-trigger")) return false;
+        if (type == QLatin1String("gesture-trigger")
+            || type == QLatin1String("radial-menu")) return false;
         if (type == QLatin1String("none")) return false;
     }
+
+    // Ring entries may execute ordinary actions, but must not recursively
+    // open either gesture recognition or another ring.
+    if (m_radialMode
+        && (type == QLatin1String("gesture-trigger")
+            || type == QLatin1String("radial-menu")))
+        return false;
 
     // Preset filtering: hide if not supported on the current DE variant.
     if (type == QLatin1String("preset")) {
@@ -58,6 +73,9 @@ bool ActionFilterModel::filterAcceptsRow(int sourceRow,
         // Second gate: live resolution (catches empty user bindings on GNOME etc.)
         return m_desktop->resolveNamedAction(id).has_value();
     }
+
+    if (type == QLatin1String("radial-menu"))
+        return m_desktop && m_desktop->supportsActionRing();
 
     // Capability filtering (unchanged): hide actions whose required device
     // capability is absent on the current device.

@@ -1,7 +1,9 @@
 #pragma once
 #include <QMap>
 #include <QObject>
+#include <QPointer>
 #include <QString>
+#include "RadialMenuController.h"
 #include <cstdint>
 
 namespace logitune::test {
@@ -34,6 +36,8 @@ public:
                            QObject *parent = nullptr);
 
     void onDeviceRemoved(const QString &serial);
+    void onDeviceStateChanged(PhysicalDevice *device);
+    RadialMenuController *radialMenu() { return &m_radialMenu; }
 
     friend class test::AppRootFixture;
     friend class test::ButtonActionDispatcherFixture;
@@ -64,9 +68,16 @@ private:
     static constexpr int kGestureThreshold = 50;
     static constexpr int kThumbThreshold = 15;
 
+    void executeRadialAction(const ButtonAction &action);
+    void cancelRadialMenu();
+
     ProfileEngine   *m_profileEngine;
     ActionExecutor  *m_actionExecutor;
     IDesktopIntegration *m_desktop = nullptr;
+    RadialMenuController m_radialMenu;
+    QPointer<PhysicalDevice> m_radialDevice;
+    QString m_radialSerial;
+    uint16_t m_radialControl = 0;
     QMap<QString, PerDeviceState> m_state;  // keyed by PhysicalDevice serial
 };
 
