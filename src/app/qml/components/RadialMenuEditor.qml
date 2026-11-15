@@ -9,6 +9,11 @@ ScrollView {
     clip: true
     property int editingIndex: -1
     property string error: ""
+    property var installedApplications: []
+
+    function refreshApplications() {
+        installedApplications = DeviceModel.runningApplications()
+    }
 
     function modelValue(index, role) {
         return RadialActionModel.data(RadialActionModel.index(index, 0), role)
@@ -30,6 +35,20 @@ ScrollView {
         return -1
     }
 
+    function findApplication(serialized) {
+        if (serialized.indexOf("app-launch:") !== 0) return -1
+        var command = serialized.substring(serialized.indexOf(":") + 1)
+        for (var i = 0; i < installedApplications.length; ++i) {
+            if (installedApplications[i].command === command) return i
+        }
+        return -1
+    }
+
+    function applicationAction(index) {
+        if (index < 0 || index >= installedApplications.length) return ""
+        return "app-launch:" + installedApplications[index].command
+    }
+
     function persist(items) {
         error = DeviceModel.saveRadialMenu(items)
             ? "" : qsTr("Enter a name and choose a valid action.")
@@ -37,13 +56,17 @@ ScrollView {
     }
 
     function editEntry(index) {
+        refreshApplications()
         editingIndex = index
         var entry = DeviceModel.radialItems[index]
         labelField.text = entry.label
         var found = findAction(entry.action)
+        var app = findApplication(entry.action)
         catalog.currentIndex = Math.max(0, found)
         actionKind.currentIndex = found >= 0 ? 0
-            : entry.action.indexOf("app-launch:") === 0 ? 2 : 1
+            : app >= 0 ? 2
+            : entry.action.indexOf("app-launch:") === 0 ? 3 : 1
+        applicationCatalog.currentIndex = Math.max(0, app)
         payloadField.text = entry.action.indexOf(":") >= 0
             ? entry.action.substring(entry.action.indexOf(":") + 1) : ""
         error = ""
@@ -128,6 +151,7 @@ ScrollView {
                 root.editingIndex = DeviceModel.radialItems.length
                 labelField.text = ""
                 payloadField.text = ""
+                root.refreshApplications()
                 actionKind.currentIndex = 0
                 catalog.currentIndex = 0
                 root.error = ""
@@ -159,7 +183,7 @@ ScrollView {
                 objectName: "radialActionKind"
                 Layout.fillWidth: true
                 model: [qsTr("Existing action"), qsTr("Keyboard shortcut"),
-                        qsTr("Launch command")]
+                        qsTr("Installed application"), qsTr("Launch command")]
             }
             ComboBox {
                 id: catalog
@@ -183,11 +207,31 @@ ScrollView {
                         actionKind.currentIndex = 1
                 }
             }
+            ComboBox {
+                id: applicationCatalog
+                objectName: "radialApplicationCatalog"
+                Layout.fillWidth: true
+                visible: actionKind.currentIndex === 2
+                model: root.installedApplications
+                textRole: "title"
+                delegate: ItemDelegate {
+                    required property var modelData
+                    required property int index
+                    width: applicationCatalog.width
+                    text: modelData.title || ""
+                    icon.name: modelData.icon || ""
+                    highlighted: applicationCatalog.highlightedIndex === index
+                }
+                onActivated: {
+                    if (!labelField.text.length && currentIndex >= 0)
+                        labelField.text = root.installedApplications[currentIndex].title || ""
+                }
+            }
             TextField {
                 id: payloadField
                 objectName: "radialPayloadField"
                 Layout.fillWidth: true
-                visible: actionKind.currentIndex === 1 || actionKind.currentIndex === 2
+                visible: actionKind.currentIndex === 1 || actionKind.currentIndex === 3
                 placeholderText: actionKind.currentIndex === 1
                     ? "Ctrl+Shift+C" : "firefox --new-window"
             }
@@ -217,7 +261,9 @@ ScrollView {
                             ? root.serializedAt(catalog.currentIndex)
                             : actionKind.currentIndex === 1
                                 ? "keystroke:" + payloadField.text.trim()
-                                : "app-launch:" + payloadField.text.trim()
+                                : actionKind.currentIndex === 2
+                                    ? root.applicationAction(applicationCatalog.currentIndex)
+                                    : "app-launch:" + payloadField.text.trim()
                         var entry = {label: labelField.text.trim(), action: action}
                         var items = DeviceModel.radialItems.slice()
                         if (root.editingIndex === items.length) items.push(entry)

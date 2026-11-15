@@ -50,4 +50,20 @@ TestCase {
         compare(editor.error, "")
         verify(DeviceModel.radialItems.length >= 2)
     }
+
+    function test_installedApplicationBuildsLaunchAction() {
+        var editor = createTemporaryObject(editorComponent, this)
+        verify(editor)
+        editor.installedApplications = [{
+            title: "Test Browser",
+            icon: "test-browser",
+            desktopFile: "/tmp/Test Browser.desktop",
+            command: "gio launch \"/tmp/Test Browser.desktop\""
+        }]
+
+        compare(editor.applicationAction(0),
+                "app-launch:gio launch \"/tmp/Test Browser.desktop\"")
+        compare(editor.findApplication(editor.applicationAction(0)), 0)
+        compare(editor.findApplication("app-launch:firefox --new-window"), -1)
+    }
 }
