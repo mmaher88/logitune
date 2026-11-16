@@ -69,11 +69,18 @@ void ButtonModel::setAction(int buttonId, const QString &actionName, const QStri
 
 void ButtonModel::loadFromProfile(const QList<ButtonAssignment> &assignments)
 {
+    // Rebuilt, not updated in place: this model is a single shared instance
+    // reused across device switches, and control counts differ per device
+    // (6-9), so mutating would leave the previous device's rows behind.
     beginResetModel();
-    for (int i = 0; i < assignments.size() && i < m_buttons.size(); ++i) {
-        m_buttons[i].actionName = assignments[i].actionName;
-        m_buttons[i].actionType = assignments[i].actionType;
-        m_buttons[i].controlId  = assignments[i].controlId;
+    m_buttons.clear();
+    m_buttons.reserve(assignments.size());
+    for (int i = 0; i < assignments.size(); ++i) {
+        m_buttons.append({ i,
+                           QStringLiteral("Button %1").arg(i),
+                           assignments[i].actionName,
+                           assignments[i].actionType,
+                           assignments[i].controlId });
     }
     endResetModel();
 

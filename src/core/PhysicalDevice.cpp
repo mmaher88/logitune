@@ -251,4 +251,19 @@ const IDevice *PhysicalDevice::descriptor() const
     return m_primary ? m_primary->descriptor() : nullptr;
 }
 
+QString PhysicalDevice::frontImagePath() const
+{
+    return m_primary ? m_primary->frontImagePath() : QString();
+}
+
+QString PhysicalDevice::sideImagePath() const
+{
+    return m_primary ? m_primary->sideImagePath() : QString();
+}
+
+QString PhysicalDevice::backImagePath() const
+{
+    return m_primary ? m_primary->backImagePath() : QString();
+}
+
 } // namespace logitune

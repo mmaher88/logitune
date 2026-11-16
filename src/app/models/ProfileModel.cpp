@@ -165,22 +165,46 @@ void ProfileModel::setHwActiveIndex(int index)
     // NOTE: intentionally does NOT emit profileSwitched — that's only for user tab clicks
 }
 
+int ProfileModel::indexForProfileName(const QString &profileName) const
+{
+    // Match by profile name — avoids wmClass mismatch (e.g. "dolphin" vs "org.kde.dolphin").
+    // Default is always index 0.
+    if (profileName.isEmpty() || profileName == QStringLiteral("default"))
+        return 0;
+    for (int i = 1; i < m_profiles.size(); ++i) {
+        if (m_profiles.at(i).name.compare(profileName, Qt::CaseInsensitive) == 0)
+            return i;
+    }
+    return 0;
+}
+
 void ProfileModel::setHwActiveByProfileName(const QString &profileName)
 {
-    // Match by profile name — avoids wmClass mismatch (e.g. "dolphin" vs "org.kde.dolphin")
-    int targetIndex = 0;
-    if (profileName == QStringLiteral("default")) {
-        // Default is always index 0
-    } else if (!profileName.isEmpty()) {
-        for (int i = 0; i < m_profiles.size(); ++i) {
-            if (m_profiles.at(i).name.compare(profileName, Qt::CaseInsensitive) == 0) {
-                targetIndex = i;
+    setHwActiveIndex(indexForProfileName(profileName));
+}
+
+void ProfileModel::resetProfiles(const QList<AppTab> &appTabs,
+                                 const QString &displayProfile,
+                                 const QString &hwProfile)
+{
+    beginResetModel();
+    m_profiles.resize(1);  // keep "Defaults"
+    for (const auto &tab : appTabs) {
+        bool duplicate = false;
+        for (const auto &entry : m_profiles) {
+            if (entry.wmClass.compare(tab.wmClass, Qt::CaseInsensitive) == 0) {
+                duplicate = true;
                 break;
             }
         }
+        if (!duplicate)
+            m_profiles.append(ProfileEntry{ tab.name, tab.icon, tab.wmClass });
     }
+    m_displayIndex  = indexForProfileName(displayProfile);
+    m_hwActiveIndex = indexForProfileName(hwProfile);
+    endResetModel();
 
-    setHwActiveIndex(targetIndex);
+    emit displayIndexChanged();
 }
 
 } // namespace logitune

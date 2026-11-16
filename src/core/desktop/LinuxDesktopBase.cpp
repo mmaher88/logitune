@@ -8,8 +8,11 @@
 
 namespace logitune {
 
-const QStringList &LinuxDesktopBase::desktopDirs()
+QStringList LinuxDesktopBase::desktopDirs() const
 {
+    if (!m_desktopDirsOverride.isEmpty())
+        return m_desktopDirsOverride;
+
     static const QStringList dirs = {
         QStringLiteral("/usr/share/applications"),
         QStringLiteral("/run/host/usr/share/applications"),  // host apps inside Flatpak
@@ -21,17 +24,35 @@ const QStringList &LinuxDesktopBase::desktopDirs()
     return dirs;
 }
 
-QString LinuxDesktopBase::resolveDesktopFile(const QString &resourceClass) const
+QString LinuxDesktopBase::findDesktopFile(const QString &key) const
 {
+    if (key.isEmpty())
+        return {};
+
     // Cache results — scanning .desktop dirs is slow on first call
-    auto cached = m_resolveCache.constFind(resourceClass);
+    auto cached = m_resolveCache.constFind(key);
     if (cached != m_resolveCache.constEnd())
         return cached.value();
 
+    const QStringList dirs = desktopDirs();
+
+    // Match: key already is a .desktop file ID. Checked across every directory
+    // before any fuzzy match so that, e.g., native Chrome's google-chrome.desktop
+    // wins over flatpak Chrome's com.google.Chrome.desktop (whose StartupWMClass
+    // is also "google-chrome").
+    if (!key.contains(QLatin1Char('/'))) {
+        for (const QString &dir : dirs) {
+            if (QFileInfo::exists(dir + QLatin1Char('/') + key + QStringLiteral(".desktop"))) {
+                m_resolveCache.insert(key, key);
+                return key;
+            }
+        }
+    }
+
     // Search .desktop files for one whose StartupWMClass or file name component
-    // matches the resourceClass. Returns the .desktop completeBaseName (canonical ID).
+    // matches the key. Returns the .desktop completeBaseName (canonical ID).
     // This handles cases like resourceClass="zoom" -> "us.zoom.Zoom.desktop"
-    for (const QString &dir : desktopDirs()) {
+    for (const QString &dir : dirs) {
         QDir d(dir);
         if (!d.exists()) continue;
 
@@ -41,8 +62,8 @@ QString LinuxDesktopBase::resolveDesktopFile(const QString &resourceClass) const
 
             // Match: last component of filename (e.g. "Zoom" from "us.zoom.Zoom")
             QString shortName = baseName.contains('.') ? baseName.section('.', -1) : baseName;
-            if (shortName.compare(resourceClass, Qt::CaseInsensitive) == 0) {
-                m_resolveCache.insert(resourceClass, baseName);
+            if (shortName.compare(key, Qt::CaseInsensitive) == 0) {
+                m_resolveCache.insert(key, baseName);
                 return baseName;
             }
 
@@ -50,16 +71,22 @@ QString LinuxDesktopBase::resolveDesktopFile(const QString &resourceClass) const
             QSettings desktop(d.filePath(file), QSettings::IniFormat);
             desktop.beginGroup(QStringLiteral("Desktop Entry"));
             QString wmClass = desktop.value(QStringLiteral("StartupWMClass")).toString();
-            if (!wmClass.isEmpty() && wmClass.compare(resourceClass, Qt::CaseInsensitive) == 0) {
-                m_resolveCache.insert(resourceClass, baseName);
+            if (!wmClass.isEmpty() && wmClass.compare(key, Qt::CaseInsensitive) == 0) {
+                m_resolveCache.insert(key, baseName);
                 return baseName;
             }
         }
     }
 
+    m_resolveCache.insert(key, QString());
+    return {};
+}
+
+QString LinuxDesktopBase::resolveDesktopFile(const QString &resourceClass) const
+{
+    const QString id = findDesktopFile(resourceClass);
     // No .desktop match — use resourceClass as-is
-    m_resolveCache.insert(resourceClass, resourceClass);
-    return resourceClass;
+    return id.isEmpty() ? resourceClass : id;
 }
 
 QVariantList LinuxDesktopBase::runningApplications() const

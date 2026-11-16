@@ -147,6 +147,31 @@
         "back":  { "type": "string", "description": "Path to the back image, relative to the descriptor directory." }
       }
     },
+    "variants": {
+      "type": "array",
+      "description": "Models sold under this descriptor's product IDs with their own name or look, e.g. the \"for Mac\" edition. The device reports which one it is through the extended model ID in HID++ DeviceInformation (0x0003) getDeviceInfo, the key Logitech Options+ files its \"derivatives\" under. Extended model IDs with no entry use the descriptor as is.",
+      "items": {
+        "type": "object",
+        "required": ["extendedModel"],
+        "additionalProperties": false,
+        "properties": {
+          "extendedModel": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255,
+            "description": "Extended model ID byte reported by the device. Each value may appear once."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name for this variant, e.g. \"MX Master 3 for Mac\". Defaults to the descriptor's name."
+          },
+          "images": {
+            "$ref": "#/properties/images",
+            "description": "Images for this variant, relative to the descriptor directory. Views left out use the descriptor's images."
+          }
+        }
+      }
+    },
     "easySwitchSlots": {
       "type": "array",
       "items": {

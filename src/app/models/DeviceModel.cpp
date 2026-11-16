@@ -44,7 +44,7 @@ QVariant DeviceModel::data(const QModelIndex &index, int role) const
         return device->deviceName();
     case FrontImageRole: {
         if (!device->descriptor()) return QString();
-        QString path = device->descriptor()->frontImagePath();
+        QString path = device->frontImagePath();
         if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
             return "file://" + path;
         return path;
@@ -246,6 +246,11 @@ void DeviceModel::insertRow(PhysicalDevice *device)
         emit selectedBatteryChanged();
         emit settingsReloaded();
         emit deviceConnectedChanged();
+    } else if (m_selectedIndex >= 0 && insertAt <= m_selectedIndex) {
+        // A row landed in front of the selection. Keep the same mouse
+        // selected; only its row number moved, so QML must re-read it.
+        ++m_selectedIndex;
+        emit selectedChanged();
     }
 }
 
@@ -255,10 +260,15 @@ void DeviceModel::removeRow(PhysicalDevice *device)
     if (row < 0) return;
 
     const bool wasSelected = (row == m_selectedIndex);
+    // A row in front of the selection is going away: the selected mouse
+    // stays the same but moves up one row.
+    const bool shiftsSelection = (row < m_selectedIndex);
     beginRemoveRows(QModelIndex(), row, row);
     m_devices.removeAt(row);
     endRemoveRows();
 
+    if (shiftsSelection)
+        --m_selectedIndex;
     if (m_selectedIndex >= m_devices.size())
         m_selectedIndex = m_devices.size() - 1;
     if (m_devices.isEmpty())
@@ -270,6 +280,8 @@ void DeviceModel::removeRow(PhysicalDevice *device)
         emit selectedBatteryChanged();
         emit settingsReloaded();
         emit deviceConnectedChanged();
+    } else if (shiftsSelection) {
+        emit selectedChanged();
     }
 }
 
@@ -500,7 +512,7 @@ QString DeviceModel::frontImage() const
 {
     auto *s = selectedDevice();
     if (s && s->descriptor()) {
-        QString path = s->descriptor()->frontImagePath();
+        QString path = s->frontImagePath();
         if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
             return "file://" + path;
         return path;
@@ -512,7 +524,7 @@ QString DeviceModel::sideImage() const
 {
     auto *s = selectedDevice();
     if (s && s->descriptor()) {
-        QString path = s->descriptor()->sideImagePath();
+        QString path = s->sideImagePath();
         if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
             return "file://" + path;
         return path;
@@ -524,7 +536,7 @@ QString DeviceModel::backImage() const
 {
     auto *s = selectedDevice();
     if (s && s->descriptor()) {
-        QString path = s->descriptor()->backImagePath();
+        QString path = s->backImagePath();
         if (!path.isEmpty() && !path.startsWith("qrc:") && !path.startsWith("file:"))
             return "file://" + path;
         return path;

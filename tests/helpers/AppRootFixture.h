@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QTemporaryDir>
 #include <memory>
+#include <vector>
 
 #include "AppRoot.h"
 #include "DeviceSession.h"
@@ -180,25 +181,37 @@ protected:
     }
 
     void pressButton(uint16_t controlId) {
-        m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(controlId, true);
+        m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(m_physicalDevice, controlId, true);
     }
 
     void releaseButton(uint16_t controlId) {
-        m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(controlId, false);
+        m_ctrl->m_buttonDispatcher.onDivertedButtonPressed(m_physicalDevice, controlId, false);
     }
 
     void gestureXY(int16_t dx, int16_t dy) {
-        m_ctrl->m_buttonDispatcher.onGestureRaw(dx, dy);
+        m_ctrl->m_buttonDispatcher.onGestureRaw(m_physicalDevice, dx, dy);
     }
 
     void thumbWheel(int delta) {
-        m_ctrl->m_buttonDispatcher.onThumbWheelRotation(delta);
+        m_ctrl->m_buttonDispatcher.onThumbWheelRotation(m_physicalDevice, delta);
+    }
+
+    // Allocates an extra MockDevice descriptor for addMockDevice(). Owned by
+    // the fixture so it outlives the DeviceSession that points at it -- m_ctrl
+    // (which parents the sessions) is destroyed first, both in TearDown and by
+    // member destruction order.
+    MockDevice &newMockDescriptor() {
+        m_extraDescriptors.push_back(std::make_unique<MockDevice>());
+        return *m_extraDescriptors.back();
     }
 
     // Adds a second mock device and registers it through the normal flow.
+    // Pass \p descriptor to give it a control layout of its own; by default it
+    // reuses the fixture's 8-control MX Master descriptor.
     // Returns the new PhysicalDevice for test-level manipulation.
     PhysicalDevice* addMockDevice(const QString &serialSuffix,
-                                  int seedDpi = 1000) {
+                                  int seedDpi = 1000,
+                                  MockDevice *descriptor = nullptr) {
         const QString serial = QStringLiteral("mock-serial-") + serialSuffix;
         const QString devProfilesDir = m_tmpDir.path()
             + "/" + serial + "/profiles";
@@ -216,7 +229,7 @@ protected:
                                           "Bluetooth", nullptr, m_ctrl.get());
         session->m_connected = true;
         session->m_deviceName = QStringLiteral("Mock Device ") + serialSuffix;
-        session->m_activeDevice = &m_device;  // reuse the fixture's MockDevice descriptor
+        session->m_activeDevice = descriptor ? descriptor : &m_device;
 
         auto *device = new PhysicalDevice(serial, m_ctrl.get());
         device->attachTransport(session);
@@ -248,28 +261,28 @@ protected:
     ActionExecutor &actionExecutor() { return m_ctrl->m_actionExecutor; }
 
     int gestureTotalDx() const {
-        if (!m_session) return 0;
+        if (!m_physicalDevice) return 0;
         auto &state = m_ctrl->m_buttonDispatcher.m_state;
-        auto it = state.find(m_session->deviceId());
+        auto it = state.find(m_physicalDevice->deviceSerial());
         return it != state.end() ? it->gestureAccumX : 0;
     }
     int gestureTotalDy() const {
-        if (!m_session) return 0;
+        if (!m_physicalDevice) return 0;
         auto &state = m_ctrl->m_buttonDispatcher.m_state;
-        auto it = state.find(m_session->deviceId());
+        auto it = state.find(m_physicalDevice->deviceSerial());
         return it != state.end() ? it->gestureAccumY : 0;
     }
     bool gestureActive() const {
-        if (!m_session) return false;
+        if (!m_physicalDevice) return false;
         auto &state = m_ctrl->m_buttonDispatcher.m_state;
-        auto it = state.find(m_session->deviceId());
+        auto it = state.find(m_physicalDevice->deviceSerial());
         return it != state.end() ? it->gestureActive : false;
     }
 
     int thumbAccum() const {
-        if (!m_session) return 0;
+        if (!m_physicalDevice) return 0;
         auto &state = m_ctrl->m_buttonDispatcher.m_state;
-        auto it = state.find(m_session->deviceId());
+        auto it = state.find(m_physicalDevice->deviceSerial());
         return it != state.end() ? it->thumbAccum : 0;
     }
 
@@ -287,6 +300,7 @@ protected:
     MockDesktop  *m_desktop  = nullptr;
     MockInjector *m_injector = nullptr;
     MockDevice    m_device;
+    std::vector<std::unique_ptr<MockDevice>> m_extraDescriptors;
     DeviceSession *m_session = nullptr;
     PhysicalDevice *m_physicalDevice = nullptr;
     std::unique_ptr<AppRoot> m_ctrl;

@@ -10,7 +10,7 @@ The MX Master 3S descriptor (`devices/mx-master-3s/`) is used as the worked exam
 
 Gather the following before you start:
 
-- **Product ID (PID):** run `lsusb | grep Logitech` and note the hex ID after `ID 046d:`, or read it from Solaar (`solaar show`). Bolt-receiver connections and Bluetooth connections often report different PIDs; include both. Use the **device WPID** (e.g. `0xb034`), not the Unifying receiver's USB PID (`0xc52b`).
+- **Product ID (PID):** run `lsusb | grep Logitech` and note the hex ID after `ID 046d:`, or read it from Solaar (`solaar show`). Bolt-receiver connections and Bluetooth connections often report different PIDs; include both. Use the **device WPID** (e.g. `0xb034`), not the receiver's USB PID (Bolt `0xc548`, Unifying `0xc52b`). On a receiver, Logitune reads the WPID from the receiver's pairing register (logged as `receiver slot N WPID: ...`), so that is the value to list. When two descriptors share a PID (MX Vertical and MX Vertical for Business), the name the device reports picks between them.
 - **Control IDs (CIDs):** logging is enabled by default (toggle it in **Settings → Debug logging** if you disabled it). Launch Logitune, connect the device, then press each physical button one at a time. The log records a line per press:
   ```
   [logitune.device] [DEBUG] button event: CID 0xc3 pressed=true

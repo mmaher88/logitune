@@ -154,5 +154,11 @@
         "0xb025",
         "0x4090"
     ],
-    "status": "beta"
+    "status": "beta",
+    "variants": [
+        {
+            "extendedModel": 4,
+            "name": "MX Anywhere 3 for Mac"
+        }
+    ]
 }

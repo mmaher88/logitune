@@ -33,6 +33,23 @@ public:
     /// Restore an existing profile entry at startup — no selectTab, no profileAdded signal.
     void restoreProfile(const QString &wmClass, const QString &name, const QString &icon = QString());
 
+    /// One app profile tab: the app it is bound to and the profile it opens.
+    struct AppTab {
+        QString wmClass;
+        QString name;
+        QString icon;
+    };
+
+    /// Replaces every app tab with \p appTabs (the "Defaults" tab stays
+    /// first) and points the highlights at \p displayProfile and
+    /// \p hwProfile, matched by profile name ("default" or unknown names
+    /// select Defaults). Used when the carousel selects another mouse: each
+    /// mouse has its own app profiles. Not a user action, so no
+    /// profileSwitched / profileAdded / profileRemoved.
+    void resetProfiles(const QList<AppTab> &appTabs,
+                       const QString &displayProfile,
+                       const QString &hwProfile);
+
     void setHwActiveByProfileName(const QString &profileName);   // window focus -> hw indicator only
     void setHwActiveIndex(int index);                           // hw indicator only, no profileSwitched
 
@@ -43,6 +60,8 @@ signals:
     void profileRemoved(const QString &wmClass);
 
 private:
+    int indexForProfileName(const QString &profileName) const;
+
     struct ProfileEntry {
         QString name;
         QString icon;

@@ -70,6 +70,10 @@ public:
     QString deviceSerial() const;
     QString firmwareVersion() const;
     const IDevice *descriptor() const;
+    // The descriptor's images, or the reported variant's where it has its own.
+    QString frontImagePath() const;
+    QString sideImagePath() const;
+    QString backImagePath() const;
 
 signals:
     // Fires whenever anything observable changes: primary swap, session

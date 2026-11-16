@@ -153,7 +153,8 @@
     "name": "MX Vertical",
     "productIds": [
         "0xb020",
-        "0x407b"
+        "0x407b",
+        "0xc08a"
     ],
     "status": "beta"
 }

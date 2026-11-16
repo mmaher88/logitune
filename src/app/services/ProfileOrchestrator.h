@@ -20,6 +20,13 @@ class ProfileModel;
 /// models and engines, writes to them, and emits profileApplied(serial)
 /// after every hardware apply.
 ///
+/// Two kinds of target, never mixed:
+///  - Device-originated work (setup, reconnect, focus switching, button-
+///    initiated changes) names the mouse it is for and writes to that
+///    mouse's own transport and profiles.
+///  - UI edits act on the mouse selected in the carousel (activeSerial /
+///    m_currentDevice), because that is the mouse the user is looking at.
+///
 /// Zero `connect()` calls in the .cpp — AppRoot wires the inbound
 /// signals (from models, ProfileEngine, desktop, DeviceCommandHandler) and the
 /// outbound signals (to ButtonActionDispatcher).
@@ -37,7 +44,17 @@ public:
                         QObject *parent = nullptr);
 
     void setupProfileForDevice(PhysicalDevice *device);
-    void applyProfileToHardware(const Profile &p);
+
+    /// Fills the profile tab bar with \p serial's app profiles and points
+    /// its highlights at that mouse's displayed / hardware profiles. Called
+    /// whenever the carousel selects a mouse; an empty serial leaves only
+    /// the Defaults tab.
+    void rebuildProfileTabs(const QString &serial);
+
+    /// Writes \p p to \p device's active transport, using that device's own
+    /// descriptor. Does nothing (and logs why) if the device has no
+    /// transport or descriptor yet.
+    void applyProfileToHardware(PhysicalDevice *device, const Profile &p);
 
     /// Templated bridge for the five DeviceModel *ChangeRequested signals.
     /// Mutates the displayed profile's cached copy, persists it, refreshes
@@ -62,40 +79,39 @@ public:
     /// button acted on the hardware, so the change belongs to the HARDWARE
     /// profile — not whichever profile the user happens to be viewing — and
     /// no hardware forward is needed because the device is already in the
-    /// new state. The UI is refreshed only when the viewed profile is the
-    /// active one.
+    /// new state. \p serial is the mouse whose button was pressed, which is
+    /// not necessarily the one on screen; the UI is refreshed only when it
+    /// is, and only when the viewed profile is the active one.
     template<typename Mutator>
-    void applyHardwareChange(Mutator mutator) {
-        const QString serial = activeSerial();
+    void applyHardwareChange(const QString &serial, Mutator mutator) {
         if (serial.isEmpty()) return;
         const QString name = m_profileEngine->hardwareProfile(serial);
         if (name.isEmpty()) return;
         Profile &p = m_profileEngine->cachedProfile(serial, name);
         mutator(p);
         m_profileEngine->saveProfileToDisk(serial, name);
-        if (name == m_profileEngine->displayProfile(serial))
+        if (serial == activeSerial() && name == m_profileEngine->displayProfile(serial))
             pushDisplayValues(p);
     }
 
 public slots:
     void saveCurrentProfile();
-    void onDpiChangedByButton(int dpi);
-    void onSmartShiftChangedByButton(bool enabled, int threshold);
+    void onDpiChangedByButton(const QString &serial, int dpi);
+    void onSmartShiftChangedByButton(const QString &serial, bool enabled, int threshold);
     void onUserButtonChanged(int buttonId, const QString &actionName, const QString &actionType);
     void onTabSwitched(const QString &profileName);
     void onDisplayProfileChanged(const QString &serial, const Profile &profile);
     void onWindowFocusChanged(const QString &wmClass, const QString &title);
     void onTransportSetupComplete(PhysicalDevice *device);
+
+    /// The descriptor of the mouse selected in the UI. Used only for UI
+    /// edits and for rebuilding the button list on screen.
     void onCurrentDeviceChanged(const IDevice *device);
 
 signals:
     /// Emitted after applyProfileToHardware finishes. ButtonActionDispatcher
     /// subscribes to reset its thumbAccum for the given serial.
     void profileApplied(const QString &serial);
-
-    /// Emitted on every m_currentDevice update. ButtonActionDispatcher
-    /// subscribes to keep its own IDevice pointer in sync.
-    void currentDeviceChanged(const IDevice *device);
 
 private:
     QString activeSerial() const;

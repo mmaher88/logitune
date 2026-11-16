@@ -36,6 +36,7 @@ public:
     int dpiStep() const override { return m_dpiStep; }
     std::vector<int> dpiCycleRing() const override { return m_dpiCycleRing; }
     QList<EasySwitchSlotPosition> easySwitchSlotPositions() const override { return m_easySwitchSlots; }
+    QList<DeviceVariant> variants() const override { return m_variants; }
 
 private:
     JsonDevice() = default;
@@ -53,6 +54,7 @@ private:
     QList<HotspotDescriptor> m_scrollHotspots;
     QString m_frontImage, m_sideImage, m_backImage;
     QList<EasySwitchSlotPosition> m_easySwitchSlots;
+    QList<DeviceVariant> m_variants;
     QMap<QString, ButtonAction> m_defaultGestures;
     QString m_sourcePath;
     qint64 m_loadedMtime = 0;

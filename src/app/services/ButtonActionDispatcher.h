@@ -12,22 +12,24 @@ class ButtonActionDispatcherFixture;
 namespace logitune {
 
 class ActionExecutor;
-class ActiveDeviceResolver;
+class PhysicalDevice;
 class ProfileEngine;
-class IDevice;
 class IDesktopIntegration;
 
 /// Turns raw HID++ input events (gestureRawXY, divertedButtonPressed,
 /// thumbWheelRotation) into high-level actions (SmartShift toggle, DPI
 /// cycle, keystroke injection, gesture direction, app launch).
 ///
-/// Owns the per-device gesture + thumb wheel accumulator state.
+/// Every event names the mouse it came from. Mappings are read from that
+/// mouse's hardware profile, its own descriptor resolves the control ID,
+/// device writes go to its own transport, and gesture / thumb wheel
+/// accumulators are kept per mouse. Which mouse is selected in the UI is
+/// irrelevant here.
 class ButtonActionDispatcher : public QObject {
     Q_OBJECT
 public:
     ButtonActionDispatcher(ProfileEngine *profileEngine,
                            ActionExecutor *actionExecutor,
-                           ActiveDeviceResolver *selection,
                            IDesktopIntegration *desktop = nullptr,
                            QObject *parent = nullptr);
 
@@ -38,19 +40,18 @@ public:
 
 signals:
     /// Emitted after a diverted button changes a device setting, so the
-    /// orchestrator can persist it into the active profile. Notifying
-    /// explicitly (rather than having the orchestrator listen to
+    /// orchestrator can persist it into that mouse's active profile.
+    /// Notifying explicitly (rather than having the orchestrator listen to
     /// DeviceSession's change signals) keeps a profile *application* from
     /// echoing back and rewriting the profile it just applied.
-    void dpiChangedByButton(int dpi);
-    void smartShiftChangedByButton(bool enabled, int threshold);
+    void dpiChangedByButton(const QString &serial, int dpi);
+    void smartShiftChangedByButton(const QString &serial, bool enabled, int threshold);
 
 public slots:
-    void onGestureRaw(int16_t dx, int16_t dy);
-    void onDivertedButtonPressed(uint16_t controlId, bool pressed);
-    void onThumbWheelRotation(int delta);
+    void onGestureRaw(PhysicalDevice *device, int16_t dx, int16_t dy);
+    void onDivertedButtonPressed(PhysicalDevice *device, uint16_t controlId, bool pressed);
+    void onThumbWheelRotation(PhysicalDevice *device, int delta);
     void onProfileApplied(const QString &serial);
-    void onCurrentDeviceChanged(const IDevice *device);
 
 private:
     struct PerDeviceState {
@@ -65,10 +66,8 @@ private:
 
     ProfileEngine   *m_profileEngine;
     ActionExecutor  *m_actionExecutor;
-    ActiveDeviceResolver *m_selection;
     IDesktopIntegration *m_desktop = nullptr;
-    const IDevice   *m_currentDevice = nullptr;
-    QMap<QString, PerDeviceState> m_state;
+    QMap<QString, PerDeviceState> m_state;  // keyed by PhysicalDevice serial
 };
 
 } // namespace logitune

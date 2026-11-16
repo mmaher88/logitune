@@ -298,8 +298,18 @@ jobs:
 
           # Non-terminal state codes per OBS: wait until none of these
           # appear in the result set.
+          #
+          # "finished" is deliberately NOT treated as busy. This gate answers
+          # "did THIS release build on OBS?", and at "finished" the build is
+          # done — what remains is repository publishing, which is asynchronous
+          # and can lag for a long time. On v0.3.7 the package reached
+          # "finished" after ~4 minutes and stayed there for the remaining 31,
+          # timing the job out and failing an otherwise successful release.
+          # Publish latency is not a build failure. ("signing" is still treated
+          # as busy: it is normally seconds, and reaching it already implies a
+          # successful build.)
           is_busy() {
-            echo "$1" | grep -qE '<status[^>]+code="(building|blocked|scheduled|dispatching|finished|unknown|signing)"'
+            echo "$1" | grep -qE '<status[^>]+code="(building|blocked|scheduled|dispatching|unknown|signing)"'
           }
 
           # Right after the trigger POST, OBS has not yet re-dispatched the
@@ -383,6 +393,10 @@ jobs:
           if echo "$xml" | grep -qE '<status[^>]+package="logitune"[^>]*code="(failed|unresolvable|broken)"'; then
             echo "::error::One or more OBS builds failed."
             exit 1
+          fi
+          if echo "$xml" | grep -qE '<status[^>]+package="logitune"[^>]*code="finished"'; then
+            echo "note: build finished; repository publishing may still be in"
+            echo "      progress, so the download repo can lag by a few minutes."
           fi
           if [ "$elapsed" -ge "$MAX_WAIT" ]; then
             echo "::error::Timed out waiting for OBS builds to settle after ${MAX_WAIT}s."

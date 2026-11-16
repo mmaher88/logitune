@@ -34,7 +34,7 @@ TEST_F(ProfileOrchestratorFixture, ApplyProfileToHardwareEmitsProfileApplied) {
 
     Profile p = cached();
     p.dpi = 2400;
-    m_orchestrator->applyProfileToHardware(p);
+    m_orchestrator->applyProfileToHardware(m_physical, p);
 
     ASSERT_EQ(spy.count(), 1);
     EXPECT_EQ(spy.first().at(0).toString(), QStringLiteral("mock-serial"));
@@ -155,20 +155,6 @@ TEST_F(ProfileOrchestratorFixture, SetupProfileForDeviceSeedsCache) {
     delete physical;
 }
 
-// --- Current device signal ------------------------------------------------
-
-TEST_F(ProfileOrchestratorFixture, OnCurrentDeviceChangedEmitsSignal) {
-    QSignalSpy spy(m_orchestrator.get(),
-                   &ProfileOrchestrator::currentDeviceChanged);
-
-    m_device.setupMxControls();
-    m_orchestrator->onCurrentDeviceChanged(&m_device);
-
-    ASSERT_EQ(spy.count(), 1);
-    EXPECT_EQ(spy.first().at(0).value<const IDevice *>(),
-              static_cast<const IDevice *>(&m_device));
-}
-
 // --- applyDisplayedChange template ---------------------------------------
 
 TEST_F(ProfileOrchestratorFixture, ApplyDisplayedChangeMutatesCacheAndPushesToUI) {
@@ -244,7 +230,7 @@ TEST_F(ProfileOrchestratorFixture, PresetRefRoundTripRestoresTypeAndName) {
 TEST_F(ProfileOrchestratorFixture, ButtonDpiChangePersistsToHardwareProfile) {
     attachMockSession();
 
-    m_orchestrator->onDpiChangedByButton(4100);
+    m_orchestrator->onDpiChangedByButton(QStringLiteral("mock-serial"), 4100);
 
     // Persisted into the hardware (active) profile...
     EXPECT_EQ(cached().dpi, 4100);
@@ -255,7 +241,7 @@ TEST_F(ProfileOrchestratorFixture, ButtonDpiChangePersistsToHardwareProfile) {
 TEST_F(ProfileOrchestratorFixture, ButtonSmartShiftChangePersistsToHardwareProfile) {
     attachMockSession();
 
-    m_orchestrator->onSmartShiftChangedByButton(false, 200);
+    m_orchestrator->onSmartShiftChangedByButton(QStringLiteral("mock-serial"), false, 200);
 
     EXPECT_FALSE(cached().smartShiftEnabled);
     EXPECT_EQ(cached().smartShiftThreshold, 200);
@@ -275,7 +261,7 @@ TEST_F(ProfileOrchestratorFixture, ButtonChangeWritesHardwareProfileWhileViewing
     const int viewedDpiBefore = cached(QStringLiteral("other")).dpi;
     const int shownDpiBefore  = m_deviceModel->currentDPI();
 
-    m_orchestrator->onDpiChangedByButton(4100);
+    m_orchestrator->onDpiChangedByButton(QStringLiteral("mock-serial"), 4100);
 
     EXPECT_EQ(cached().dpi, 4100);                                    // hardware profile updated
     EXPECT_EQ(cached(QStringLiteral("other")).dpi, viewedDpiBefore);  // viewed profile untouched

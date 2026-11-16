@@ -1,7 +1,7 @@
 #include "ButtonActionDispatcher.h"
 #include "ActionExecutor.h"
-#include "ActiveDeviceResolver.h"
 #include "DeviceSession.h"
+#include "PhysicalDevice.h"
 #include "ProfileEngine.h"
 #include "interfaces/IDesktopIntegration.h"
 #include "interfaces/IDevice.h"
@@ -12,13 +12,11 @@ namespace logitune {
 
 ButtonActionDispatcher::ButtonActionDispatcher(ProfileEngine *profileEngine,
                                                ActionExecutor *actionExecutor,
-                                               ActiveDeviceResolver *selection,
                                                IDesktopIntegration *desktop,
                                                QObject *parent)
     : QObject(parent)
     , m_profileEngine(profileEngine)
     , m_actionExecutor(actionExecutor)
-    , m_selection(selection)
     , m_desktop(desktop)
 {}
 
@@ -33,30 +31,25 @@ void ButtonActionDispatcher::onProfileApplied(const QString &serial)
     if (it != m_state.end()) it->thumbAccum = 0;
 }
 
-void ButtonActionDispatcher::onCurrentDeviceChanged(const IDevice *device)
+void ButtonActionDispatcher::onGestureRaw(PhysicalDevice *device, int16_t dx, int16_t dy)
 {
-    m_currentDevice = device;
-}
-
-void ButtonActionDispatcher::onGestureRaw(int16_t dx, int16_t dy)
-{
-    auto *session = m_selection ? m_selection->activeSession() : nullptr;
-    if (!session) return;
-    auto &state = m_state[session->deviceId()];
+    if (!device || !device->primary()) return;
+    auto &state = m_state[device->deviceSerial()];
     if (state.gestureActive) {
         state.gestureAccumX += dx;
         state.gestureAccumY += dy;
     }
 }
 
-void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pressed)
+void ButtonActionDispatcher::onDivertedButtonPressed(PhysicalDevice *device,
+                                                     uint16_t controlId, bool pressed)
 {
-    auto *session = m_selection ? m_selection->activeSession() : nullptr;
+    DeviceSession *session = device ? device->primary() : nullptr;
     if (!session) return;
-    auto &state = m_state[session->deviceId()];
-
-    const QString serial = m_selection->activeSerial();
+    const QString serial = device->deviceSerial();
     if (serial.isEmpty()) return;
+    auto &state = m_state[serial];
+
     const Profile &hwProfile = m_profileEngine->cachedProfile(
         serial, m_profileEngine->hardwareProfile(serial));
 
@@ -105,9 +98,10 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
 
     if (!pressed) return;
 
-    if (!m_currentDevice) return;
+    const IDevice *descriptor = device->descriptor();
+    if (!descriptor) return;
     int idx = -1;
-    for (const auto &ctrl : m_currentDevice->controls()) {
+    for (const auto &ctrl : descriptor->controls()) {
         if (ctrl.controlId == controlId) {
             idx = ctrl.buttonIndex;
             break;
@@ -126,10 +120,10 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     if (ba.type == ButtonAction::SmartShiftToggle) {
         bool current = session->smartShiftEnabled();
         session->setSmartShift(!current, session->smartShiftThreshold());
-        emit smartShiftChangedByButton(!current, session->smartShiftThreshold());
+        emit smartShiftChangedByButton(serial, !current, session->smartShiftThreshold());
     } else if (ba.type == ButtonAction::DpiCycle) {
         session->cycleDpi();
-        emit dpiChangedByButton(session->currentDPI());
+        emit dpiChangedByButton(serial, session->currentDPI());
     } else if ((ba.type == ButtonAction::Keystroke || ba.type == ButtonAction::Media)
                && !ba.payload.isEmpty()) {
         m_actionExecutor->injectKeystroke(ba.payload);
@@ -156,11 +150,11 @@ void ButtonActionDispatcher::onDivertedButtonPressed(uint16_t controlId, bool pr
     }
 }
 
-void ButtonActionDispatcher::onThumbWheelRotation(int delta)
+void ButtonActionDispatcher::onThumbWheelRotation(PhysicalDevice *device, int delta)
 {
-    auto *session = m_selection ? m_selection->activeSession() : nullptr;
+    DeviceSession *session = device ? device->primary() : nullptr;
     if (!session) return;
-    auto &state = m_state[session->deviceId()];
+    auto &state = m_state[device->deviceSerial()];
 
     const QString &mode = session->thumbWheelMode();
     int normalized = delta * session->thumbWheelDefaultDirection();

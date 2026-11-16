@@ -4,6 +4,8 @@
 #include "DeviceRegistry.h"
 #include "hidpp/HidrawDevice.h"
 #include "hidpp/HidppTypes.h"
+#include "interfaces/IDevice.h"
+#include "mocks/MockDevice.h"
 
 using namespace logitune;
 using namespace logitune::hidpp;
@@ -207,4 +209,132 @@ TEST_F(DeviceSessionTest, AccessorsReturnNullables) {
     // transport is created in constructor
     EXPECT_NE(session->transport(), nullptr);
     EXPECT_NE(session->device(), nullptr);
+}
+
+// ---------------------------------------------------------------------------
+// Descriptor resolution
+// ---------------------------------------------------------------------------
+
+// On a receiver the hidraw node reports the receiver's PID (Bolt 0xC548),
+// so the device is identified by the WPID read from the receiver's pairing
+// register. The WPID alone is enough, even with no usable name.
+TEST_F(DeviceSessionTest, ReceiverDeviceResolvesByWpid) {
+    const auto *dev = DeviceSession::resolveDescriptor(
+        &registry, kPidBoltReceiver, 0xB038, QString());
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Anywhere 3S for Business"));
+}
+
+TEST_F(DeviceSessionTest, MxMaster3sForBusinessOnBoltResolvesByWpid) {
+    const auto *dev = DeviceSession::resolveDescriptor(
+        &registry, kPidBoltReceiver, 0xB035, QStringLiteral("MX Master 3S For Business"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3S For Business"));
+}
+
+TEST_F(DeviceSessionTest, MxMaster3OnUnifyingResolvesByWpid) {
+    const auto *dev = DeviceSession::resolveDescriptor(
+        &registry, kPidUnifyReceiver, 0x4082, QString());
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3"));
+}
+
+// The receiver's own PID says nothing about which device is paired to it.
+TEST_F(DeviceSessionTest, ReceiverPidNeverSelectsADescriptor) {
+    EXPECT_EQ(DeviceSession::resolveDescriptor(
+                  &registry, kPidBoltReceiver, std::nullopt, QString()), nullptr);
+    EXPECT_EQ(DeviceSession::resolveDescriptor(
+                  &registry, kPidUnifyReceiver, std::nullopt, QString()), nullptr);
+}
+
+// If the pairing register can't be read, the reported name is all we have.
+TEST_F(DeviceSessionTest, ReceiverWithoutWpidFallsBackToName) {
+    const auto *dev = DeviceSession::resolveDescriptor(
+        &registry, kPidBoltReceiver, std::nullopt, QStringLiteral("MX Master 3S"));
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3S"));
+}
+
+// Over Bluetooth the hidraw PID is the device's own.
+TEST_F(DeviceSessionTest, BluetoothDeviceResolvesByHidrawPid) {
+    const auto *dev = DeviceSession::resolveDescriptor(
+        &registry, 0xB034, std::nullopt, QString());
+    ASSERT_NE(dev, nullptr);
+    EXPECT_EQ(dev->deviceName(), QStringLiteral("MX Master 3S"));
+}
+
+// MX Vertical and MX Vertical for Business share PID 0xB020; the reported
+// name picks between them, on Bluetooth and on a receiver alike.
+TEST_F(DeviceSessionTest, SharedPidResolvedByName) {
+    const auto *business = DeviceSession::resolveDescriptor(
+        &registry, 0xB020, std::nullopt, QStringLiteral("MX Vertical for Business"));
+    ASSERT_NE(business, nullptr);
+    EXPECT_EQ(business->deviceName(), QStringLiteral("MX Vertical for Business"));
+
+    const auto *retail = DeviceSession::resolveDescriptor(
+        &registry, 0xB020, std::nullopt, QStringLiteral("MX Vertical"));
+    ASSERT_NE(retail, nullptr);
+    EXPECT_EQ(retail->deviceName(), QStringLiteral("MX Vertical"));
+
+    const auto *onBolt = DeviceSession::resolveDescriptor(
+        &registry, kPidBoltReceiver, 0xB020, QStringLiteral("MX Vertical for Business"));
+    ASSERT_NE(onBolt, nullptr);
+    EXPECT_EQ(onBolt->deviceName(), QStringLiteral("MX Vertical for Business"));
+}
+
+// ---------------------------------------------------------------------------
+// Variants: MX Master 3 and MX Master 3 for Mac share every PID (issue #106);
+// the extended model ID from DeviceInfo (0x0003) tells them apart.
+// ---------------------------------------------------------------------------
+
+TEST_F(DeviceSessionTest, MacVariantRenamesMxMaster3) {
+    auto session = makeSession();
+    session->applyDescriptor(registry.findByPid(0xb023), 3, QStringLiteral("MX Master 3"));
+    EXPECT_EQ(session->deviceName(), QStringLiteral("MX Master 3 for Mac"));
+    ASSERT_TRUE(session->extendedModelId().has_value());
+    EXPECT_EQ(*session->extendedModelId(), 3);
+}
+
+TEST_F(DeviceSessionTest, RetailExtendedModelKeepsDescriptorName) {
+    auto session = makeSession();
+    session->applyDescriptor(registry.findByPid(0xb023), 1, QStringLiteral("MX Master 3"));
+    EXPECT_EQ(session->deviceName(), QStringLiteral("MX Master 3"));
+}
+
+TEST_F(DeviceSessionTest, NoExtendedModelKeepsDescriptorName) {
+    auto session = makeSession();
+    session->applyDescriptor(registry.findByPid(0xb023), std::nullopt, QStringLiteral("whatever"));
+    EXPECT_EQ(session->deviceName(), QStringLiteral("MX Master 3"));
+    EXPECT_FALSE(session->extendedModelId().has_value());
+}
+
+TEST_F(DeviceSessionTest, UnknownDeviceKeepsReportedName) {
+    auto session = makeSession();
+    session->applyDescriptor(nullptr, 3, QStringLiteral("Some Logitech Mouse"));
+    EXPECT_EQ(session->deviceName(), QStringLiteral("Some Logitech Mouse"));
+    EXPECT_EQ(session->descriptor(), nullptr);
+}
+
+// A variant's images replace the descriptor's view by view; views it leaves
+// out, and its name when it has none, come from the descriptor.
+TEST_F(DeviceSessionTest, VariantImagesOverrideDescriptorPerView) {
+    logitune::test::MockDevice dev;
+    dev.m_deviceName = QStringLiteral("Mock Mouse");
+    dev.m_frontImagePath = QStringLiteral("/base/front.png");
+    dev.m_sideImagePath = QStringLiteral("/base/side.png");
+    dev.m_backImagePath = QStringLiteral("/base/back.png");
+    DeviceVariant grey;
+    grey.extendedModelId = 7;
+    grey.frontImagePath = QStringLiteral("/grey/front.png");
+    dev.m_variants = { grey };
+
+    auto session = makeSession();
+    session->applyDescriptor(&dev, 7, QString());
+    EXPECT_EQ(session->deviceName(), QStringLiteral("Mock Mouse"));
+    EXPECT_EQ(session->frontImagePath(), QStringLiteral("/grey/front.png"));
+    EXPECT_EQ(session->sideImagePath(), QStringLiteral("/base/side.png"));
+    EXPECT_EQ(session->backImagePath(), QStringLiteral("/base/back.png"));
+
+    session->applyDescriptor(&dev, 1, QString());
+    EXPECT_EQ(session->frontImagePath(), QStringLiteral("/base/front.png"));
 }
